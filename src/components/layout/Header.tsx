@@ -93,15 +93,12 @@ export default function Header() {
   return (
     <header className={cn(
       "fixed top-0 z-50 w-full",
-      // Transparent glassmorphic background
-      "bg-background/60 backdrop-blur-xl",
-      // Clean border
-      "border-b border-white/10",
-      // Subtle shadow
-      "shadow-lg shadow-black/10"
+      "bg-background/80 backdrop-blur-xl",
+      "border-b border-border/50",
+      "shadow-sm"
     )}>
       {/* Top accent line */}
-      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
+      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/20 to-transparent" />
       
       <div className="mx-auto w-full px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between">
@@ -124,7 +121,7 @@ export default function Header() {
                 alt="SellsPay" 
                 width={36}
                 height={36}
-                className="h-9 w-9 object-contain transition-transform duration-300 group-hover:scale-105"
+                className="h-9 w-9 object-contain rounded-lg transition-transform duration-300 group-hover:scale-105"
               />
             </Link>
 
@@ -145,9 +142,8 @@ export default function Header() {
                   <NavigationMenuContent>
                     <div className={cn(
                       "w-[420px] p-5",
-                      // Solid card styling
                       "bg-card border border-border",
-                      "shadow-xl shadow-black/30",
+                      "shadow-xl shadow-black/5",
                       "rounded-xl"
                     )}>
                       
@@ -215,7 +211,7 @@ export default function Header() {
                     <div className={cn(
                       "w-[320px] p-4",
                       "bg-card border border-border",
-                      "shadow-xl shadow-black/30",
+                      "shadow-xl shadow-black/5",
                       "rounded-xl"
                     )}>
                       <div className="grid gap-1">
@@ -263,7 +259,7 @@ export default function Header() {
                     className={cn(
                       "w-[280px] p-4 z-50",
                       "bg-card border border-border",
-                      "shadow-xl shadow-black/30",
+                      "shadow-xl shadow-black/5",
                       "rounded-xl"
                     )}
                   >
@@ -295,8 +291,7 @@ export default function Header() {
                 {/* Divider with 3D effect */}
                 <div className={cn(
                   "h-6 w-[1px] mx-3",
-                  "bg-gradient-to-b from-transparent via-white/20 to-transparent",
-                  "shadow-[1px_0_0_rgba(0,0,0,0.3)]"
+                  "bg-gradient-to-b from-transparent via-border to-transparent"
                 )} />
 
                 {/* Hire Professionals - Only for signed-in users */}
@@ -306,17 +301,11 @@ export default function Header() {
                     to="/hire-professionals" 
                     className={cn(
                       "relative inline-flex h-9 items-center justify-center px-5 text-xs font-semibold tracking-wide",
-                      "text-white/90 rounded-full transition-all duration-500 overflow-hidden",
-                      "bg-gradient-to-b from-white/[0.14] via-white/[0.06] to-white/[0.02]",
-                      "backdrop-blur-xl backdrop-saturate-150",
-                      "border border-white/[0.15]",
-                      "shadow-[0_0_1px_0_rgba(255,255,255,0.3)_inset,0_1px_1px_0_rgba(255,255,255,0.15)_inset,0_-1px_1px_0_rgba(255,255,255,0.05)_inset,0_2px_8px_-2px_rgba(0,0,0,0.5),0_0_20px_-6px_rgba(255,255,255,0.08)]",
-                      "before:absolute before:inset-0 before:rounded-full before:bg-gradient-to-b before:from-white/[0.18] before:via-transparent before:to-transparent before:h-[50%] before:pointer-events-none",
-                      "after:absolute after:inset-[1px] after:rounded-full after:bg-gradient-to-t after:from-white/[0.04] after:via-transparent after:to-transparent after:pointer-events-none",
-                      "hover:bg-gradient-to-b hover:from-white/[0.2] hover:via-white/[0.1] hover:to-white/[0.04]",
-                      "hover:border-white/[0.25]",
-                      "hover:shadow-[0_0_1px_0_rgba(255,255,255,0.4)_inset,0_1px_2px_0_rgba(255,255,255,0.2)_inset,0_-1px_1px_0_rgba(255,255,255,0.08)_inset,0_4px_16px_-4px_rgba(0,0,0,0.6),0_0_30px_-8px_rgba(255,255,255,0.12)]",
-                      "hover:text-white",
+                      "text-primary-foreground rounded-full transition-all duration-300 overflow-hidden",
+                      "bg-primary hover:bg-primary/90",
+                      "border border-primary/20",
+                      "shadow-md shadow-primary/15",
+                      "hover:shadow-lg hover:shadow-primary/25",
                       "active:scale-[0.97]"
                     )}
                   >
@@ -372,7 +361,7 @@ export default function Header() {
                 variant="ghost"
                 size="icon"
                 asChild
-                className="hidden lg:inline-flex h-10 w-10 rounded-xl text-foreground/70 hover:text-foreground hover:bg-white/5"
+                className="hidden lg:inline-flex h-10 w-10 rounded-xl text-foreground/70 hover:text-foreground hover:bg-muted"
               >
                 <Link to="/cart">
                   <ShoppingCart className="h-5 w-5" />
@@ -398,7 +387,7 @@ export default function Header() {
                   >
                     <Avatar className={cn(
                       "h-10 w-10 rounded-full",
-                      "ring-2 ring-white/10",
+                      "ring-2 ring-border",
                       "transition-all duration-300"
                     )}>
                       <AvatarImage src={avatarUrl || undefined} className="rounded-full" />
@@ -410,7 +399,7 @@ export default function Header() {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent 
                   align="end" 
-                  className="w-72 p-0 bg-[#0F1115] border-border/50 rounded-2xl overflow-hidden shadow-2xl shadow-black/60"
+                  className="w-72 p-0 bg-card border-border/50 rounded-2xl overflow-hidden shadow-xl shadow-black/8"
                 >
                   {/* User identity + tier badge */}
                   <div className="px-4 py-3 border-b border-border/30">
@@ -473,22 +462,22 @@ export default function Header() {
                   {/* Nav links */}
                   <div className="py-1.5">
                     {(isCreator || isSeller) && (
-                      <button onClick={() => navigate("/dashboard")} className="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm text-muted-foreground hover:text-foreground hover:bg-white/[0.04] transition-colors">
+                      <button onClick={() => navigate("/dashboard")} className="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
                         <LayoutDashboard className="h-4 w-4" />
                         <span>Dashboard</span>
                       </button>
                     )}
                     {(isCreator || isSeller) && (
-                      <button onClick={() => navigate("/create-product")} className="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm text-muted-foreground hover:text-foreground hover:bg-white/[0.04] transition-colors">
+                      <button onClick={() => navigate("/create-product")} className="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
                         <Plus className="h-4 w-4" />
                         <span>Create Product</span>
                       </button>
                     )}
-                    <button onClick={() => navigate("/profile")} className="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm text-muted-foreground hover:text-foreground hover:bg-white/[0.04] transition-colors">
+                    <button onClick={() => navigate("/profile")} className="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
                       <User className="h-4 w-4" />
                       <span>My Profile</span>
                     </button>
-                    <button onClick={() => navigate("/settings")} className="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm text-muted-foreground hover:text-foreground hover:bg-white/[0.04] transition-colors">
+                    <button onClick={() => navigate("/settings")} className="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
                       <Settings className="h-4 w-4" />
                       <span>Settings</span>
                     </button>
@@ -497,13 +486,13 @@ export default function Header() {
                   {/* Seller & Admin */}
                   <div className="border-t border-border/30 py-1.5">
                     {!isSeller && (
-                      <button onClick={() => navigate("/onboarding/seller-agreement")} className="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm text-muted-foreground hover:text-foreground hover:bg-white/[0.04] transition-colors">
+                      <button onClick={() => navigate("/onboarding/seller-agreement")} className="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
                         <Store className="h-4 w-4" />
                         <span>Become a Seller</span>
                       </button>
                     )}
                     {isAdmin && (
-                      <button onClick={() => navigate("/admin")} className="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm text-muted-foreground hover:text-foreground hover:bg-white/[0.04] transition-colors">
+                      <button onClick={() => navigate("/admin")} className="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
                         <ShieldCheck className="h-4 w-4" />
                         <span>Admin</span>
                       </button>
@@ -514,7 +503,7 @@ export default function Header() {
                   <div className="border-t border-border/30 py-1.5">
                     <button
                       onClick={() => navigate("/support")}
-                      className="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm text-muted-foreground hover:text-foreground hover:bg-white/[0.04] transition-colors"
+                      className="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
                     >
                       <HelpCircle className="h-4 w-4" />
                       <span>Help Center</span>
@@ -565,7 +554,7 @@ export default function Header() {
         {mobileMenuOpen && (
           <div className={cn(
             "lg:hidden py-4 animate-fade-in",
-            "border-t border-white/10"
+            "border-t border-border/50"
           )}>
             <nav className="flex flex-col gap-1 px-2">
               {[
@@ -584,7 +573,7 @@ export default function Header() {
                     "flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all",
                     isActive(item.to)
                       ? "bg-primary/10 text-primary"
-                      : "text-foreground/70 hover:bg-white/5 hover:text-foreground"
+                      : "text-foreground/70 hover:bg-muted hover:text-foreground"
                   )}
                 >
                   <item.icon className="h-5 w-5" />
