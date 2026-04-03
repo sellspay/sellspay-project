@@ -80,7 +80,14 @@ export default function Header() {
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [topUpOpen, setTopUpOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
   const { credits, creditBreakdown, loading: creditsLoading, plan } = useSubscription();
+
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 10);
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
 
   const isCreator = profile?.is_creator || false;
   const isSeller = profile?.is_seller || false;
