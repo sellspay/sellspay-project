@@ -227,14 +227,14 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  background: hsl(var(--primary) / 0.4);
+  background: hsl(var(--primary) / 0.25);
   border-radius: 4px;
   border: 2px solid transparent;
   background-clip: padding-box;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: hsl(var(--primary) / 0.6);
+  background: hsl(var(--primary) / 0.4);
   border: 2px solid transparent;
   background-clip: padding-box;
 }
@@ -246,7 +246,7 @@
 /* Firefox scrollbar styling */
 * {
   scrollbar-width: thin;
-  scrollbar-color: hsl(var(--primary) / 0.4) hsl(var(--background));
+  scrollbar-color: hsl(var(--primary) / 0.25) hsl(var(--background));
 }
 
 /* Single-scrollbar strategy:
