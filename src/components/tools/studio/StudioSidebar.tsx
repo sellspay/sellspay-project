@@ -89,7 +89,6 @@ export function StudioSidebar({
             </TooltipTrigger>
             <TooltipContent side="right">{collapsed ? "Expand sidebar" : "Collapse sidebar"}</TooltipContent>
           </Tooltip>
-          </Tooltip>
         </div>
 
         {/* Home button */}
