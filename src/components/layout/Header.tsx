@@ -291,8 +291,7 @@ export default function Header() {
                 {/* Divider with 3D effect */}
                 <div className={cn(
                   "h-6 w-[1px] mx-3",
-                  "bg-gradient-to-b from-transparent via-white/20 to-transparent",
-                  "shadow-[1px_0_0_rgba(0,0,0,0.3)]"
+                  "bg-gradient-to-b from-transparent via-border to-transparent"
                 )} />
 
                 {/* Hire Professionals - Only for signed-in users */}
