@@ -78,10 +78,10 @@ const categories = [
 ];
 
 export function FeatureTabsBar() {
-  const [openId, setOpenId] = useState<string | null>('marketplace');
+  const [openId, setOpenId] = useState<string>('marketplace');
 
   const toggle = (id: string) => {
-    setOpenId(openId === id ? null : id);
+    setOpenId(id);
   };
 
   return (
