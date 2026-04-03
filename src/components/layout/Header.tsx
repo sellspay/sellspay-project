@@ -211,7 +211,7 @@ export default function Header() {
                     <div className={cn(
                       "w-[320px] p-4",
                       "bg-card border border-border",
-                      "shadow-xl shadow-black/30",
+                      "shadow-xl shadow-black/5",
                       "rounded-xl"
                     )}>
                       <div className="grid gap-1">
