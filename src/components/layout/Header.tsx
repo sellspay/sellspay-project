@@ -26,7 +26,7 @@ import { useSubscription } from '@/hooks/useSubscription';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
 import { CreditFuelGauge } from '@/components/subscription/CreditFuelGauge';
 import EditorChatIcon from '@/components/chat/EditorChatIcon';
-import sellspayLogo from '@/assets/sellspay-logo-optimized.webp';
+import sellspayLogo from '@/assets/sellspay-logo-transparent.png';
 import { cn } from '@/lib/utils';
 import { LowCreditWarning, LOW_CREDIT_THRESHOLD } from '@/components/ai-builder/LowCreditWarning';
 import { CreditTopUpDialog } from '@/components/ai-builder/CreditTopUpDialog';
@@ -63,14 +63,14 @@ const communityItems = [
 
 // Clean nav link styles — CapCut-inspired
 const navLinkStyles = cn(
-  "relative px-3 py-2 text-[15px] font-normal text-foreground/70",
+  "relative px-3 py-2 text-[16px] font-medium text-foreground",
   "transition-colors duration-200",
-  "hover:text-foreground"
+  "hover:text-primary"
 );
 
 const activeNavLinkStyles = cn(
   navLinkStyles,
-  "text-foreground font-medium"
+  "text-primary font-semibold"
 );
 
 export default function Header() {
@@ -248,8 +248,8 @@ export default function Header() {
                 <Popover>
                   <PopoverTrigger asChild>
                     <button className={cn(
-                      "h-10 px-3 text-[15px] font-normal bg-transparent inline-flex items-center gap-1",
-                      "text-foreground/70 hover:text-foreground",
+                      "h-10 px-3 text-[16px] font-medium bg-transparent inline-flex items-center gap-1",
+                      "text-foreground hover:text-primary",
                       "transition-colors duration-200"
                     )}>
                       Community
