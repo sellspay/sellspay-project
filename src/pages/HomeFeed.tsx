@@ -154,6 +154,8 @@ const HomeFeed = forwardRef<HTMLDivElement>((_, ref) => {
         ctaLink="/explore"
       />
 
+      {/* Music — Artlist-style playable tracks */}
+      <HomeMusicSection />
 
       {/* Browse by Category — Artlist-style image strip */}
       <BrowseCategories />
