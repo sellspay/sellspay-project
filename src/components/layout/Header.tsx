@@ -248,10 +248,9 @@ export default function Header() {
                 <Popover>
                   <PopoverTrigger asChild>
                     <button className={cn(
-                      "h-10 px-4 text-sm font-light tracking-wide bg-transparent rounded-lg inline-flex items-center gap-1",
-                      "text-foreground/60 hover:text-foreground",
-                      "transition-all duration-300",
-                      "font-[system-ui,'Segoe_UI',Roboto,Helvetica,Arial,sans-serif]"
+                      "h-10 px-3 text-[15px] font-normal bg-transparent inline-flex items-center gap-1",
+                      "text-foreground/70 hover:text-foreground",
+                      "transition-colors duration-200"
                     )}>
                       Community
                       <ChevronDown className="h-3.5 w-3.5 opacity-60" />
