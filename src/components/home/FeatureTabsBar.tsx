@@ -86,7 +86,7 @@ export function FeatureTabsBar() {
 
   return (
     <Reveal>
-      <section className="px-6 sm:px-8 lg:px-10 pb-16 sm:pb-20">
+      <section className="px-6 sm:px-8 lg:px-10 pt-20 sm:pt-28 pb-16 sm:pb-20">
         {/* Header */}
         <div className="flex items-start justify-between mb-10 sm:mb-14">
           <div>
