@@ -13,6 +13,7 @@ import { CreditSegmentBar } from "@/components/ui/CreditSegmentBar";
 import { useAuth } from "@/lib/auth";
 import { useSubscription } from "@/hooks/useSubscription";
 import { toolsRegistry, SUBCATEGORY_LABELS, type ToolSubcategory } from "@/components/tools/toolsRegistry";
+import { toolThumbnails } from "./toolThumbnails";
 import sellspayLogo from "@/assets/sellspay-s-logo-new.png";
 
 interface StudioSidebarProps {
