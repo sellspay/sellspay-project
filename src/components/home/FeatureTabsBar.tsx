@@ -98,7 +98,7 @@ export function FeatureTabsBar() {
             </p>
           </div>
           <Link
-            to="/tools"
+            to="/login"
             className="hidden sm:inline-flex h-10 px-6 items-center justify-center rounded-full bg-foreground text-background text-sm font-semibold hover:bg-foreground/90 transition-colors shrink-0"
           >
             Try online
