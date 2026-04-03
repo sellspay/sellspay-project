@@ -7,6 +7,7 @@ import SlidingBanner from '@/components/home/SlidingBanner';
 import { FeatureTabsBar } from '@/components/home/FeatureTabsBar';
 import { AIToolsReveal } from '@/components/home/AIToolsReveal';
 import { AIStudioPromo } from '@/components/home/AIStudioPromo';
+import { FloatingCtaBar } from '@/components/home/FloatingCtaBar';
 import { ValueProps } from '@/components/home/ValueProps';
 import { FeaturedCreators } from '@/components/home/FeaturedCreators';
 import { Reveal } from '@/components/home/Reveal';
@@ -154,6 +155,7 @@ export default function Home() {
   // Guests see the landing page
   return (
     <div className="min-h-screen bg-background">
+      <FloatingCtaBar />
       <HeroSection />
       <SlidingBanner />
       <FeatureTabsBar />
