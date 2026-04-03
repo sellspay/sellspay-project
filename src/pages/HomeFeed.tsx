@@ -12,6 +12,10 @@ import { EditorMarketplaceTeaser } from '@/components/home/EditorMarketplaceTeas
 import { CreatorSpotlights } from '@/components/home/CreatorSpotlights';
 import { BrowseCategories } from '@/components/home/BrowseCategories';
 import { HomeCtaBanner } from '@/components/home/HomeCtaBanner';
+import { SectionBanner } from '@/components/home/SectionBanner';
+import bannerMarketplace from '@/assets/banner-marketplace.jpg';
+import bannerEditors from '@/assets/banner-editors.jpg';
+import bannerCreators from '@/assets/banner-creators.jpg';
 import aiStudioBanner from '@/assets/ai-studio-banner.jpg';
 
 interface Product {
@@ -140,8 +144,20 @@ const HomeFeed = forwardRef<HTMLDivElement>((_, ref) => {
       {/* AI Tools — Artlist-style visual cards */}
       <AIToolsShowcase />
 
+      {/* Marketplace Banner */}
+      <SectionBanner
+        image={bannerMarketplace}
+        headline="Discover digital assets made by real creators"
+        subtitle="Browse beats, SFX, presets, templates and more from independent artists worldwide."
+        ctaLabel="Explore Marketplace"
+        ctaLink="/explore"
+      />
+
       {/* Trending Products */}
       <TrendingProducts />
+
+      {/* Browse by Category — Artlist-style image strip */}
+      <BrowseCategories />
 
       {/* VibeCoder — Interactive builder teaser */}
       <Reveal>
@@ -229,11 +245,26 @@ const HomeFeed = forwardRef<HTMLDivElement>((_, ref) => {
         </section>
       </Reveal>
 
-      {/* Browse by Category — Artlist-style image strip */}
-      <BrowseCategories />
+      {/* Editors Banner */}
+      <SectionBanner
+        image={bannerEditors}
+        headline="Work with professional editors who bring your vision to life"
+        subtitle="Book vetted audio & video editors by the hour. Chat directly and get results fast."
+        ctaLabel="Browse Editors"
+        ctaLink="/editors"
+      />
 
       {/* Editor Marketplace */}
       <EditorMarketplaceTeaser />
+
+      {/* Creators Banner */}
+      <SectionBanner
+        image={bannerCreators}
+        headline="Join a community of independent creators selling worldwide"
+        subtitle="Start your own storefront, sell digital products, and grow your audience — all in one place."
+        ctaLabel="Become a Creator"
+        ctaLink="/apply"
+      />
 
       {/* Creator Spotlights */}
       <CreatorSpotlights />
