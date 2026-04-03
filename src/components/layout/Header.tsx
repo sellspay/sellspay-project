@@ -24,29 +24,15 @@ import { LowCreditWarning, LOW_CREDIT_THRESHOLD } from '@/components/ai-builder/
 import { CreditTopUpDialog } from '@/components/ai-builder/CreditTopUpDialog';
 import { CreditSegmentBar } from '@/components/ui/CreditSegmentBar';
 
-// Marketplace categories
-const marketplaceCategories = {
-  'Content Packs': [
-    { name: 'All Products', path: '/products' },
-    { name: 'LUTs', path: '/products?type=lut' },
-    { name: 'Presets', path: '/products?type=preset' },
-    { name: 'Templates', path: '/products?type=template' },
-  ],
-  'Audio': [
-    { name: 'SFX', path: '/products?type=sfx' },
-    { name: 'Music', path: '/products?type=music' },
-    { name: 'Voice Packs', path: '/products?type=voice' },
-  ],
-  'Video': [
-    { name: 'Overlays', path: '/products?type=overlay' },
-    { name: 'Transitions', path: '/products?type=transition' },
-    { name: 'Motion Graphics', path: '/products?type=motion' },
-  ],
-  'Learning': [
-    { name: 'Tutorials', path: '/products?type=tutorial' },
-    { name: 'Courses', path: '/products?type=course' },
-  ],
-};
+// Marketplace product cards — CapCut style with thumbnails
+const marketplaceCards = [
+  { name: 'LUTs', subtitle: 'Color grading presets', path: '/products?type=lut', icon: '🎨', gradient: 'from-violet-100 to-indigo-100' },
+  { name: 'Presets', subtitle: 'Editing presets', path: '/products?type=preset', icon: '✨', gradient: 'from-pink-100 to-rose-100' },
+  { name: 'SFX', subtitle: 'Sound effects', path: '/products?type=sfx', icon: '🔊', gradient: 'from-amber-100 to-orange-100' },
+  { name: 'Templates', subtitle: 'Project files', path: '/products?type=template', icon: '📁', gradient: 'from-sky-100 to-blue-100' },
+  { name: 'Overlays', subtitle: 'Video overlays', path: '/products?type=overlay', icon: '🎬', gradient: 'from-emerald-100 to-teal-100' },
+  { name: 'Tutorials', subtitle: 'Learn from pros', path: '/products?type=tutorial', icon: '📚', gradient: 'from-purple-100 to-fuchsia-100' },
+];
 
 // AI Studio tools — all tools organized like CapCut
 const studioCategories = {
