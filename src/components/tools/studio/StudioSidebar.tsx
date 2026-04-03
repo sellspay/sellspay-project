@@ -3,6 +3,7 @@ import { cn } from "@/lib/utils";
 import {
   ArrowLeft, Home, Sparkles, ChevronDown, ChevronRight, FolderOpen,
   User, Settings, CreditCard, LogOut, Zap, Gift, ChevronRight as ChevRight,
+  PanelLeftClose, PanelLeft,
 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
