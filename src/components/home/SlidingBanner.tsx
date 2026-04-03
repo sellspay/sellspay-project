@@ -86,7 +86,7 @@ export default function SlidingBanner() {
     <div className="relative py-8 sm:py-10 border-y border-border/20">
       {/* Section label */}
       <div className="text-center mb-6">
-        <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-muted-foreground/40">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-muted-foreground">
           Powered By
         </p>
       </div>
@@ -123,8 +123,8 @@ export default function SlidingBanner() {
                   height: '32px',
                   width: 'auto',
                   objectFit: 'contain',
-                  filter: 'grayscale(1) invert(1)',
-                  opacity: 0.5,
+                  filter: 'grayscale(1) brightness(0.2)',
+                  opacity: 0.6,
                   flex: '0 0 auto',
                 }}
               />

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Reveal } from './Reveal';
-import { ArrowUpRight, Wand2, Music, Code2, Image, Mic, Scissors, Layers } from 'lucide-react';
+import { Plus, Minus, Sparkles } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import toolVocalImg from '@/assets/tool-vocal-isolator.jpg';
 import toolStemImg from '@/assets/tool-stem-splitter.jpg';
@@ -13,191 +13,184 @@ const categories = [
     id: 'audio',
     number: '01',
     label: 'Audio',
-    icon: Music,
-    tools: [
-      {
-        label: 'Vocal Isolator',
-        desc: 'Extract clean vocals from any track instantly with AI-powered source separation.',
-        path: '/tools',
-        image: toolVocalImg,
-        icon: Mic,
-      },
-      {
-        label: 'Stem Splitter',
-        desc: 'Split any song into individual stems — drums, bass, vocals, and instruments.',
-        path: '/tools',
-        image: toolStemImg,
-        icon: Scissors,
-      },
-      {
-        label: 'AI SFX Generator',
-        desc: 'Generate custom sound effects from text descriptions. Perfect for video, games, and podcasts.',
-        path: '/studio',
-        image: toolSfxImg,
-        icon: Layers,
-      },
-    ],
+    featured: {
+      title: 'Vocal Isolator',
+      desc: 'Extract clean vocals from any track instantly with AI-powered source separation. Perfect for remixes, karaoke, and content creation.',
+      link: '/studio/voice-isolator',
+      linkText: 'Try Vocal Isolator',
+      image: toolVocalImg,
+    },
+    tools: ['Stem Splitter', 'AI SFX Generator', 'Audio Converter'],
+  },
+  {
+    id: 'video',
+    number: '02',
+    label: 'Video',
+    featured: {
+      title: 'AI Video Generator',
+      desc: 'Generate stunning videos from text prompts. Create product demos, social content, and promo reels — no filming required.',
+      link: '/studio',
+      linkText: 'Try Video Generator',
+      image: toolStemImg,
+    },
+    tools: ['Video to Audio', 'Promo Video Builder', 'Waveform Generator'],
   },
   {
     id: 'image',
-    number: '02',
+    number: '03',
     label: 'Image',
-    icon: Image,
-    tools: [
-      {
-        label: 'AI Image Generator',
-        desc: 'Turn text prompts into stunning visuals. Create product mockups, thumbnails, and art in seconds.',
-        path: '/studio',
-        image: toolImageImg,
-        icon: Image,
-      },
-    ],
+    featured: {
+      title: 'AI Image Generator',
+      desc: 'Turn text prompts into stunning visuals. Create product mockups, thumbnails, banners, and art in seconds.',
+      link: '/studio',
+      linkText: 'Try Image Generator',
+      image: toolImageImg,
+    },
+    tools: ['Background Remover', 'Image Enhancer', 'Photo Editor'],
   },
   {
     id: 'code',
-    number: '03',
-    label: 'Code',
-    icon: Code2,
-    tools: [
-      {
-        label: 'VibeCoder',
-        desc: 'Describe your storefront idea and watch AI build it live — layouts, styles, and content.',
-        path: '/ai-builder',
-        image: toolSfxImg,
-        icon: Code2,
-      },
-    ],
+    number: '04',
+    label: 'Creative Templates',
+    featured: {
+      title: 'VibeCoder',
+      desc: 'Describe your storefront idea and watch AI build it live — layouts, styles, and content. No coding needed.',
+      link: '/ai-builder',
+      linkText: 'Try VibeCoder',
+      image: toolSfxImg,
+    },
+    tools: ['Storefront Builder', 'Landing Pages', 'Portfolio Templates'],
   },
 ];
 
 export function AIToolsShowcase() {
-  const [activeCategory, setActiveCategory] = useState('audio');
+  const [openId, setOpenId] = useState<string | null>('audio');
 
-  const activeCat = categories.find((c) => c.id === activeCategory) || categories[0];
+  const toggle = (id: string) => {
+    setOpenId(openId === id ? null : id);
+  };
 
   return (
     <Reveal>
       <section className="px-6 sm:px-8 lg:px-10 pb-16 sm:pb-20">
-        {/* Section header */}
-        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-10 sm:mb-14">
+        {/* Header */}
+        <div className="flex items-start justify-between mb-10 sm:mb-14">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary mb-3">
-              Smart Tools
-            </p>
-            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-foreground tracking-tight">
+            <h2 className="text-3xl sm:text-4xl lg:text-[2.75rem] font-extrabold text-foreground tracking-tight">
               AI Editing Tools
             </h2>
-            <p className="text-base sm:text-lg text-muted-foreground mt-3 max-w-lg leading-relaxed">
-              The reliable and essential AI tools for audio, image, and code.
+            <p className="text-base sm:text-lg text-muted-foreground mt-2 max-w-md leading-relaxed">
+              The reliable and essential AI editing features for audio, video, image, and code.
             </p>
           </div>
           <Link
             to="/studio"
-            className="text-sm font-semibold text-primary hover:text-primary/80 transition-colors flex items-center gap-1.5 shrink-0"
+            className="hidden sm:inline-flex h-10 px-6 items-center justify-center rounded-full bg-foreground text-background text-sm font-semibold hover:bg-foreground/90 transition-colors shrink-0"
           >
-            Try Online <ArrowUpRight className="h-4 w-4" />
+            Try online
           </Link>
         </div>
 
-        {/* CapCut-style numbered tabs + content */}
-        <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-6 lg:gap-10">
-          {/* Left: Category tabs */}
-          <div className="flex lg:flex-col gap-2 overflow-x-auto lg:overflow-visible pb-2 lg:pb-0 scrollbar-hide">
-            {categories.map((cat) => {
-              const Icon = cat.icon;
-              const isActive = cat.id === activeCategory;
-              return (
+        {/* Accordion rows */}
+        <div className="space-y-0">
+          {categories.map((cat) => {
+            const isOpen = openId === cat.id;
+            return (
+              <div key={cat.id} className="border-b border-border/40">
+                {/* Row header */}
                 <button
-                  key={cat.id}
-                  onClick={() => setActiveCategory(cat.id)}
-                  className={`group relative flex items-center gap-4 px-5 py-4 rounded-xl text-left transition-all duration-300 shrink-0 ${
-                    isActive
-                      ? 'bg-primary/10 border border-primary/25'
-                      : 'bg-card/50 border border-border/20 hover:border-border/50 hover:bg-card'
-                  }`}
+                  onClick={() => toggle(cat.id)}
+                  className="w-full flex items-center gap-6 sm:gap-10 py-6 sm:py-8 group text-left"
                 >
-                  <span
-                    className={`text-2xl sm:text-3xl font-black tabular-nums transition-colors ${
-                      isActive ? 'text-primary' : 'text-muted-foreground/30'
-                    }`}
-                  >
+                  <span className="text-2xl sm:text-3xl lg:text-4xl font-light text-muted-foreground/40 tabular-nums w-12 sm:w-16 shrink-0">
                     {cat.number}
                   </span>
-                  <div className="flex flex-col">
-                    <span
-                      className={`text-base sm:text-lg font-bold transition-colors ${
-                        isActive ? 'text-foreground' : 'text-muted-foreground'
-                      }`}
-                    >
-                      {cat.label}
-                    </span>
-                    <span className="text-xs text-muted-foreground/60">
-                      {cat.tools.length} tool{cat.tools.length > 1 ? 's' : ''}
-                    </span>
+                  <span className="text-xl sm:text-2xl lg:text-3xl font-semibold text-foreground flex-1 group-hover:text-primary transition-colors">
+                    {cat.label}
+                  </span>
+                  <div className="p-1">
+                    {isOpen ? (
+                      <Minus className="h-5 w-5 sm:h-6 sm:w-6 text-muted-foreground" />
+                    ) : (
+                      <Plus className="h-5 w-5 sm:h-6 sm:w-6 text-muted-foreground" />
+                    )}
                   </div>
-                  <Icon
-                    className={`h-5 w-5 ml-auto transition-colors ${
-                      isActive ? 'text-primary' : 'text-muted-foreground/30'
-                    }`}
-                  />
                 </button>
-              );
-            })}
-          </div>
 
-          {/* Right: Tool cards */}
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={activeCategory}
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -12 }}
-              transition={{ duration: 0.3, ease: 'easeOut' }}
-              className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4"
-            >
-              {activeCat.tools.map((tool) => {
-                const ToolIcon = tool.icon;
-                return (
-                  <Link
-                    key={tool.label}
-                    to={tool.path}
-                    className="group relative flex flex-col overflow-hidden rounded-2xl border border-border/30 bg-card hover:border-primary/30 transition-all duration-500"
-                  >
-                    {/* Image */}
-                    <div className="relative aspect-[16/10] overflow-hidden">
-                      <img
-                        src={tool.image}
-                        alt={tool.label}
-                        loading="lazy"
-                        className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-card via-card/20 to-transparent" />
+                {/* Expandable panel */}
+                <AnimatePresence initial={false}>
+                  {isOpen && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: 'auto', opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+                      className="overflow-hidden"
+                    >
+                      <div className="rounded-2xl bg-secondary/50 border border-border/20 p-6 sm:p-8 lg:p-10 mb-6 sm:mb-8">
+                        <div className="grid grid-cols-1 lg:grid-cols-[1fr_auto] gap-8 lg:gap-12">
+                          {/* Left: Content */}
+                          <div className="flex flex-col justify-center">
+                            {/* Featured tool */}
+                            <div className="flex items-center gap-2 mb-3">
+                              <Sparkles className="h-4 w-4 text-primary" />
+                              <span className="text-sm font-semibold text-foreground">
+                                {cat.featured.title}
+                              </span>
+                            </div>
+                            <p className="text-sm sm:text-base text-muted-foreground leading-relaxed max-w-md mb-6">
+                              <Link
+                                to={cat.featured.link}
+                                className="text-primary hover:underline"
+                              >
+                                {cat.featured.linkText}
+                              </Link>
+                              {' — '}
+                              {cat.featured.desc}
+                            </p>
 
-                      {/* Floating icon */}
-                      <div className="absolute top-4 left-4 p-2.5 rounded-xl bg-background/80 backdrop-blur-sm border border-border/30">
-                        <ToolIcon className="h-4 w-4 text-primary" />
+                            {/* Other tools list */}
+                            <div className="space-y-3">
+                              {cat.tools.map((tool) => (
+                                <p key={tool} className="text-sm sm:text-base font-semibold text-foreground">
+                                  {tool}
+                                </p>
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* Right: Image */}
+                          <div className="w-full lg:w-[340px] xl:w-[400px] shrink-0">
+                            <img
+                              src={cat.featured.image}
+                              alt={cat.featured.title}
+                              className="w-full h-auto rounded-xl object-cover aspect-[4/3]"
+                              loading="lazy"
+                            />
+                          </div>
+                        </div>
                       </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            );
+          })}
+        </div>
 
-                      {/* Arrow */}
-                      <div className="absolute top-4 right-4 p-2 rounded-full bg-primary/0 group-hover:bg-primary/10 transition-all duration-300">
-                        <ArrowUpRight className="h-4 w-4 text-foreground/0 group-hover:text-primary transition-all duration-300" />
-                      </div>
-                    </div>
-
-                    {/* Content */}
-                    <div className="p-5 sm:p-6 flex flex-col flex-1">
-                      <h3 className="text-base sm:text-lg font-bold text-foreground mb-2 group-hover:text-primary transition-colors">
-                        {tool.label}
-                      </h3>
-                      <p className="text-sm text-muted-foreground leading-relaxed line-clamp-2">
-                        {tool.desc}
-                      </p>
-                    </div>
-                  </Link>
-                );
-              })}
-            </motion.div>
-          </AnimatePresence>
+        {/* Bottom CTA pill */}
+        <div className="flex justify-center mt-10 sm:mt-14">
+          <Link
+            to="/studio"
+            className="inline-flex items-center gap-3 px-6 py-3 rounded-full bg-gradient-to-r from-primary/10 via-accent/10 to-primary/10 border border-border/30 hover:border-primary/30 transition-all"
+          >
+            <span className="text-sm font-medium text-foreground">
+              Create smarter, build faster
+            </span>
+            <span className="inline-flex h-9 px-5 items-center justify-center rounded-full bg-foreground text-background text-sm font-semibold">
+              Try online for free
+            </span>
+          </Link>
         </div>
       </section>
     </Reveal>
