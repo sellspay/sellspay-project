@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 export interface MediaItem {
   type: 'image' | 'video';
@@ -6,14 +7,15 @@ export interface MediaItem {
   alt?: string;
 }
 
-// Default placeholder media — replace these with real assets
 const DEFAULT_MEDIA: MediaItem[] = [
+  { type: 'video', src: 'https://videos.pexels.com/video-files/3129671/3129671-uhd_2560_1440_30fps.mp4', alt: 'Creative studio' },
   { type: 'image', src: 'https://images.unsplash.com/photo-1614850523459-c2f4c699c52e?w=1200&q=80', alt: 'Creative workspace' },
+  { type: 'video', src: 'https://videos.pexels.com/video-files/5377684/5377684-uhd_2560_1440_25fps.mp4', alt: 'Digital creation' },
   { type: 'image', src: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=1200&q=80', alt: 'Abstract art' },
-  { type: 'image', src: 'https://images.unsplash.com/photo-1633356122102-3fe601e05bd2?w=1200&q=80', alt: 'Digital creation' },
+  { type: 'video', src: 'https://videos.pexels.com/video-files/3141208/3141208-uhd_2560_1440_25fps.mp4', alt: 'Music production' },
 ];
 
-const IMAGE_DURATION = 4000; // 4 seconds for images
+const IMAGE_DURATION = 5000;
 
 interface AuthMediaCarouselProps {
   media?: MediaItem[];
@@ -22,19 +24,13 @@ interface AuthMediaCarouselProps {
 
 export default function AuthMediaCarousel({ media = DEFAULT_MEDIA, overlayContent }: AuthMediaCarouselProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [isTransitioning, setIsTransitioning] = useState(false);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
   const goToNext = useCallback(() => {
-    setIsTransitioning(true);
-    setTimeout(() => {
-      setCurrentIndex((prev) => (prev + 1) % media.length);
-      setIsTransitioning(false);
-    }, 600); // fade-out duration
+    setCurrentIndex((prev) => (prev + 1) % media.length);
   }, [media.length]);
 
-  // Handle auto-advance for images
   useEffect(() => {
     const item = media[currentIndex];
     if (!item) return;
@@ -42,18 +38,14 @@ export default function AuthMediaCarousel({ media = DEFAULT_MEDIA, overlayConten
     if (item.type === 'image') {
       timerRef.current = setTimeout(goToNext, IMAGE_DURATION);
     }
-    // Videos advance via onEnded
 
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
     };
   }, [currentIndex, media, goToNext]);
 
-  const handleVideoEnded = () => {
-    goToNext();
-  };
+  const handleVideoEnded = () => goToNext();
 
-  // Auto-play video when it becomes current
   useEffect(() => {
     if (media[currentIndex]?.type === 'video' && videoRef.current) {
       videoRef.current.currentTime = 0;
@@ -66,53 +58,82 @@ export default function AuthMediaCarousel({ media = DEFAULT_MEDIA, overlayConten
 
   return (
     <div className="relative w-full h-full overflow-hidden bg-black">
-      {/* Media items */}
-      {media.map((item, index) => (
-        <div
-          key={index}
-          className="absolute inset-0 transition-opacity duration-700 ease-in-out"
-          style={{
-            opacity: index === currentIndex && !isTransitioning ? 1 : 0,
-            zIndex: index === currentIndex ? 1 : 0,
-          }}
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={currentIndex}
+          initial={{ opacity: 0, scale: 1.05 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0, scale: 0.98 }}
+          transition={{ duration: 0.8, ease: 'easeInOut' }}
+          className="absolute inset-0"
         >
-          {item.type === 'image' ? (
+          {current.type === 'image' ? (
             <img
-              src={item.src}
-              alt={item.alt || ''}
+              src={current.src}
+              alt={current.alt || ''}
               className="w-full h-full object-cover"
-              loading={index === 0 ? 'eager' : 'lazy'}
             />
           ) : (
             <video
-              ref={index === currentIndex ? videoRef : undefined}
-              src={item.src}
+              ref={videoRef}
+              src={current.src}
               className="w-full h-full object-cover"
               muted
               playsInline
               onEnded={handleVideoEnded}
             />
           )}
-        </div>
-      ))}
+        </motion.div>
+      </AnimatePresence>
 
-      {/* Gradient overlay for text readability */}
-      <div className="absolute inset-0 z-10 bg-gradient-to-r from-black/70 via-black/40 to-transparent" />
-      <div className="absolute inset-0 z-10 bg-gradient-to-t from-black/60 via-transparent to-black/30" />
+      {/* Gradient overlays */}
+      <div className="absolute inset-0 z-10 bg-gradient-to-r from-black/60 via-black/20 to-transparent" />
+      <div className="absolute inset-0 z-10 bg-gradient-to-t from-black/70 via-transparent to-black/20" />
 
-      {/* Overlay content (branding, tagline) */}
+      {/* Bottom-left branding */}
       <div className="absolute inset-0 z-20 flex flex-col justify-end p-10 lg:p-14">
         {overlayContent || (
-          <div className="max-w-md">
-            <h2 className="text-3xl lg:text-4xl font-bold text-white mb-3 tracking-tight">
-              Create. Sell. Grow.
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3, duration: 0.6 }}
+            className="max-w-lg"
+          >
+            <h2 className="text-4xl lg:text-5xl font-black text-white mb-4 tracking-tight leading-[1.1]">
+              <span className="bg-gradient-to-r from-white via-blue-200 to-cyan-300 bg-clip-text text-transparent">
+                Create. Sell. Grow.
+              </span>
             </h2>
-            <p className="text-white/70 text-lg leading-relaxed">
+            <p className="text-white/60 text-base lg:text-lg leading-relaxed font-light tracking-wide">
               Join thousands of creators building their digital empire on SellsPay.
             </p>
-          </div>
+          </motion.div>
         )}
 
+        {/* Progress dots */}
+        <div className="flex gap-2 mt-8">
+          {media.map((_, i) => (
+            <button
+              key={i}
+              onClick={() => setCurrentIndex(i)}
+              className="relative h-1 rounded-full overflow-hidden transition-all duration-300"
+              style={{ width: i === currentIndex ? 40 : 16 }}
+            >
+              <div className="absolute inset-0 bg-white/20 rounded-full" />
+              {i === currentIndex && (
+                <motion.div
+                  className="absolute inset-0 bg-white rounded-full origin-left"
+                  initial={{ scaleX: 0 }}
+                  animate={{ scaleX: 1 }}
+                  transition={{
+                    duration: current.type === 'video' ? 10 : IMAGE_DURATION / 1000,
+                    ease: 'linear',
+                  }}
+                />
+              )}
+            </button>
+          ))}
+        </div>
       </div>
     </div>
   );
