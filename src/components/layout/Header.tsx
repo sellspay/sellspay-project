@@ -573,7 +573,7 @@ export default function Header() {
                     "flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all",
                     isActive(item.to)
                       ? "bg-primary/10 text-primary"
-                      : "text-foreground/70 hover:bg-white/5 hover:text-foreground"
+                      : "text-foreground/70 hover:bg-muted hover:text-foreground"
                   )}
                 >
                   <item.icon className="h-5 w-5" />
