@@ -93,15 +93,12 @@ export default function Header() {
   return (
     <header className={cn(
       "fixed top-0 z-50 w-full",
-      // Transparent glassmorphic background
-      "bg-background/60 backdrop-blur-xl",
-      // Clean border
-      "border-b border-white/10",
-      // Subtle shadow
-      "shadow-lg shadow-black/10"
+      "bg-background/80 backdrop-blur-xl",
+      "border-b border-border/50",
+      "shadow-sm"
     )}>
       {/* Top accent line */}
-      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
+      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/20 to-transparent" />
       
       <div className="mx-auto w-full px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between">
