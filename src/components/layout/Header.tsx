@@ -55,6 +55,7 @@ const toolsItems = [
 // Community dropdown items
 const communityItems = [
   { name: 'Threads', path: '/community', description: 'Community discussions' },
+  { name: 'Creators', path: '/creators', description: 'Browse top creators' },
   { name: 'Updates', path: '/community/updates', description: 'Platform news & updates' },
   { name: 'Spotlight', path: '/community/spotlight', description: 'Featured creators' },
   { name: 'Discord', path: '/community/discord', description: 'Join our Discord' },
@@ -190,18 +191,6 @@ export default function Header() {
                   </NavigationMenuContent>
                 </NavigationMenuItem>
 
-                {/* Creators - Simple Link */}
-                <NavigationMenuItem>
-                  <Link 
-                    to="/creators" 
-                    className={cn(
-                      "inline-flex h-10 items-center justify-center",
-                      isActive('/creators') ? activeNavLinkStyles : navLinkStyles
-                    )}
-                  >
-                    Creators
-                  </Link>
-                </NavigationMenuItem>
 
                 {/* Tools - Click to navigate, hover for dropdown */}
                 <NavigationMenuItem>
