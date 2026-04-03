@@ -61,13 +61,13 @@ export function StudioSidebar({
         transition={{ duration: 0.2, ease: "easeInOut" }}
       >
         {/* Logo + Brand */}
-        <div className="shrink-0 px-3 pt-4 pb-2">
+        <div className="shrink-0 px-3 pt-4 pb-2 flex items-center gap-1">
           <Tooltip>
             <TooltipTrigger asChild>
               <button
                 onClick={() => navigate("/")}
                 className={cn(
-                  "flex items-center gap-2.5 w-full rounded-lg px-2.5 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors",
+                  "flex items-center gap-2.5 flex-1 rounded-lg px-2.5 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors",
                   collapsed && "justify-center"
                 )}
               >
@@ -76,6 +76,19 @@ export function StudioSidebar({
               </button>
             </TooltipTrigger>
             {collapsed && <TooltipContent side="right">Back to Home</TooltipContent>}
+          </Tooltip>
+          
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={onToggleCollapse}
+                className="shrink-0 p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+              >
+                {collapsed ? <PanelLeft className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="right">{collapsed ? "Expand sidebar" : "Collapse sidebar"}</TooltipContent>
+          </Tooltip>
           </Tooltip>
         </div>
 
