@@ -26,46 +26,55 @@ interface PanelMedia {
   media?: PanelMedia;
  };
  
+const REVEAL_SURFACE = "hsl(var(--background))";
+const REVEAL_FOREGROUND = "hsl(var(--foreground))";
+const REVEAL_DARK = "hsl(0 0% 4%)";
+const REVEAL_DARK_TEXT = "hsl(0 0% 100%)";
+const REVEAL_VIDEO = "hsl(15 76% 61%)";
+const REVEAL_VIDEO_TEXT = "hsl(0 0% 4%)";
+const REVEAL_IMAGE = "hsl(202 76% 61%)";
+const REVEAL_IMAGE_TEXT = "hsl(0 0% 4%)";
+
 const DEFAULT_STEPS: Step[] = [
-   {
-      bg: "#ffffff",
-     text: "#111111",
-     headline: ["Building Made", "Simple"],
-     image: aiPanel1,
-   },
-   {
-      bg: "#ffffff",
-      text: "#111111",
-      headline: ["Sell", "products"],
-      image: aiPanel2,
-   },
-   {
-       bg: "#060606",
-      text: "#ffffff",
-      headline: ["Audio Made", "Simple"],
-      image: aiPanel3,
-   },
-   {
-     bg: "#e76e50",
-     text: "#0a0a0a",
-     headline: ["Generate", "Videos"],
-   },
-    {
-      bg: "#50A9E7",
-      text: "#0a0a0a",
-      headline: ["Generate", "images"],
-      subtitle: "Build your store's hero in seconds with our AI image generation models. Create stunning product visuals, banners, and promotional art — no design skills needed.",
-      image: aiPanel5,
-    },
-   {
-     bg: "#ffffff",
-      text: "#111111",
-      headline: ["All in", "one"],
-      image: aiPanel6,
-   },
- ];
- 
-const CARD_COLORS = ["#ffffff", "#ffffff", "#0d0d0d", "#e76e50", "#50A9E7", "#ffffff"];
+  {
+    bg: REVEAL_SURFACE,
+    text: REVEAL_FOREGROUND,
+    headline: ["Building Made", "Simple"],
+    image: aiPanel1,
+  },
+  {
+    bg: REVEAL_SURFACE,
+    text: REVEAL_FOREGROUND,
+    headline: ["Sell", "products"],
+    image: aiPanel2,
+  },
+  {
+    bg: REVEAL_DARK,
+    text: REVEAL_DARK_TEXT,
+    headline: ["Audio Made", "Simple"],
+    image: aiPanel3,
+  },
+  {
+    bg: REVEAL_VIDEO,
+    text: REVEAL_VIDEO_TEXT,
+    headline: ["Generate", "Videos"],
+  },
+  {
+    bg: REVEAL_IMAGE,
+    text: REVEAL_IMAGE_TEXT,
+    headline: ["Generate", "images"],
+    subtitle: "Build your store's hero in seconds with our AI image generation models. Create stunning product visuals, banners, and promotional art — no design skills needed.",
+    image: aiPanel5,
+  },
+  {
+    bg: REVEAL_SURFACE,
+    text: REVEAL_FOREGROUND,
+    headline: ["All in", "one"],
+    image: aiPanel6,
+  },
+];
+
+const CARD_COLORS = [REVEAL_SURFACE, REVEAL_SURFACE, REVEAL_DARK, REVEAL_VIDEO, REVEAL_IMAGE, REVEAL_SURFACE];
 const STEP_DISTANCE_DESKTOP = 500;
 const STEP_DISTANCE_MOBILE = 300;
 const STACK_Y = 14;
