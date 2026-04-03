@@ -387,7 +387,7 @@ export default function Header() {
                   >
                     <Avatar className={cn(
                       "h-10 w-10 rounded-full",
-                      "ring-2 ring-white/10",
+                      "ring-2 ring-border",
                       "transition-all duration-300"
                     )}>
                       <AvatarImage src={avatarUrl || undefined} className="rounded-full" />
