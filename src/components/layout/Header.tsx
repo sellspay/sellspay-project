@@ -48,15 +48,22 @@ const marketplaceCategories = {
   ],
 };
 
-// AI Studio tools
+// AI Studio tools — all tools organized like CapCut
 const studioCategories = {
-  'AI Audio': [
-    { name: 'Music Splitter', path: '/studio/music-splitter' },
-    { name: 'Voice Isolator', path: '/studio/voice-isolator' },
+  'AI Powered': [
     { name: 'SFX Generator', path: '/studio/sfx-generator' },
+    { name: 'Voice Isolator', path: '/studio/voice-isolator' },
+    { name: 'SFX Isolator', path: '/studio/sfx-isolator' },
+    { name: 'Music Splitter', path: '/studio/music-splitter' },
   ],
-  'Conversion': [
+  'Audio Tools': [
+    { name: 'Audio Cutter', path: '/studio/audio-cutter' },
+    { name: 'Audio Joiner', path: '/studio/audio-joiner' },
+    { name: 'Audio Recorder', path: '/studio/audio-recorder' },
     { name: 'Audio Converter', path: '/studio/audio-converter' },
+  ],
+  'More Tools': [
+    { name: 'Video to Audio', path: '/studio/video-to-audio' },
     { name: 'Waveform Generator', path: '/studio/waveform-generator' },
   ],
 };
