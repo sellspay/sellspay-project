@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/lib/auth";
-import { Check, X, Sparkles, Crown, Zap } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { Check, X, Zap, Crown, Sparkles, ArrowRight } from "lucide-react";
+import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 
@@ -12,80 +12,95 @@ const PLANS = [
     name: "Starter",
     monthlyPrice: 0,
     yearlyPrice: 0,
-    description: "Build your store manually. No AI features.",
+    tagline: "Start experimenting with digital selling.",
     badge: null,
-    borderColor: "border-zinc-700/50",
-    accentColor: "text-zinc-400",
-    creditColor: "text-zinc-400",
+    topBorder: "from-zinc-300 to-zinc-400",
     features: [
-      "Create & Customize Storefront",
-      "Sell Digital Products & Subs",
-      "Buy from Marketplace",
-      "Community Access",
+      { text: "Create & Customize Storefront", included: true },
+      { text: "Sell Digital Products & Subs", included: true },
+      { text: "Buy from Marketplace", included: true },
+      { text: "Community Access", included: true },
+      { text: "Basic Analytics", included: true },
+      { text: "VibeCoder AI Builder", included: false },
+      { text: "AI Image Generation", included: false },
+      { text: "AI Video Generation", included: false },
+      { text: "Pro Models (GPT-5, Gemini)", included: false },
+      { text: "Priority Support", included: false },
     ],
     credits: 0,
+    feeLabel: "10% Transaction Fee",
   },
   {
     id: "basic",
     name: "Basic",
     monthlyPrice: 25,
     yearlyPrice: 15,
-    description: "Get started with AI-powered building.",
+    tagline: "Unlock AI-powered building tools.",
     badge: null,
-    borderColor: "border-blue-500/50",
-    accentColor: "text-blue-400",
-    creditColor: "text-blue-400",
+    topBorder: "from-blue-400 to-cyan-400",
     features: [
-      "Everything in Starter",
-      "VibeCoder (Flash Models)",
-      "500 Monthly Credits",
-      "Manual Model Selection",
+      { text: "Everything in Starter", included: true },
+      { text: "VibeCoder (Flash Models)", included: true, highlight: true },
+      { text: "500 Monthly AI Credits", included: true, highlight: true },
+      { text: "Manual Model Selection", included: true },
+      { text: "AI Storefront Editor", included: true },
+      { text: "Audio Tools (Free Tier)", included: true },
+      { text: "Pro Models (GPT-5, Gemini Pro)", included: false },
+      { text: "AI Image Generation", included: false },
+      { text: "AI Video Generation", included: false },
+      { text: "Priority Support", included: false },
     ],
     credits: 500,
+    feeLabel: "8% Transaction Fee",
   },
   {
     id: "creator",
     name: "Creator",
     monthlyPrice: 100,
     yearlyPrice: 56,
-    description: "Full AI suite for serious creators.",
+    tagline: "Full AI suite for serious creators.",
     badge: "MOST POPULAR",
-    badgeColor: "bg-fuchsia-500",
-    borderColor: "border-fuchsia-500",
-    accentColor: "text-fuchsia-400",
-    creditColor: "text-green-400",
+    badgeColor: "bg-gradient-to-r from-fuchsia-500 to-violet-500",
+    topBorder: "from-fuchsia-500 to-violet-500",
+    isPopular: true,
     features: [
-      "Everything in Basic",
-      "Pro Models (GPT-5, Gemini 3 Pro)",
-      "AI Image Generation",
-      "Auto-Model Selection",
-      "2,500 Monthly Credits",
-      "Grey Verified Badge",
+      { text: "Everything in Basic", included: true },
+      { text: "Pro Models (GPT-5, Gemini 3 Pro)", included: true, highlight: true },
+      { text: "AI Image Generation", included: true, highlight: true },
+      { text: "2,500 Monthly AI Credits", included: true, highlight: true },
+      { text: "Auto-Model Selection", included: true },
+      { text: "All Audio Tools (Pro Tier)", included: true },
+      { text: "Grey Verified Badge", included: true },
+      { text: "Advanced Analytics", included: true },
+      { text: "Commercial Use Rights", included: true },
+      { text: "AI Video Generation", included: false },
     ],
     credits: 2500,
+    feeLabel: "5% Transaction Fee",
   },
   {
     id: "agency",
     name: "Agency",
     monthlyPrice: 200,
     yearlyPrice: 120,
-    description: "Maximum power for studios and agencies.",
+    tagline: "Unlimited power for studios & teams.",
     badge: "BEST VALUE",
-    badgeColor: "bg-green-500",
-    borderColor: "border-amber-500/50",
-    accentColor: "text-amber-400",
-    creditColor: "text-green-400",
+    badgeColor: "bg-gradient-to-r from-amber-500 to-orange-500",
+    topBorder: "from-amber-400 to-orange-500",
     features: [
-      "Everything in Creator",
-      "Flagship Models (GPT-5.2)",
-      "AI Video Generation",
-      "Full Auto-Model Access",
-      "6,000 Monthly Credits",
-      "Priority Processing",
-      "Gold Verified Badge",
-      "0% Transaction Fees",
+      { text: "Everything in Creator", included: true },
+      { text: "Flagship Models (GPT-5.2)", included: true, highlight: true },
+      { text: "AI Video Generation", included: true, highlight: true },
+      { text: "6,000 Monthly AI Credits", included: true, highlight: true },
+      { text: "Full Auto-Model Access", included: true },
+      { text: "Priority Processing Queue", included: true },
+      { text: "Gold Verified Badge", included: true },
+      { text: "Unlimited AI Storefronts", included: true },
+      { text: "Priority Support", included: true },
+      { text: "0% Transaction Fees", included: true, highlight: true },
     ],
     credits: 6000,
+    feeLabel: "0% Transaction Fee",
   },
 ];
 
@@ -110,111 +125,162 @@ export function PricingModal({ open, onOpenChange }: PricingModalProps) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[1100px] w-[95vw] p-0 bg-[#0a0f1a] border-white/10 rounded-2xl overflow-hidden max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-[1200px] w-[96vw] p-0 bg-background border-border rounded-2xl overflow-hidden max-h-[92vh] overflow-y-auto shadow-2xl">
+        
+        {/* Header */}
+        <div className="text-center pt-10 pb-4 px-6">
+          <h2 className="text-3xl font-extrabold tracking-tight text-foreground">
+            Choose Your Plan
+          </h2>
+          <p className="text-muted-foreground mt-2 text-base max-w-lg mx-auto">
+            Scale your creative business with AI-powered tools, from free to enterprise.
+          </p>
+        </div>
+
         {/* Billing Toggle */}
-        <div className="flex justify-center pt-8 pb-2">
-          <div className="inline-flex items-center bg-[#141b2d] rounded-full p-1 border border-white/10">
+        <div className="flex justify-center pb-6">
+          <div className="inline-flex items-center bg-muted rounded-full p-1 border border-border">
             <button
               onClick={() => setBillingPeriod("monthly")}
               className={cn(
-                "px-5 py-2 rounded-full text-sm font-medium transition-all duration-200",
+                "px-6 py-2.5 rounded-full text-sm font-semibold transition-all duration-200",
                 billingPeriod === "monthly"
-                  ? "bg-white/10 text-white"
-                  : "text-zinc-500 hover:text-zinc-300"
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
               )}
             >
-              MONTHLY
+              Monthly
             </button>
             <button
               onClick={() => setBillingPeriod("annually")}
               className={cn(
-                "px-5 py-2 rounded-full text-sm font-medium transition-all duration-200 flex items-center gap-2",
+                "px-6 py-2.5 rounded-full text-sm font-semibold transition-all duration-200 flex items-center gap-2",
                 billingPeriod === "annually"
-                  ? "bg-white/10 text-white"
-                  : "text-zinc-500 hover:text-zinc-300"
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
               )}
             >
-              ANNUALLY
-              <span className="text-green-400 text-xs font-bold">UP TO 50% OFF</span>
+              Annually
+              <span className="text-[11px] font-bold text-green-600 bg-green-100 px-2 py-0.5 rounded-full">
+                UP TO 50% OFF
+              </span>
             </button>
           </div>
         </div>
 
         {/* Plans Grid */}
-        <div className="grid grid-cols-4 gap-4 px-6 pb-8 pt-4">
-          {PLANS.map((plan) => {
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5 px-6 pb-10">
+          {PLANS.map((plan, index) => {
             const price = billingPeriod === "annually" ? plan.yearlyPrice : plan.monthlyPrice;
-            const originalPrice = billingPeriod === "annually" ? plan.monthlyPrice : null;
+            const originalPrice = billingPeriod === "annually" && plan.monthlyPrice > 0 ? plan.monthlyPrice : null;
 
             return (
               <motion.div
                 key={plan.id}
-                initial={{ opacity: 0, y: 20 }}
+                initial={{ opacity: 0, y: 24 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3 }}
+                transition={{ duration: 0.35, delay: index * 0.06 }}
                 className={cn(
-                  "relative flex flex-col rounded-xl border p-5",
-                  "bg-[#0d1323]",
-                  plan.borderColor
+                  "relative flex flex-col rounded-xl border overflow-hidden",
+                  "bg-card",
+                  plan.isPopular
+                    ? "border-fuchsia-500 shadow-lg shadow-fuchsia-500/10 scale-[1.02]"
+                    : "border-border"
                 )}
               >
-                {/* Badge */}
-                {plan.badge && (
-                  <div className="absolute -top-0 left-0 right-0 flex justify-center">
-                    <span className={cn(
-                      "px-3 py-0.5 rounded-b-lg text-[10px] font-bold uppercase tracking-wider text-white",
-                      plan.badgeColor
-                    )}>
-                      {plan.badge}
-                    </span>
+                {/* Top accent bar */}
+                <div className={cn("h-1 w-full bg-gradient-to-r", plan.topBorder)} />
+
+                <div className="p-6 flex flex-col flex-1">
+                  {/* Badge */}
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-xl font-bold text-foreground">{plan.name}</h3>
+                    {plan.badge && (
+                      <span className={cn(
+                        "px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider text-white",
+                        plan.badgeColor
+                      )}>
+                        {plan.badge}
+                      </span>
+                    )}
                   </div>
-                )}
 
-                {/* Plan Name */}
-                <h3 className="text-lg font-bold text-white mt-2">{plan.name}</h3>
-
-                {/* Price */}
-                <div className="flex items-baseline gap-1.5 mt-3 mb-1">
-                  {originalPrice !== null && originalPrice > 0 && (
-                    <span className="text-sm text-zinc-600 line-through">${originalPrice}</span>
-                  )}
-                  <span className="text-4xl font-extrabold text-white tracking-tight">${price}</span>
-                  <span className="text-sm text-zinc-500">/Seat/mo</span>
-                </div>
-
-                {/* CTA */}
-                <button
-                  onClick={() => handleGetStarted(plan.id)}
-                  className={cn(
-                    "w-full py-2.5 rounded-lg text-sm font-semibold mt-3 transition-all duration-200",
-                    "bg-white/10 text-white hover:bg-white/20 border border-white/10"
-                  )}
-                >
-                  Get Started
-                </button>
-
-                {/* Description */}
-                <p className="text-xs text-zinc-500 mt-3">{plan.description}</p>
-
-                {/* Credits Badge */}
-                {plan.credits > 0 && (
-                  <div className="mt-4 space-y-1">
-                    <div className={cn("flex items-center gap-1.5 text-xs font-semibold", plan.creditColor)}>
-                      <Zap className="h-3.5 w-3.5" />
-                      {plan.credits.toLocaleString()} credits / month
+                  {/* Price */}
+                  <div className="mb-1">
+                    <div className="flex items-baseline gap-1.5">
+                      {originalPrice !== null && (
+                        <span className="text-base text-muted-foreground line-through font-medium">${originalPrice}</span>
+                      )}
+                      <span className="text-5xl font-extrabold tracking-tight text-foreground">${price}</span>
+                      <span className="text-sm text-muted-foreground font-medium">/mo</span>
                     </div>
                   </div>
-                )}
 
-                {/* Features */}
-                <ul className="mt-4 space-y-2.5 flex-1">
-                  {plan.features.map((feature, i) => (
-                    <li key={i} className="flex items-start gap-2">
-                      <Check className="h-4 w-4 text-green-400 shrink-0 mt-0.5" />
-                      <span className="text-xs text-zinc-400 leading-tight">{feature}</span>
-                    </li>
-                  ))}
-                </ul>
+                  {/* Tagline */}
+                  <p className="text-sm text-muted-foreground mb-5">{plan.tagline}</p>
+
+                  {/* CTA */}
+                  <button
+                    onClick={() => handleGetStarted(plan.id)}
+                    className={cn(
+                      "w-full py-3 rounded-xl text-sm font-bold transition-all duration-200",
+                      plan.isPopular
+                        ? "bg-gradient-to-r from-fuchsia-500 to-violet-500 text-white hover:opacity-90 shadow-md shadow-fuchsia-500/20"
+                        : "bg-foreground text-background hover:opacity-90"
+                    )}
+                  >
+                    Get Started
+                  </button>
+
+                  {/* Credits */}
+                  {plan.credits > 0 && (
+                    <div className="mt-5 flex items-center gap-2 px-3 py-2.5 rounded-lg bg-primary/5 border border-primary/10">
+                      <Zap className="h-4 w-4 text-primary shrink-0" />
+                      <span className="text-sm font-bold text-primary">
+                        {plan.credits.toLocaleString()} credits / month
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Fee */}
+                  <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
+                    <span className={cn(
+                      "font-semibold",
+                      plan.feeLabel.includes("0%") && "text-green-600"
+                    )}>
+                      {plan.feeLabel}
+                    </span>
+                  </div>
+
+                  {/* Divider */}
+                  <div className="h-px bg-border my-5" />
+
+                  {/* Features */}
+                  <ul className="space-y-3 flex-1">
+                    {plan.features.map((feature, i) => (
+                      <li key={i} className="flex items-start gap-2.5">
+                        {feature.included ? (
+                          <Check className={cn(
+                            "h-4 w-4 shrink-0 mt-0.5",
+                            feature.highlight ? "text-primary" : "text-green-500"
+                          )} />
+                        ) : (
+                          <X className="h-4 w-4 text-muted-foreground/30 shrink-0 mt-0.5" />
+                        )}
+                        <span className={cn(
+                          "text-[13px] leading-snug",
+                          feature.included
+                            ? feature.highlight
+                              ? "text-foreground font-semibold"
+                              : "text-foreground/80"
+                            : "text-muted-foreground/50"
+                        )}>
+                          {feature.text}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
               </motion.div>
             );
           })}
