@@ -232,6 +232,14 @@ const HomeFeed = forwardRef<HTMLDivElement>((_, ref) => {
         </section>
       </Reveal>
 
+      <TrendingProducts />
+
+      <AIToolsShowcase />
+
+      <EditorMarketplaceTeaser />
+
+      <CreatorSpotlights />
+
       {recentlyViewed.length > 0 && (
         <Reveal>
           <div className="pb-8">
