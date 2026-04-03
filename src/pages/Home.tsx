@@ -160,8 +160,7 @@ export default function Home() {
       <SlidingBanner />
       <FeatureTabsBar />
       <AIToolsReveal />
-      <AIStudioPromo />
-      
+      <ValueProps />
     </div>
   );
 }
