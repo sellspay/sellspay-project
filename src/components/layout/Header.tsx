@@ -116,9 +116,9 @@ export default function Header() {
             </button>
           </div>
 
-          {/* Left side: Logo + Main Nav (desktop) */}
-          <div className="hidden lg:flex items-center gap-8">
-            {/* Logo - desktop */}
+          {/* Center: Logo + Main Nav (desktop) */}
+          <div className="hidden lg:flex items-center gap-6 absolute left-1/2 -translate-x-1/2">
+            {/* Logo */}
             <Link to="/" className="flex items-center shrink-0 group">
               <img 
                 src={sellspayLogo} 
