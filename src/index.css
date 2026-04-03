@@ -13,43 +13,43 @@
 
 @layer base {
   :root {
-    /* Premium Dark Theme - Pure Black + Electric Blue */
-    --background: 0 0% 0%;
-    --foreground: 210 10% 96%;
-    --card: 0 0% 4%;
-    --card-foreground: 210 10% 96%;
-    --popover: 0 0% 4%;
-    --popover-foreground: 210 10% 96%;
-    /* Electric Blue - Clean, Bold & Professional */
-    --primary: 217 91% 60%;
+    /* Light Mode - White + Blue + Cyan */
+    --background: 210 40% 98%;
+    --foreground: 215 25% 15%;
+    --card: 0 0% 100%;
+    --card-foreground: 215 25% 15%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 215 25% 15%;
+    /* Blue Primary - Clean & Professional */
+    --primary: 210 100% 50%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 0 0% 7%;
-    --secondary-foreground: 210 10% 85%;
-    --muted: 0 0% 8%;
-    --muted-foreground: 0 0% 45%;
-    --accent: 0 0% 7%;
-    --accent-foreground: 210 10% 96%;
+    --secondary: 195 80% 94%;
+    --secondary-foreground: 210 60% 30%;
+    --muted: 210 30% 95%;
+    --muted-foreground: 215 15% 45%;
+    --accent: 190 80% 92%;
+    --accent-foreground: 210 60% 25%;
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 12%;
-    --input: 0 0% 12%;
-    --ring: 217 91% 60%;
+    --border: 210 20% 88%;
+    --input: 210 20% 88%;
+    --ring: 210 100% 50%;
     --radius: 0.75rem;
-    --sidebar-background: 0 0% 2%;
-    --sidebar-foreground: 210 10% 96%;
-    --sidebar-primary: 217 91% 60%;
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 215 25% 15%;
+    --sidebar-primary: 210 100% 50%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 0 0% 7%;
-    --sidebar-accent-foreground: 210 10% 96%;
-    --sidebar-border: 0 0% 10%;
-    --sidebar-ring: 217 91% 60%;
+    --sidebar-accent: 195 80% 94%;
+    --sidebar-accent-foreground: 210 60% 25%;
+    --sidebar-border: 210 20% 90%;
+    --sidebar-ring: 210 100% 50%;
 
     /* Gradient + Glass + Elevation tokens */
-    --gradient-from: 217 60% 10%;
-    --gradient-to: 257 70% 18%;
-    --glass-opacity: 0.18;
+    --gradient-from: 210 80% 95%;
+    --gradient-to: 195 70% 90%;
+    --glass-opacity: 0.65;
     --glass-blur: 12px;
-    --glass-border-opacity: 0.2;
+    --glass-border-opacity: 0.15;
     --shadow-elevation: 0 10px 30px -10px;
 
     /* Typography tokens */
@@ -68,12 +68,12 @@
     --cta-style: default;
 
     /* Texture */
-    --texture-overlay: noise;
+    --texture-overlay: none;
     
-    /* Hero Light Background Mode - Vibrant Purple Accent */
-    --hero-text: 220 15% 20%;
-    --hero-text-muted: 220 10% 35%;
-    --hero-accent: 270 70% 50%;
+    /* Hero Light Background Mode */
+    --hero-text: 215 25% 15%;
+    --hero-text-muted: 215 15% 40%;
+    --hero-accent: 210 100% 50%;
     --hero-accent-foreground: 0 0% 100%;
   }
 }
