@@ -171,10 +171,9 @@ export function CampaignControlPanel({ creditBalance, isLoadingCredits, onGenera
           className={cn(
             "w-full py-3 text-sm font-semibold rounded-[10px] shadow-sm transition-all flex items-center justify-center gap-2",
             isReady && !isGenerating
-              ? "text-white hover:shadow-md cursor-pointer"
-              : "text-white/40 cursor-not-allowed opacity-50"
+              ? "bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer"
+              : "bg-primary/50 text-primary-foreground/40 cursor-not-allowed opacity-50"
           )}
-          style={{ background: "linear-gradient(180deg, #4B8BF5 0%, #2563EB 100%)" }}
         >
           {isGenerating ? (
             <>
