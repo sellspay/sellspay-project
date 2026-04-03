@@ -191,20 +191,6 @@ export function FeatureTabsBar() {
           })}
         </div>
 
-        {/* Bottom CTA pill */}
-        <div className="flex justify-center mt-10 sm:mt-14">
-          <Link
-            to="/tools"
-            className="inline-flex items-center gap-3 px-6 py-3 rounded-full bg-gradient-to-r from-primary/10 via-accent/10 to-primary/10 border border-border/30 hover:border-primary/30 transition-all"
-          >
-            <span className="text-sm font-medium text-foreground">
-              Create smarter, build faster
-            </span>
-            <span className="inline-flex h-9 px-5 items-center justify-center rounded-full bg-foreground text-background text-sm font-semibold">
-              Try online for free
-            </span>
-          </Link>
-        </div>
       </section>
     </Reveal>
   );
