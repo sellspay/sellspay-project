@@ -950,6 +950,103 @@ export type Database = {
         }
         Relationships: []
       }
+      curated_playlist_tracks: {
+        Row: {
+          artist: string
+          audio_preview_url: string | null
+          cover_image_url: string | null
+          created_at: string
+          display_order: number
+          duration_seconds: number | null
+          genre: string | null
+          id: string
+          playlist_id: string
+          product_id: string | null
+          title: string
+        }
+        Insert: {
+          artist: string
+          audio_preview_url?: string | null
+          cover_image_url?: string | null
+          created_at?: string
+          display_order?: number
+          duration_seconds?: number | null
+          genre?: string | null
+          id?: string
+          playlist_id: string
+          product_id?: string | null
+          title: string
+        }
+        Update: {
+          artist?: string
+          audio_preview_url?: string | null
+          cover_image_url?: string | null
+          created_at?: string
+          display_order?: number
+          duration_seconds?: number | null
+          genre?: string | null
+          id?: string
+          playlist_id?: string
+          product_id?: string | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "curated_playlist_tracks_playlist_id_fkey"
+            columns: ["playlist_id"]
+            isOneToOne: false
+            referencedRelation: "curated_playlists"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "curated_playlist_tracks_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "curated_playlist_tracks_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "public_products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      curated_playlists: {
+        Row: {
+          created_at: string
+          date_range: string | null
+          display_order: number
+          id: string
+          is_active: boolean
+          subtitle: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          date_range?: string | null
+          display_order?: number
+          id?: string
+          is_active?: boolean
+          subtitle?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          date_range?: string | null
+          display_order?: number
+          id?: string
+          is_active?: boolean
+          subtitle?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       editor_applications: {
         Row: {
           about_me: string

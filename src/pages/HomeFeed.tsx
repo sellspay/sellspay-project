@@ -13,6 +13,7 @@ import { CreatorSpotlights } from '@/components/home/CreatorSpotlights';
 import { BrowseCategories } from '@/components/home/BrowseCategories';
 import { HomeCtaBanner } from '@/components/home/HomeCtaBanner';
 import { SectionBanner } from '@/components/home/SectionBanner';
+import { HomeMusicSection } from '@/components/home/HomeMusicSection';
 import bannerMarketplace from '@/assets/banner-marketplace.jpg';
 import bannerEditors from '@/assets/banner-editors.jpg';
 import bannerCreators from '@/assets/banner-creators.jpg';
@@ -153,6 +154,8 @@ const HomeFeed = forwardRef<HTMLDivElement>((_, ref) => {
         ctaLink="/explore"
       />
 
+      {/* Music — Artlist-style playable tracks */}
+      <HomeMusicSection />
 
       {/* Browse by Category — Artlist-style image strip */}
       <BrowseCategories />
