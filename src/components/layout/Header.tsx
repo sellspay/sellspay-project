@@ -486,7 +486,7 @@ export default function Header() {
                   {/* Seller & Admin */}
                   <div className="border-t border-border/30 py-1.5">
                     {!isSeller && (
-                      <button onClick={() => navigate("/onboarding/seller-agreement")} className="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm text-muted-foreground hover:text-foreground hover:bg-white/[0.04] transition-colors">
+                      <button onClick={() => navigate("/onboarding/seller-agreement")} className="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
                         <Store className="h-4 w-4" />
                         <span>Become a Seller</span>
                       </button>
