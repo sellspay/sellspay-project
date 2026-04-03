@@ -9,10 +9,6 @@ export interface MediaItem {
 
 const DEFAULT_MEDIA: MediaItem[] = [
   { type: 'video', src: 'https://videos.pexels.com/video-files/3129671/3129671-uhd_2560_1440_30fps.mp4', alt: 'Creative studio' },
-  { type: 'image', src: 'https://images.unsplash.com/photo-1614850523459-c2f4c699c52e?w=1200&q=80', alt: 'Creative workspace' },
-  { type: 'video', src: 'https://videos.pexels.com/video-files/5377684/5377684-uhd_2560_1440_25fps.mp4', alt: 'Digital creation' },
-  { type: 'image', src: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=1200&q=80', alt: 'Abstract art' },
-  { type: 'video', src: 'https://videos.pexels.com/video-files/3141208/3141208-uhd_2560_1440_25fps.mp4', alt: 'Music production' },
 ];
 
 const IMAGE_DURATION = 5000;
