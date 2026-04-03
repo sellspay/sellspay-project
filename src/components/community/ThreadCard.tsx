@@ -71,16 +71,16 @@ interface ThreadCardProps {
   onReplyClick?: (thread: Thread) => void;
 }
 
-const categoryStyles: Record<string, { bg: string; text: string; gradient: string }> = {
-  help: { bg: 'bg-emerald-500/10', text: 'text-emerald-400', gradient: 'from-emerald-500 to-teal-600' },
-  showcase: { bg: 'bg-violet-500/10', text: 'text-violet-400', gradient: 'from-violet-500 to-purple-600' },
-  discussion: { bg: 'bg-sky-500/10', text: 'text-sky-400', gradient: 'from-sky-500 to-blue-600' },
-  promotion: { bg: 'bg-amber-500/10', text: 'text-amber-400', gradient: 'from-amber-500 to-orange-600' },
-  feedback: { bg: 'bg-rose-500/10', text: 'text-rose-400', gradient: 'from-rose-500 to-pink-600' },
+const categoryStyles: Record<string, { bg: string; text: string; dot: string }> = {
+  help: { bg: 'bg-emerald-500/10', text: 'text-emerald-400', dot: 'bg-emerald-400' },
+  showcase: { bg: 'bg-violet-500/10', text: 'text-violet-400', dot: 'bg-violet-400' },
+  discussion: { bg: 'bg-sky-500/10', text: 'text-sky-400', dot: 'bg-sky-400' },
+  promotion: { bg: 'bg-amber-500/10', text: 'text-amber-400', dot: 'bg-amber-400' },
+  feedback: { bg: 'bg-rose-500/10', text: 'text-rose-400', dot: 'bg-rose-400' },
 };
 
 const categoryLabels: Record<string, string> = {
-  help: 'Help & Advice',
+  help: 'Questions',
   showcase: 'Showcase',
   discussion: 'Discussion',
   promotion: 'Promotion',
@@ -92,8 +92,8 @@ export function ThreadCard({ thread, onReplyClick }: ThreadCardProps) {
   const queryClient = useQueryClient();
   const [showFullContent, setShowFullContent] = useState(false);
   const [isLiking, setIsLiking] = useState(false);
+  const [expanded, setExpanded] = useState(false);
 
-  // Fetch user profile
   const { data: profile } = useQuery({
     queryKey: ['profile', user?.id],
     queryFn: async () => {
@@ -108,7 +108,6 @@ export function ThreadCard({ thread, onReplyClick }: ThreadCardProps) {
     enabled: !!user?.id,
   });
 
-  // Check if thread author is owner using public_profiles view (includes is_owner field)
   const { data: authorIsOwner = false } = useQuery({
     queryKey: ['thread-author-is-owner', thread.author_id],
     queryFn: async () => {
@@ -121,12 +120,11 @@ export function ThreadCard({ thread, onReplyClick }: ThreadCardProps) {
       return authorProfile.is_owner === true;
     },
     enabled: !!thread.author_id,
-    staleTime: 1000 * 60 * 5, // Cache for 5 minutes since owner status rarely changes
+    staleTime: 1000 * 60 * 5,
   });
 
   const isThreadOwner = profile?.id === thread.author_id;
 
-  // For promotions, extract and parse the URL
   const promotionData = useMemo(() => {
     if (thread.category !== 'promotion') return null;
     const url = extractPromotionUrl(thread.content);
@@ -136,65 +134,41 @@ export function ThreadCard({ thread, onReplyClick }: ThreadCardProps) {
     return { url, youtubeId, cleanContent };
   }, [thread.content, thread.category]);
 
-  // Use clean content for promotions, original for others
   const contentForDisplay = promotionData?.cleanContent || thread.content;
-  const contentTooLong = contentForDisplay.length > 280;
-  const displayContent =
-    contentTooLong && !showFullContent ? contentForDisplay.slice(0, 280) + '...' : contentForDisplay;
+  // Get first line as "title", rest as body
+  const firstLine = contentForDisplay.split('\n')[0].slice(0, 120);
+  const hasMoreContent = contentForDisplay.length > 120 || contentForDisplay.includes('\n');
 
-  const categoryStyle = categoryStyles[thread.category] || { bg: 'bg-muted', text: 'text-muted-foreground', gradient: 'from-muted to-muted' };
+  const categoryStyle = categoryStyles[thread.category] || { bg: 'bg-muted', text: 'text-muted-foreground', dot: 'bg-muted-foreground' };
 
-  // Optimistic like mutation with duplicate prevention
   const likeMutation = useMutation({
     mutationFn: async () => {
       if (!profile?.id) throw new Error('Must be logged in');
-
       if (thread.is_liked) {
-        const { error } = await supabase
-          .from('thread_likes')
-          .delete()
-          .eq('thread_id', thread.id)
-          .eq('user_id', profile.id);
+        const { error } = await supabase.from('thread_likes').delete().eq('thread_id', thread.id).eq('user_id', profile.id);
         if (error) throw error;
       } else {
-        const { error } = await supabase
-          .from('thread_likes')
-          .upsert(
-            { thread_id: thread.id, user_id: profile.id },
-            { onConflict: 'thread_id,user_id', ignoreDuplicates: true }
-          );
+        const { error } = await supabase.from('thread_likes').upsert({ thread_id: thread.id, user_id: profile.id }, { onConflict: 'thread_id,user_id', ignoreDuplicates: true });
         if (error) throw error;
       }
     },
     onMutate: async () => {
       if (isLiking) return;
       setIsLiking(true);
-
       await queryClient.cancelQueries({ queryKey: ['threads'] });
-
       const previousThreads = queryClient.getQueryData(['threads']);
-
       queryClient.setQueriesData({ queryKey: ['threads'] }, (old: Thread[] | undefined) =>
         old?.map((t) =>
-          t.id === thread.id
-            ? {
-                ...t,
-                is_liked: !t.is_liked,
-                likes_count: t.is_liked ? t.likes_count - 1 : t.likes_count + 1,
-              }
-            : t
+          t.id === thread.id ? { ...t, is_liked: !t.is_liked, likes_count: t.is_liked ? t.likes_count - 1 : t.likes_count + 1 } : t
         )
       );
-
       return { previousThreads };
     },
     onError: (error: any, _, context) => {
       queryClient.setQueriesData({ queryKey: ['threads'] }, context?.previousThreads);
       toast.error(error.message || 'Failed to like thread');
     },
-    onSettled: () => {
-      setIsLiking(false);
-    },
+    onSettled: () => setIsLiking(false),
   });
 
   const deleteMutation = useMutation({
@@ -202,172 +176,116 @@ export function ThreadCard({ thread, onReplyClick }: ThreadCardProps) {
       const { error } = await supabase.from('threads').delete().eq('id', thread.id);
       if (error) throw error;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['threads'] });
-      toast.success('Thread deleted');
-    },
-    onError: (error: any) => {
-      toast.error(error.message || 'Failed to delete thread');
-    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['threads'] }); toast.success('Thread deleted'); },
+    onError: (error: any) => toast.error(error.message || 'Failed to delete thread'),
   });
 
-  // Pin/unpin mutation (owner only)
   const pinMutation = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase
-        .from('threads')
-        .update({ is_pinned: !thread.is_pinned })
-        .eq('id', thread.id);
+      const { error } = await supabase.from('threads').update({ is_pinned: !thread.is_pinned }).eq('id', thread.id);
       if (error) throw error;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['threads'] });
-      toast.success(thread.is_pinned ? 'Thread unpinned' : 'Thread pinned');
-    },
-    onError: (error: any) => {
-      toast.error(error.message || 'Failed to update pin status');
-    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['threads'] }); toast.success(thread.is_pinned ? 'Thread unpinned' : 'Thread pinned'); },
+    onError: (error: any) => toast.error(error.message || 'Failed to update pin status'),
   });
 
   return (
-    <div
-      className={cn(
-        "group relative px-5 py-5 transition-all duration-300 overflow-hidden rounded-2xl border border-white/[0.06] bg-white/[0.03] backdrop-blur-md my-3",
-        thread.is_pinned && "bg-white/[0.06] border-white/[0.1]"
-      )}
-    >
-      <div className="relative flex gap-3.5">
-        {/* Avatar with ring */}
-        <Link to={thread.author?.username ? `/@${thread.author.username}` : '#'} className="shrink-0">
-          <Avatar className="h-10 w-10 ring-1 ring-border/40 hover:ring-primary/40 transition-all">
-            <AvatarImage src={thread.author?.avatar_url || ''} />
-            <AvatarFallback className="bg-muted text-foreground font-semibold text-sm">
-              {thread.author?.full_name?.charAt(0) || thread.author?.username?.charAt(0) || '?'}
-            </AvatarFallback>
-          </Avatar>
-        </Link>
+    <div className={cn("group", thread.is_pinned && "bg-primary/[0.03]")}>
+      {/* Row layout: Topic | Replies | Activity */}
+      <div
+        className="grid grid-cols-1 sm:grid-cols-[1fr_80px_80px] items-start sm:items-center px-6 py-4 gap-3 sm:gap-0 hover:bg-muted/20 transition-colors cursor-pointer"
+        onClick={() => setExpanded(!expanded)}
+      >
+        {/* Topic column */}
+        <div className="flex items-start gap-3 min-w-0">
+          <Link to={thread.author?.username ? `/@${thread.author.username}` : '#'} className="shrink-0 mt-0.5" onClick={(e) => e.stopPropagation()}>
+            <Avatar className="h-9 w-9 ring-1 ring-border/30 hover:ring-primary/40 transition-all">
+              <AvatarImage src={thread.author?.avatar_url || ''} />
+              <AvatarFallback className="bg-muted text-foreground font-semibold text-xs">
+                {thread.author?.full_name?.charAt(0) || thread.author?.username?.charAt(0) || '?'}
+              </AvatarFallback>
+            </Avatar>
+          </Link>
 
-        {/* Content */}
-        <div className="flex-1 min-w-0">
-          {/* Header */}
-          <div className="flex items-start justify-between gap-2 mb-3">
-            <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex-1 min-w-0">
+            {/* Title row */}
+            <div className="flex items-center gap-2 flex-wrap mb-0.5">
+              {thread.is_pinned && (
+                <Pin className="h-3.5 w-3.5 text-primary shrink-0" />
+              )}
+              <span className="text-[15px] font-semibold text-foreground leading-snug line-clamp-1">
+                {firstLine}
+              </span>
+            </div>
+
+            {/* Meta row */}
+            <div className="flex items-center gap-2 text-xs text-muted-foreground/60">
+              <Badge
+                variant="secondary"
+                className={cn(
+                  "text-[10px] border-0 font-semibold tracking-wide uppercase px-2 py-0.5 h-auto",
+                  categoryStyle.bg,
+                  categoryStyle.text
+                )}
+              >
+                {categoryLabels[thread.category] || thread.category}
+              </Badge>
+              <span>·</span>
               <Link
                 to={thread.author?.username ? `/@${thread.author.username}` : '#'}
-                className="font-bold text-foreground hover:text-primary transition-colors"
+                className="hover:text-foreground transition-colors"
+                onClick={(e) => e.stopPropagation()}
               >
                 @{thread.author?.username || 'unknown'}
               </Link>
               {thread.author?.verified && <VerifiedBadge size="sm" isOwner={authorIsOwner} />}
-              {thread.is_pinned && (
-                <Badge variant="secondary" className="text-xs gap-1 bg-gradient-to-r from-primary/20 to-accent/20 text-primary border-0 shadow-sm">
-                  <Pin className="h-3 w-3" />
-                  Pinned
-                </Badge>
-              )}
-              <span className="text-muted-foreground/30 text-sm">·</span>
-              <span className="text-muted-foreground/70 text-sm">
-                {formatDistanceToNow(new Date(thread.created_at), { addSuffix: true })}
-              </span>
+              <span>·</span>
+              <span>{formatDistanceToNow(new Date(thread.created_at), { addSuffix: true })}</span>
             </div>
-
-            {/* Menu */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 -mr-2 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-primary/10"
-                >
-                  <MoreHorizontal className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-44 bg-popover backdrop-blur-xl border-border/50 shadow-lg">
-                {/* Pin/Unpin - Owner only */}
-                {isAppOwner && (
-                  <DropdownMenuItem
-                    className="focus:bg-primary/10"
-                    onClick={() => pinMutation.mutate()}
-                  >
-                    <Pin className="h-4 w-4 mr-2" />
-                    {thread.is_pinned ? 'Unpin Thread' : 'Pin Thread'}
-                  </DropdownMenuItem>
-                )}
-                {/* Delete - Thread owner or App owner */}
-                {(isThreadOwner || isAppOwner) && (
-                  <DropdownMenuItem
-                    className="text-destructive focus:text-destructive focus:bg-destructive/10"
-                    onClick={() => deleteMutation.mutate()}
-                  >
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    Delete
-                  </DropdownMenuItem>
-                )}
-                {/* Report - Non-owners only */}
-                {!isThreadOwner && !isAppOwner && (
-                  <DropdownMenuItem className="focus:bg-muted">
-                    <Flag className="h-4 w-4 mr-2" />
-                    Report
-                  </DropdownMenuItem>
-                )}
-              </DropdownMenuContent>
-            </DropdownMenu>
           </div>
+        </div>
 
-          {/* Category Badge - Premium Gradient Style */}
-          <div className="mb-3">
-            <Badge
-              variant="secondary"
-              className={cn(
-                "text-xs border-0 font-semibold tracking-wide uppercase px-3 py-1 shadow-sm",
-                categoryStyle.bg,
-                categoryStyle.text
-              )}
-            >
-              {categoryLabels[thread.category] || thread.category}
-            </Badge>
-          </div>
+        {/* Replies column */}
+        <div className="hidden sm:flex flex-col items-center justify-center">
+          <span className={cn("text-sm font-bold", thread.replies_count > 0 ? "text-foreground" : "text-muted-foreground/30")}>
+            {thread.replies_count}
+          </span>
+        </div>
 
-          {/* Content */}
-          <p className="text-foreground whitespace-pre-wrap break-words leading-relaxed text-[15px]">{displayContent}</p>
-          {contentTooLong && !showFullContent && (
-            <button
-              onClick={() => setShowFullContent(true)}
-              className="text-primary text-sm hover:underline mt-2 font-semibold"
-            >
+        {/* Activity column */}
+        <div className="hidden sm:flex flex-col items-center justify-center">
+          <span className="text-xs text-muted-foreground/50">
+            {formatDistanceToNow(new Date(thread.created_at), { addSuffix: false })}
+          </span>
+        </div>
+      </div>
+
+      {/* Expanded content */}
+      {expanded && (
+        <div className="px-6 pb-5 pl-[4.5rem]">
+          {/* Full content */}
+          <p className="text-foreground whitespace-pre-wrap break-words leading-relaxed text-sm mb-3">
+            {showFullContent ? contentForDisplay : contentForDisplay.slice(0, 500)}
+            {contentForDisplay.length > 500 && !showFullContent && '...'}
+          </p>
+          {contentForDisplay.length > 500 && !showFullContent && (
+            <button onClick={() => setShowFullContent(true)} className="text-primary text-sm hover:underline mb-3 font-semibold">
               Read more
             </button>
           )}
 
-          {/* Promotion YouTube Embed or Link */}
+          {/* Promotion embeds */}
           {promotionData && (
-            <div className="mt-4">
+            <div className="mb-3">
               {promotionData.youtubeId ? (
-                // YouTube Video Embed
-                <div className="rounded-2xl overflow-hidden border border-border/30 shadow-lg aspect-video max-w-lg bg-black">
-                  <iframe
-                    src={`https://www.youtube.com/embed/${promotionData.youtubeId}`}
-                    title="YouTube video"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                    allowFullScreen
-                    className="w-full h-full"
-                  />
+                <div className="rounded-xl overflow-hidden border border-border/30 aspect-video max-w-md bg-black">
+                  <iframe src={`https://www.youtube.com/embed/${promotionData.youtubeId}`} title="YouTube video" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen className="w-full h-full" />
                 </div>
               ) : (
-                // Regular Link with preview
-                <a
-                  href={promotionData.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-3 p-4 rounded-xl bg-muted/30 border border-border/50 hover:border-primary/30 hover:bg-muted/50 transition-all group max-w-lg"
-                >
-                  <div className="shrink-0 p-2.5 rounded-lg bg-primary/10 text-primary group-hover:bg-primary/20 transition-colors">
-                    <ExternalLink className="h-5 w-5" />
-                  </div>
+                <a href={promotionData.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-3 rounded-lg bg-muted/30 border border-border/50 hover:border-primary/30 hover:bg-muted/50 transition-all group max-w-md">
+                  <div className="shrink-0 p-2 rounded-lg bg-primary/10 text-primary"><ExternalLink className="h-4 w-4" /></div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-foreground truncate group-hover:text-primary transition-colors">
-                      {promotionData.url.replace(/^https?:\/\//, '').split('/')[0]}
-                    </p>
+                    <p className="text-sm font-medium text-foreground truncate">{promotionData.url.replace(/^https?:\/\//, '').split('/')[0]}</p>
                     <p className="text-xs text-muted-foreground truncate">{promotionData.url}</p>
                   </div>
                 </a>
@@ -375,66 +293,69 @@ export function ThreadCard({ thread, onReplyClick }: ThreadCardProps) {
             </div>
           )}
 
-          {/* Promotion Cover Image (only if not YouTube) */}
-          {thread.category === 'promotion' && thread.image_url && !promotionData?.youtubeId && (
-            <div className="mt-4 rounded-2xl overflow-hidden border border-border/30 max-w-md bg-gradient-to-br from-muted/50 to-muted/30 shadow-lg">
-              <img
-                src={thread.image_url}
-                alt="Promotion cover"
-                className="w-full h-auto max-h-72 object-cover"
-              />
-            </div>
-          )}
-
-          {/* GIF/Image with premium border (non-promotion) */}
-          {thread.category !== 'promotion' && (thread.gif_url || thread.image_url) && (
-            <div className="mt-4 rounded-2xl overflow-hidden border border-border/30 max-w-md bg-gradient-to-br from-muted/50 to-muted/30 shadow-lg">
-              <img
-                src={thread.gif_url || thread.image_url || ''}
-                alt=""
-                className="w-full h-auto max-h-72 object-cover"
-              />
+          {/* Images */}
+          {(thread.gif_url || thread.image_url) && (
+            <div className="mb-3 rounded-xl overflow-hidden border border-border/30 max-w-md">
+              <img src={thread.gif_url || thread.image_url || ''} alt="" className="w-full h-auto max-h-60 object-cover" />
             </div>
           )}
 
           {/* Poll */}
           <ThreadPoll threadId={thread.id} profileId={profile?.id || null} />
 
-          {/* Actions - Premium Style */}
-          <div className="flex items-center gap-2 mt-5 -ml-3">
+          {/* Actions */}
+          <div className="flex items-center gap-1 mt-2 -ml-2">
             <Button
               variant="ghost"
               size="sm"
               className={cn(
-                "gap-2 h-10 px-4 rounded-full transition-all duration-300",
-                thread.is_liked
-                  ? "text-rose-500 hover:text-rose-500 hover:bg-rose-500/10 bg-rose-500/5"
-                  : "text-muted-foreground hover:text-rose-500 hover:bg-rose-500/10"
+                "gap-1.5 h-8 px-3 rounded-full text-xs transition-all",
+                thread.is_liked ? "text-rose-500 hover:text-rose-500 hover:bg-rose-500/10" : "text-muted-foreground hover:text-rose-500 hover:bg-rose-500/10"
               )}
-              onClick={() => {
-                if (!user) {
-                  toast.error('Please log in to like');
-                  return;
-                }
-                likeMutation.mutate();
-              }}
+              onClick={(e) => { e.stopPropagation(); if (!user) { toast.error('Please log in to like'); return; } likeMutation.mutate(); }}
             >
-              <Heart className={cn("h-5 w-5 transition-transform", thread.is_liked && "fill-current scale-110")} />
-              {thread.likes_count > 0 && <span className="text-sm font-semibold">{thread.likes_count}</span>}
+              <Heart className={cn("h-4 w-4", thread.is_liked && "fill-current")} />
+              {thread.likes_count > 0 && <span>{thread.likes_count}</span>}
             </Button>
 
             <Button
               variant="ghost"
               size="sm"
-              className="gap-2 h-10 px-4 rounded-full text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all duration-300"
-              onClick={() => onReplyClick?.(thread)}
+              className="gap-1.5 h-8 px-3 rounded-full text-xs text-muted-foreground hover:text-primary hover:bg-primary/10"
+              onClick={(e) => { e.stopPropagation(); onReplyClick?.(thread); }}
             >
-              <MessageCircle className="h-5 w-5" />
-              {thread.replies_count > 0 && <span className="text-sm font-semibold">{thread.replies_count}</span>}
+              <MessageCircle className="h-4 w-4" />
+              Reply
             </Button>
+
+            {/* Menu */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-44 bg-popover border-border/50 shadow-lg">
+                {isAppOwner && (
+                  <DropdownMenuItem onClick={() => pinMutation.mutate()}>
+                    <Pin className="h-4 w-4 mr-2" />
+                    {thread.is_pinned ? 'Unpin' : 'Pin'}
+                  </DropdownMenuItem>
+                )}
+                {(isThreadOwner || isAppOwner) && (
+                  <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => deleteMutation.mutate()}>
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Delete
+                  </DropdownMenuItem>
+                )}
+                {!isThreadOwner && !isAppOwner && (
+                  <DropdownMenuItem><Flag className="h-4 w-4 mr-2" />Report</DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
-import { Loader2, MessageSquare, SearchX, Plus, Search, ChevronDown, Check } from 'lucide-react';
+import { Loader2, MessageSquare, SearchX, Plus, Search, Hash, HelpCircle, Star, Megaphone, MessageCircleQuestion, Lightbulb, LayoutList } from 'lucide-react';
 import { ThreadCard } from '@/components/community/ThreadCard';
 import { NewThreadDialog } from '@/components/community/NewThreadDialog';
 import { ThreadSearchPanel } from '@/components/community/ThreadSearchPanel';
@@ -8,7 +8,7 @@ import { ThreadReplyDialog } from '@/components/community/ThreadReplyDialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/lib/auth';
 import { Button } from '@/components/ui/button';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { cn } from '@/lib/utils';
 
 const THREADS_PER_PAGE = 20;
 
@@ -35,6 +35,17 @@ interface Thread {
   is_liked: boolean;
 }
 
+const SIDEBAR_CATEGORIES = [
+  { key: 'all', label: 'All categories', icon: LayoutList },
+  { key: 'discussion', label: 'Discussions', icon: MessageSquare },
+  { key: 'help', label: 'Questions', icon: HelpCircle },
+  { key: 'showcase', label: 'Showcase', icon: Star },
+  { key: 'feedback', label: 'Feedback', icon: Lightbulb },
+  { key: 'promotion', label: 'Promotions', icon: Megaphone },
+];
+
+const SORT_TABS = ['Latest', 'Top', 'Unanswered'] as const;
+
 export default function Community() {
   const { user } = useAuth();
   const [activeCategory, setActiveCategory] = useState('all');
@@ -43,8 +54,7 @@ export default function Community() {
   const [newThreadOpen, setNewThreadOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeFeed, setActiveFeed] = useState<'for_you' | 'following'>('for_you');
-  const [feedOpen, setFeedOpen] = useState(false);
+  const [activeSort, setActiveSort] = useState<typeof SORT_TABS[number]>('Latest');
   const loadMoreRef = useRef<HTMLDivElement>(null);
 
   const { data: profile } = useQuery({
@@ -147,16 +157,12 @@ export default function Community() {
   useEffect(() => {
     const el = loadMoreRef.current;
     if (!el) return;
-
     const observer = new IntersectionObserver(
       ([entry]) => {
-        if (entry.isIntersecting && hasNextPage && !isFetchingNextPage) {
-          fetchNextPage();
-        }
+        if (entry.isIntersecting && hasNextPage && !isFetchingNextPage) fetchNextPage();
       },
       { rootMargin: '200px' }
     );
-
     observer.observe(el);
     return () => observer.disconnect();
   }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
@@ -188,98 +194,131 @@ export default function Community() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Feed selector top bar */}
-      <div className="sticky top-16 z-30 bg-background/80 backdrop-blur-xl border-b border-border/30">
-        <div className="mx-auto max-w-[680px] px-6 flex items-center justify-between h-12">
-          <Popover open={feedOpen} onOpenChange={setFeedOpen}>
-            <PopoverTrigger asChild>
-              <button className="flex items-center gap-1.5 text-sm font-medium text-foreground hover:text-foreground/80 transition-colors">
-                {activeFeed === 'for_you' ? 'For you' : 'Following'}
-                <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
-              </button>
-            </PopoverTrigger>
-            <PopoverContent
-              align="start"
-              sideOffset={8}
-              className="w-56 p-0 rounded-xl bg-popover border border-border shadow-xl"
+      <div className="max-w-[1400px] mx-auto flex">
+        {/* ───── Left Sidebar ───── */}
+        <aside className="hidden lg:block w-[260px] shrink-0 border-r border-border/30 min-h-[calc(100vh-4rem)] sticky top-16 self-start">
+          <div className="p-5">
+            {/* New Thread Button */}
+            <Button
+              onClick={() => setNewThreadOpen(true)}
+              className="w-full mb-6 h-10 font-bold gap-2 bg-primary text-primary-foreground hover:bg-primary/90"
             >
-              <div className="px-4 pt-3 pb-2 flex items-center justify-between">
-                <span className="text-sm font-semibold text-foreground">Feeds</span>
-                <Plus className="h-4 w-4 text-muted-foreground" />
-              </div>
-              <div className="pb-1">
-                <button
-                  onClick={() => { setActiveFeed('for_you'); setFeedOpen(false); }}
-                  className="w-full flex items-center justify-between px-4 py-2.5 text-sm hover:bg-muted/50 transition-colors"
-                >
-                  <span className={activeFeed === 'for_you' ? 'text-foreground font-medium' : 'text-muted-foreground'}>For you</span>
-                  {activeFeed === 'for_you' && <Check className="h-4 w-4 text-primary" />}
-                </button>
-                <button
-                  onClick={() => { setActiveFeed('following'); setFeedOpen(false); }}
-                  className="w-full flex items-center justify-between px-4 py-2.5 text-sm hover:bg-muted/50 transition-colors"
-                >
-                  <span className={activeFeed === 'following' ? 'text-foreground font-medium' : 'text-muted-foreground'}>Following</span>
-                  {activeFeed === 'following' && <Check className="h-4 w-4 text-primary" />}
-                </button>
-              </div>
-            </PopoverContent>
-          </Popover>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 rounded-full"
-            onClick={() => setSearchOpen(!searchOpen)}
-          >
-            <Search className="h-4 w-4" />
-          </Button>
-        </div>
-      </div>
+              <Plus className="h-4 w-4" />
+              New Thread
+            </Button>
 
-      {/* Feed */}
-      <section className="py-4 sm:py-6 px-6">
-        <div className="mx-auto max-w-[680px] space-y-1">
+            {/* Categories */}
+            <div className="mb-6">
+              <h3 className="text-[11px] font-bold uppercase tracking-[0.15em] text-muted-foreground/60 mb-3 px-2">
+                Categories
+              </h3>
+              <nav className="space-y-0.5">
+                {SIDEBAR_CATEGORIES.map(({ key, label, icon: Icon }) => (
+                  <button
+                    key={key}
+                    onClick={() => handleCategoryChange(key)}
+                    className={cn(
+                      "w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
+                      activeCategory === key
+                        ? "bg-primary/10 text-primary"
+                        : "text-muted-foreground hover:text-foreground hover:bg-muted/40"
+                    )}
+                  >
+                    <Icon className="h-4 w-4 shrink-0" />
+                    {label}
+                  </button>
+                ))}
+              </nav>
+            </div>
+
+            {/* Search */}
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/50" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search threads..."
+                className="w-full pl-9 pr-3 py-2 text-sm bg-muted/30 border border-border/30 rounded-lg text-foreground placeholder:text-muted-foreground/40 outline-none focus:border-primary/40 transition-colors"
+              />
+            </div>
+          </div>
+        </aside>
+
+        {/* ───── Main Content ───── */}
+        <main className="flex-1 min-w-0">
+          {/* Tab bar */}
+          <div className="sticky top-16 z-30 bg-background/80 backdrop-blur-xl border-b border-border/30">
+            <div className="flex items-center justify-between px-6 h-12">
+              <div className="flex items-center gap-1">
+                {SORT_TABS.map((tab) => (
+                  <button
+                    key={tab}
+                    onClick={() => setActiveSort(tab)}
+                    className={cn(
+                      "px-3.5 py-1.5 text-sm font-medium rounded-md transition-colors",
+                      activeSort === tab
+                        ? "text-primary bg-primary/10"
+                        : "text-muted-foreground hover:text-foreground hover:bg-muted/30"
+                    )}
+                  >
+                    {tab}
+                  </button>
+                ))}
+              </div>
+
+              {/* Mobile category + search */}
+              <div className="flex items-center gap-2 lg:hidden">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 rounded-full"
+                  onClick={() => setSearchOpen(!searchOpen)}
+                >
+                  <Search className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          {/* Mobile search panel */}
           {searchOpen && (
-            <div className="pb-4">
+            <div className="px-6 py-3 lg:hidden">
               <ThreadSearchPanel open={searchOpen} onOpenChange={setSearchOpen} onSearchChange={handleSearchChange} activeCategory={activeCategory} onCategoryChange={handleCategoryChange} />
             </div>
           )}
 
-          {searchQuery && (
-            <p className="text-center text-sm text-muted-foreground pb-3">
-              {threads.length > 0 ? (
-                <>Found threads matching "<span className="font-medium text-foreground">{searchQuery}</span>"</>
-              ) : (
-                <>No threads found matching "<span className="font-medium text-foreground">{searchQuery}</span>"</>
-              )}
-            </p>
-          )}
+          {/* Table Header */}
+          <div className="hidden sm:grid grid-cols-[1fr_80px_80px] items-center px-6 py-2.5 border-b border-border/20 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/50">
+            <span>Topic</span>
+            <span className="text-center">Replies</span>
+            <span className="text-center">Activity</span>
+          </div>
 
-          {isLoading ? (
-            <div className="flex justify-center py-20">
-              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-            </div>
-          ) : threads.length === 0 ? (
-            <div className="text-center py-20">
-              <div className="inline-flex items-center justify-center w-14 h-14 rounded-full border border-border/50 mb-5">
-                {searchQuery ? <SearchX className="h-6 w-6 text-muted-foreground" /> : <MessageSquare className="h-6 w-6 text-muted-foreground" />}
+          {/* Thread List */}
+          <div className="divide-y divide-border/20">
+            {isLoading ? (
+              <div className="flex justify-center py-20">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
               </div>
-              <h3 className="text-base font-medium text-foreground mb-1">
-                {searchQuery ? 'No matches found' : 'No threads yet'}
-              </h3>
-              <p className="text-sm text-muted-foreground">
-                {searchQuery ? 'Try adjusting your search or browse all threads' : 'Be the first to start a conversation.'}
-              </p>
-            </div>
-          ) : (
-            <div className="divide-y divide-border/30">
-              {threads.map((thread) => (
-                <div key={thread.id} className="py-1">
-                  <ThreadCard thread={thread} onReplyClick={handleReplyClick} />
+            ) : threads.length === 0 ? (
+              <div className="text-center py-20">
+                <div className="inline-flex items-center justify-center w-14 h-14 rounded-full border border-border/50 mb-5">
+                  {searchQuery ? <SearchX className="h-6 w-6 text-muted-foreground" /> : <MessageSquare className="h-6 w-6 text-muted-foreground" />}
                 </div>
-              ))}
-            </div>
-          )}
+                <h3 className="text-base font-medium text-foreground mb-1">
+                  {searchQuery ? 'No matches found' : 'No threads yet'}
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                  {searchQuery ? 'Try adjusting your search or browse all threads' : 'Be the first to start a conversation.'}
+                </p>
+              </div>
+            ) : (
+              threads.map((thread) => (
+                <ThreadCard key={thread.id} thread={thread} onReplyClick={handleReplyClick} />
+              ))
+            )}
+          </div>
 
           {/* Infinite scroll sentinel */}
           <div ref={loadMoreRef} className="py-6 flex justify-center">
@@ -287,13 +326,13 @@ export default function Community() {
               <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
             )}
           </div>
-        </div>
-      </section>
+        </main>
+      </div>
 
-      {/* Floating + button */}
+      {/* Floating + button (mobile) */}
       <button
         onClick={() => setNewThreadOpen(true)}
-        className="fixed bottom-6 right-6 z-40 h-14 w-14 rounded-full bg-primary text-primary-foreground shadow-xl shadow-primary/30 hover:shadow-primary/50 hover:scale-105 transition-all duration-200 flex items-center justify-center"
+        className="fixed bottom-6 right-6 z-40 h-14 w-14 rounded-full bg-primary text-primary-foreground shadow-xl shadow-primary/30 hover:shadow-primary/50 hover:scale-105 transition-all duration-200 flex items-center justify-center lg:hidden"
       >
         <Plus className="h-7 w-7" />
       </button>
