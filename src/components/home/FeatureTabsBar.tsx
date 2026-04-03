@@ -1,187 +1,211 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState } from 'react';
+import { Link } from 'react-router-dom';
+import { Reveal } from './Reveal';
+import { Plus, Minus, Sparkles } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ShoppingBag, Image, Video, Music, Sparkles, ArrowRight, ArrowUpRight } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
 import everythingYouNeedImg from '@/assets/everything-you-need.jpg';
+import toolImageImg from '@/assets/tool-image-gen.jpg';
+import toolStemImg from '@/assets/tool-stem-splitter.jpg';
+import toolVocalImg from '@/assets/tool-vocal-isolator.jpg';
+import toolSfxImg from '@/assets/tool-sfx-gen.jpg';
 
-interface FeatureTab {
-  id: string;
-  number: string;
-  label: string;
-  icon: React.ReactNode;
-  title: string;
-  description: string;
-  tags: string[];
-  link: string;
-  image: string;
-}
-
-const tabs: FeatureTab[] = [
+const categories = [
   {
     id: 'marketplace',
     number: '01',
     label: 'Marketplace',
-    icon: <ShoppingBag className="h-5 w-5" />,
-    title: 'Browse & Sell Digital Assets',
-    description: 'Discover thousands of premium digital products from top creators worldwide. From LUTs to presets, sound effects to templates — find everything you need to level up your creative workflow.',
-    tags: ['LUTs', 'Presets', 'Templates', 'Sound Packs'],
-    link: '/products',
-    image: everythingYouNeedImg,
+    featured: {
+      title: 'Browse & Sell Digital Assets',
+      desc: 'Discover thousands of premium digital products from top creators worldwide. From LUTs to presets, sound effects to templates — find everything you need.',
+      link: '/products',
+      linkText: 'Explore Marketplace',
+      image: everythingYouNeedImg,
+    },
+    tools: ['LUTs & Presets', 'Sound Packs', 'Templates & Themes'],
   },
   {
-    id: 'image-gen',
+    id: 'image',
     number: '02',
     label: 'Image Generation',
-    icon: <Image className="h-5 w-5" />,
-    title: 'AI-Powered Product Visuals',
-    description: "Build your store's hero in seconds with our AI image generation models. Create stunning product visuals, banners, and promotional art — no design skills needed.",
-    tags: ['Text-to-Image', 'Product Shots', 'Banners', 'Thumbnails'],
-    link: '/tools',
-    image: 'https://images.unsplash.com/photo-1633356122102-3fe601e05bd2?w=800&q=80',
+    featured: {
+      title: 'AI Image Generator',
+      desc: 'Turn text prompts into stunning visuals. Create product mockups, thumbnails, banners, and art in seconds — no design skills needed.',
+      link: '/tools',
+      linkText: 'Try Image Generator',
+      image: toolImageImg,
+    },
+    tools: ['Background Remover', 'Image Enhancer', 'Photo Editor'],
   },
   {
-    id: 'video-gen',
+    id: 'video',
     number: '03',
     label: 'Video Generation',
-    icon: <Video className="h-5 w-5" />,
-    title: 'Text & Image to Video',
-    description: 'Transform static images into cinematic video clips or generate entirely new footage from text prompts. Perfect for promos, social content, and product showcases.',
-    tags: ['Text-to-Video', 'Image-to-Video', 'Promos', 'Shorts'],
-    link: '/tools',
-    image: 'https://images.unsplash.com/photo-1574717024653-61fd2cf4d44d?w=800&q=80',
+    featured: {
+      title: 'AI Video Generator',
+      desc: 'Generate stunning videos from text prompts or images. Create product demos, social content, and promo reels — no filming required.',
+      link: '/tools',
+      linkText: 'Try Video Generator',
+      image: toolStemImg,
+    },
+    tools: ['Text-to-Video', 'Image-to-Video', 'Promo Video Builder'],
   },
   {
     id: 'audio',
     number: '04',
     label: 'Audio Tools',
-    icon: <Music className="h-5 w-5" />,
-    title: 'Professional Audio Suite',
-    description: 'Generate custom sound effects, isolate vocals from any track, split stems, and convert between formats. Studio-grade audio tools accessible to everyone.',
-    tags: ['SFX Generator', 'Voice Isolator', 'Stem Splitter', 'Converter'],
-    link: '/tools',
-    image: 'https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?w=800&q=80',
+    featured: {
+      title: 'Vocal Isolator',
+      desc: 'Extract clean vocals from any track instantly with AI-powered source separation. Perfect for remixes, karaoke, and content creation.',
+      link: '/studio/voice-isolator',
+      linkText: 'Try Vocal Isolator',
+      image: toolVocalImg,
+    },
+    tools: ['Stem Splitter', 'AI SFX Generator', 'Audio Converter'],
   },
   {
     id: 'storefront',
     number: '05',
     label: 'AI Storefront',
-    icon: <Sparkles className="h-5 w-5" />,
-    title: 'Build Your Creator Page with AI',
-    description: 'Describe your brand vibe and watch AI build a fully customized storefront. Unique layouts, color palettes, and sections — all generated in seconds.',
-    tags: ['AI Builder', 'Custom Themes', 'Drag & Drop', 'Brand Kit'],
-    link: '/ai-builder',
-    image: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=800&q=80',
+    featured: {
+      title: 'VibeCoder',
+      desc: 'Describe your storefront idea and watch AI build it live — layouts, styles, and content. No coding needed, fully customizable.',
+      link: '/ai-builder',
+      linkText: 'Try VibeCoder',
+      image: toolSfxImg,
+    },
+    tools: ['Storefront Builder', 'Landing Pages', 'Brand Kit'],
   },
 ];
 
 export function FeatureTabsBar() {
-  const [activeTab, setActiveTab] = useState(0);
-  const navigate = useNavigate();
-  const active = tabs[activeTab];
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const [openId, setOpenId] = useState<string | null>('marketplace');
 
-  const handleTabClick = useCallback((i: number) => {
-    setActiveTab(i);
-    const container = scrollRef.current;
-    if (!container) return;
-    const button = container.children[i] as HTMLElement;
-    if (!button) return;
-    const scrollLeft = button.offsetLeft - container.offsetWidth / 2 + button.offsetWidth / 2;
-    container.scrollTo({ left: scrollLeft, behavior: 'smooth' });
-  }, []);
+  const toggle = (id: string) => {
+    setOpenId(openId === id ? null : id);
+  };
 
   return (
-    <section className="py-24 sm:py-32 lg:py-40">
-      <div className="px-6 sm:px-8 lg:px-12 xl:px-16 max-w-[1400px] mx-auto">
-        {/* Section header */}
-        <div className="mb-16 sm:mb-20">
-          <p className="text-xs font-semibold uppercase tracking-[0.25em] text-primary mb-4">
-            Platform
-          </p>
-          <h2 className="text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-extrabold text-foreground tracking-tight leading-[1.05]">
-            Everything you need
-          </h2>
-          <p className="text-lg sm:text-xl text-muted-foreground mt-5 max-w-2xl leading-relaxed">
-            One platform for selling, creating, and growing your digital brand.
-          </p>
-        </div>
-
-        {/* CapCut-style numbered tabs */}
-        <div
-          ref={scrollRef}
-          className="flex gap-2 overflow-x-auto pb-6 scrollbar-hide mb-14 sm:mb-16 snap-x snap-mandatory scroll-px-6 -mx-6 px-6"
-        >
-          {tabs.map((tab, i) => (
-            <button
-              key={tab.id}
-              onClick={() => handleTabClick(i)}
-              className={`group relative flex items-center gap-3 px-6 py-4 rounded-xl border text-sm font-medium whitespace-nowrap transition-all duration-300 snap-center shrink-0 ${
-                i === activeTab
-                  ? 'bg-primary/10 text-foreground border-primary/30'
-                  : 'bg-card/50 text-muted-foreground border-border/30 hover:border-border/60 hover:text-foreground'
-              }`}
-            >
-              <span className={`text-xl font-black tabular-nums transition-colors ${
-                i === activeTab ? 'text-primary' : 'text-muted-foreground/25'
-              }`}>
-                {tab.number}
-              </span>
-              {tab.icon}
-              {tab.label}
-            </button>
-          ))}
-        </div>
-
-        {/* Content area */}
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={active.id}
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -16 }}
-            transition={{ duration: 0.35, ease: 'easeOut' }}
-            className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16 items-center"
+    <Reveal>
+      <section className="px-6 sm:px-8 lg:px-10 pb-16 sm:pb-20">
+        {/* Header */}
+        <div className="flex items-start justify-between mb-10 sm:mb-14">
+          <div>
+            <h2 className="text-3xl sm:text-4xl lg:text-[2.75rem] font-extrabold text-foreground tracking-tight">
+              Everything you need
+            </h2>
+            <p className="text-base sm:text-lg text-muted-foreground mt-2 max-w-md leading-relaxed">
+              One platform for selling, creating, and growing your digital brand.
+            </p>
+          </div>
+          <Link
+            to="/tools"
+            className="hidden sm:inline-flex h-10 px-6 items-center justify-center rounded-full bg-foreground text-background text-sm font-semibold hover:bg-foreground/90 transition-colors shrink-0"
           >
-            {/* Left — text */}
-            <div>
-              <h3 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-foreground tracking-tight leading-[1.1] mb-6">
-                {active.title}
-              </h3>
-              <p className="text-base sm:text-lg text-muted-foreground leading-relaxed mb-8">
-                {active.description}
-              </p>
-              <div className="flex flex-wrap gap-2 mb-10">
-                {active.tags.map((tag) => (
-                  <span
-                    key={tag}
-                    className="px-4 py-2 rounded-full text-xs font-semibold border border-border/40 bg-card/50 text-foreground/70 uppercase tracking-wider"
-                  >
-                    {tag}
-                  </span>
-                ))}
-              </div>
-              <button
-                onClick={() => navigate(active.link)}
-                className="inline-flex items-center gap-2 text-primary font-semibold text-sm group/link hover:gap-3 transition-all duration-300"
-              >
-                Explore
-                <ArrowUpRight className="h-4 w-4 transition-transform group-hover/link:translate-x-0.5 group-hover/link:-translate-y-0.5" />
-              </button>
-            </div>
+            Try online
+          </Link>
+        </div>
 
-            {/* Right — image */}
-            <div className="relative rounded-2xl overflow-hidden aspect-[16/10] bg-card border border-border/20">
-              <img
-                src={active.image}
-                alt={active.title}
-                className="w-full h-full object-cover transition-transform duration-700 hover:scale-[1.02]"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-background/30 via-transparent to-transparent" />
-              <div className="absolute inset-0 border border-border/10 rounded-2xl" />
-            </div>
-          </motion.div>
-        </AnimatePresence>
-      </div>
-    </section>
+        {/* Accordion rows */}
+        <div className="space-y-0">
+          {categories.map((cat) => {
+            const isOpen = openId === cat.id;
+            return (
+              <div key={cat.id} className="border-b border-border/40">
+                {/* Row header */}
+                <button
+                  onClick={() => toggle(cat.id)}
+                  className="w-full flex items-center gap-6 sm:gap-10 py-6 sm:py-8 group text-left"
+                >
+                  <span className="text-2xl sm:text-3xl lg:text-4xl font-light text-muted-foreground/40 tabular-nums w-12 sm:w-16 shrink-0">
+                    {cat.number}
+                  </span>
+                  <span className="text-xl sm:text-2xl lg:text-3xl font-semibold text-foreground flex-1 group-hover:text-primary transition-colors">
+                    {cat.label}
+                  </span>
+                  <div className="p-1">
+                    {isOpen ? (
+                      <Minus className="h-5 w-5 sm:h-6 sm:w-6 text-muted-foreground" />
+                    ) : (
+                      <Plus className="h-5 w-5 sm:h-6 sm:w-6 text-muted-foreground" />
+                    )}
+                  </div>
+                </button>
+
+                {/* Expandable panel */}
+                <AnimatePresence initial={false}>
+                  {isOpen && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: 'auto', opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+                      className="overflow-hidden"
+                    >
+                      <div className="rounded-2xl bg-secondary/50 border border-border/20 p-6 sm:p-8 lg:p-10 mb-6 sm:mb-8">
+                        <div className="grid grid-cols-1 lg:grid-cols-[1fr_auto] gap-8 lg:gap-12">
+                          {/* Left: Content */}
+                          <div className="flex flex-col justify-center">
+                            <div className="flex items-center gap-2 mb-3">
+                              <Sparkles className="h-4 w-4 text-primary" />
+                              <span className="text-sm font-semibold text-foreground">
+                                {cat.featured.title}
+                              </span>
+                            </div>
+                            <p className="text-sm sm:text-base text-muted-foreground leading-relaxed max-w-md mb-6">
+                              <Link
+                                to={cat.featured.link}
+                                className="text-primary hover:underline"
+                              >
+                                {cat.featured.linkText}
+                              </Link>
+                              {' — '}
+                              {cat.featured.desc}
+                            </p>
+
+                            {/* Other tools list */}
+                            <div className="space-y-3">
+                              {cat.tools.map((tool) => (
+                                <p key={tool} className="text-sm sm:text-base font-semibold text-foreground">
+                                  {tool}
+                                </p>
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* Right: Image */}
+                          <div className="w-full lg:w-[340px] xl:w-[400px] shrink-0">
+                            <img
+                              src={cat.featured.image}
+                              alt={cat.featured.title}
+                              className="w-full h-auto rounded-xl object-cover aspect-[4/3]"
+                              loading="lazy"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Bottom CTA pill */}
+        <div className="flex justify-center mt-10 sm:mt-14">
+          <Link
+            to="/tools"
+            className="inline-flex items-center gap-3 px-6 py-3 rounded-full bg-gradient-to-r from-primary/10 via-accent/10 to-primary/10 border border-border/30 hover:border-primary/30 transition-all"
+          >
+            <span className="text-sm font-medium text-foreground">
+              Create smarter, build faster
+            </span>
+            <span className="inline-flex h-9 px-5 items-center justify-center rounded-full bg-foreground text-background text-sm font-semibold">
+              Try online for free
+            </span>
+          </Link>
+        </div>
+      </section>
+    </Reveal>
   );
 }
