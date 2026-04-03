@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { getToolById, ToolData } from "./toolsData";
 import { toolsRegistry } from "./toolsRegistry";
+import { toolThumbnails } from "./studio/toolThumbnails";
 import { ProToolsGate } from "./ProToolsGate";
 import { useSubscription } from "@/hooks/useSubscription";
 import { SourceSelector, type SourceMode, type ProductContext } from "./SourceSelector";
