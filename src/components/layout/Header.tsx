@@ -18,7 +18,7 @@ import { useSubscription } from '@/hooks/useSubscription';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
 import { CreditFuelGauge } from '@/components/subscription/CreditFuelGauge';
 import EditorChatIcon from '@/components/chat/EditorChatIcon';
-import sellspayLogo from '@/assets/sellspay-nav-logo.png';
+import sellspayLogo from '@/assets/sellspay-s-logo-new.png';
 import { cn } from '@/lib/utils';
 import { LowCreditWarning, LOW_CREDIT_THRESHOLD } from '@/components/ai-builder/LowCreditWarning';
 import { CreditTopUpDialog } from '@/components/ai-builder/CreditTopUpDialog';
