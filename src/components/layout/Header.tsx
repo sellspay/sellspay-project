@@ -343,7 +343,7 @@ export default function Header() {
           {/* Mobile: Centered Logo */}
           <div className="lg:hidden absolute left-1/2 -translate-x-1/2">
             <Link to="/" className="flex items-center">
-              <img src={sellspayLogo} alt="SellsPay" width={32} height={32} className="h-8 w-8 object-contain" />
+              <img src={sellspayLogo} alt="SellsPay" width={32} height={32} className="h-8 w-8 object-contain" style={{ filter: 'brightness(0)' }} />
             </Link>
           </div>
 
