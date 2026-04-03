@@ -626,6 +626,9 @@ export default function Header() {
           currentBalance={credits}
         />
       </header>
+
+      {/* Pricing Modal */}
+      <PricingModal open={pricingOpen} onOpenChange={setPricingOpen} />
     </>
   );
 }
