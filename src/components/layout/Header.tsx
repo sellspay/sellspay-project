@@ -191,18 +191,6 @@ export default function Header() {
                   </NavigationMenuContent>
                 </NavigationMenuItem>
 
-                {/* Creators - Simple Link */}
-                <NavigationMenuItem>
-                  <Link 
-                    to="/creators" 
-                    className={cn(
-                      "inline-flex h-10 items-center justify-center",
-                      isActive('/creators') ? activeNavLinkStyles : navLinkStyles
-                    )}
-                  >
-                    Creators
-                  </Link>
-                </NavigationMenuItem>
 
                 {/* Tools - Click to navigate, hover for dropdown */}
                 <NavigationMenuItem>
