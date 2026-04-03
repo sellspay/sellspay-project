@@ -12,6 +12,10 @@ import { EditorMarketplaceTeaser } from '@/components/home/EditorMarketplaceTeas
 import { CreatorSpotlights } from '@/components/home/CreatorSpotlights';
 import { BrowseCategories } from '@/components/home/BrowseCategories';
 import { HomeCtaBanner } from '@/components/home/HomeCtaBanner';
+import { SectionBanner } from '@/components/home/SectionBanner';
+import bannerMarketplace from '@/assets/banner-marketplace.jpg';
+import bannerEditors from '@/assets/banner-editors.jpg';
+import bannerCreators from '@/assets/banner-creators.jpg';
 import aiStudioBanner from '@/assets/ai-studio-banner.jpg';
 
 interface Product {
