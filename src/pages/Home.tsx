@@ -162,14 +162,6 @@ export default function Home() {
       <AIToolsReveal />
       <AIStudioPromo />
       <ValueProps />
-      <Reveal>
-        <MassiveProductGrid 
-          products={featuredWithStats} 
-          allProducts={products}
-          loading={loading} 
-        />
-      </Reveal>
-      <FeaturedCreators />
     </div>
   );
 }
