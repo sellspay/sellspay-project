@@ -199,14 +199,14 @@ function MassiveProductGrid({ products, allProducts, loading }: MassiveProductGr
   }
 
   return (
-    <section className="py-20 sm:py-28 lg:py-36">
-      <div className="px-6 sm:px-8 lg:px-12 mb-14 sm:mb-20">
+    <section className="py-24 sm:py-32 lg:py-40">
+      <div className="px-6 sm:px-8 lg:px-12 xl:px-16 max-w-[1400px] mx-auto mb-14 sm:mb-20">
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6">
           <div>
-            <p className="text-sm uppercase tracking-[0.2em] text-muted-foreground mb-3">
+            <p className="text-xs font-semibold uppercase tracking-[0.25em] text-primary mb-4">
               Curated Collection
             </p>
-            <h2 className="text-4xl sm:text-5xl lg:text-6xl font-semibold text-foreground tracking-tight">
+            <h2 className="text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-extrabold text-foreground tracking-tight leading-[1.05]">
               Featured Assets
             </h2>
           </div>
