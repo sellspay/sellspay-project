@@ -259,7 +259,7 @@ export default function Header() {
                     className={cn(
                       "w-[280px] p-4 z-50",
                       "bg-card border border-border",
-                      "shadow-xl shadow-black/30",
+                      "shadow-xl shadow-black/5",
                       "rounded-xl"
                     )}
                   >
