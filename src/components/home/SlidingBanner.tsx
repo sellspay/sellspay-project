@@ -123,8 +123,8 @@ export default function SlidingBanner() {
                   height: '32px',
                   width: 'auto',
                   objectFit: 'contain',
-                  filter: 'grayscale(1) invert(1)',
-                  opacity: 0.5,
+                  filter: 'grayscale(1)',
+                  opacity: 0.45,
                   flex: '0 0 auto',
                 }}
               />
