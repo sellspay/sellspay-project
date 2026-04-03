@@ -23,6 +23,7 @@ import { cn } from '@/lib/utils';
 import { LowCreditWarning, LOW_CREDIT_THRESHOLD } from '@/components/ai-builder/LowCreditWarning';
 import { CreditTopUpDialog } from '@/components/ai-builder/CreditTopUpDialog';
 import { CreditSegmentBar } from '@/components/ui/CreditSegmentBar';
+import { PricingModal } from '@/components/pricing/PricingModal';
 
 // Marketplace product cards — CapCut style with thumbnails
 const marketplaceCards = [
@@ -88,6 +89,7 @@ export default function Header() {
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [topUpOpen, setTopUpOpen] = useState(false);
+  const [pricingOpen, setPricingOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [activeDropdown, setActiveDropdown] = useState<DropdownKey>(null);
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -298,15 +300,15 @@ export default function Header() {
             {/* Right Side */}
             <div className="flex items-center gap-2 sm:gap-3">
               {!user && (
-                <Link 
-                  to="/pricing" 
+                <button 
+                  onClick={() => setPricingOpen(true)}
                   className={cn(
                     "hidden lg:inline-flex h-10 items-center justify-center",
-                    isActive('/pricing') ? activeNavLinkStyles : navLinkStyles
+                    navLinkStyles
                   )}
                 >
                   Pricing
-                </Link>
+                </button>
               )}
 
               {user && (
@@ -552,7 +554,6 @@ export default function Header() {
                 { to: '/studio', icon: Wand2, label: 'AI Studio' },
                 { to: '/community', icon: MessageSquare, label: 'Community' },
                 { to: '/hire-professionals', icon: Mic, label: 'Hire Professionals' },
-                ...(!user ? [{ to: '/pricing', icon: DollarSign, label: 'Pricing' }] : []),
               ].map((item) => (
                 <Link
                   key={item.to}
@@ -569,6 +570,16 @@ export default function Header() {
                   {item.label}
                 </Link>
               ))}
+
+              {!user && (
+                <button
+                  onClick={() => { setMobileMenuOpen(false); setPricingOpen(true); }}
+                  className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-foreground/70 hover:bg-muted hover:text-foreground transition-all"
+                >
+                  <DollarSign className="h-5 w-5" />
+                  Pricing
+                </button>
+              )}
 
               {user && (
                 <>
@@ -615,6 +626,9 @@ export default function Header() {
           currentBalance={credits}
         />
       </header>
+
+      {/* Pricing Modal */}
+      <PricingModal open={pricingOpen} onOpenChange={setPricingOpen} />
     </>
   );
 }
