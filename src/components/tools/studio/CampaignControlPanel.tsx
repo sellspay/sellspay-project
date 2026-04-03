@@ -85,7 +85,7 @@ export function CampaignControlPanel({ creditBalance, isLoadingCredits, onGenera
 
         {/* Checklist */}
         <div className="space-y-2">
-          <div className="flex items-center gap-2.5 px-2 py-2 rounded-lg bg-white/[0.02]">
+          <div className="flex items-center gap-2.5 px-2 py-2 rounded-lg bg-muted/30">
             <Package className={cn("h-3.5 w-3.5", hasProduct ? "text-emerald-400" : "text-muted-foreground/30")} />
             <div className="flex-1 min-w-0">
               <p className="text-[10px] text-muted-foreground/40 uppercase tracking-wider">Product</p>
