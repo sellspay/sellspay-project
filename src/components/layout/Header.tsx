@@ -121,7 +121,7 @@ export default function Header() {
                 alt="SellsPay" 
                 width={36}
                 height={36}
-                className="h-9 w-9 object-contain transition-transform duration-300 group-hover:scale-105"
+                className="h-9 w-9 object-contain rounded-lg transition-transform duration-300 group-hover:scale-105"
               />
             </Link>
 
