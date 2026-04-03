@@ -571,6 +571,16 @@ export default function Header() {
                 </Link>
               ))}
 
+              {!user && (
+                <button
+                  onClick={() => { setMobileMenuOpen(false); setPricingOpen(true); }}
+                  className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-foreground/70 hover:bg-muted hover:text-foreground transition-all"
+                >
+                  <DollarSign className="h-5 w-5" />
+                  Pricing
+                </button>
+              )}
+
               {user && (
                 <>
                   <div className="h-px bg-border my-2 mx-4" />
