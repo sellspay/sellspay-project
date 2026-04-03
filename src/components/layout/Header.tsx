@@ -554,7 +554,7 @@ export default function Header() {
         {mobileMenuOpen && (
           <div className={cn(
             "lg:hidden py-4 animate-fade-in",
-            "border-t border-white/10"
+            "border-t border-border/50"
           )}>
             <nav className="flex flex-col gap-1 px-2">
               {[
