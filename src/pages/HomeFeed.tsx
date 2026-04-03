@@ -6,8 +6,11 @@ import { ProductCarousel } from '@/components/home/ProductCarousel';
 import { Reveal } from '@/components/home/Reveal';
 import { Button } from '@/components/ui/button';
 import { ArrowRight, Wand2, Code, Sparkles } from 'lucide-react';
+import { TrendingProducts } from '@/components/home/TrendingProducts';
+import { AIToolsShowcase } from '@/components/home/AIToolsShowcase';
+import { EditorMarketplaceTeaser } from '@/components/home/EditorMarketplaceTeaser';
+import { CreatorSpotlights } from '@/components/home/CreatorSpotlights';
 import aiStudioBanner from '@/assets/ai-studio-banner.jpg';
-import aiBuilderBanner from '@/assets/ai-builder-banner.jpg';
 
 interface Product {
   id: string;
@@ -228,6 +231,14 @@ const HomeFeed = forwardRef<HTMLDivElement>((_, ref) => {
           </div>
         </section>
       </Reveal>
+
+      <TrendingProducts />
+
+      <AIToolsShowcase />
+
+      <EditorMarketplaceTeaser />
+
+      <CreatorSpotlights />
 
       {recentlyViewed.length > 0 && (
         <Reveal>
