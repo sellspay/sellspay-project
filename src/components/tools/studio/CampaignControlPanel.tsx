@@ -137,8 +137,8 @@ export function CampaignControlPanel({ creditBalance, isLoadingCredits, onGenera
                 <div className={cn(
                   "h-4 w-4 rounded border flex items-center justify-center transition-colors",
                   enabledOutputs.has(opt.id)
-                    ? "bg-gradient-to-b from-[#4B8BF5] to-[#2563EB] border-transparent"
-                    : "border-white/[0.12] bg-transparent"
+                    ? "bg-primary border-transparent"
+                    : "border-border bg-transparent"
                 )}>
                   {enabledOutputs.has(opt.id) && <Check className="h-2.5 w-2.5 text-white" />}
                 </div>
