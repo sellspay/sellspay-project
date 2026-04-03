@@ -21,7 +21,7 @@ import {
   Wand2, Music, FileVideo, Film, Headphones, ArrowRight, Zap,
   ShoppingCart, Home, Users, Mic, MessageSquare, DollarSign, Search, HelpCircle, ChevronDown
 } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useSubscription } from '@/hooks/useSubscription';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
 import { CreditFuelGauge } from '@/components/subscription/CreditFuelGauge';
