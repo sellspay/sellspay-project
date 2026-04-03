@@ -105,7 +105,7 @@ export default function Header() {
     )}>
       
       <div className="mx-auto w-full px-4 sm:px-6 lg:px-8">
-        <div className="flex h-16 items-center justify-between">
+        <div className="relative flex h-16 items-center justify-between">
           {/* Mobile: Hamburger on far left */}
           <div className="lg:hidden flex items-center">
             <button
@@ -116,9 +116,9 @@ export default function Header() {
             </button>
           </div>
 
-          {/* Left side: Logo + Main Nav (desktop) */}
-          <div className="hidden lg:flex items-center gap-8">
-            {/* Logo - desktop */}
+          {/* Center: Logo + Main Nav (desktop) */}
+          <div className="hidden lg:flex items-center gap-6 absolute left-1/2 -translate-x-1/2">
+            {/* Logo */}
             <Link to="/" className="flex items-center shrink-0 group">
               <img 
                 src={sellspayLogo} 
