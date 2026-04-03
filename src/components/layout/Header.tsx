@@ -129,7 +129,7 @@ export default function Header() {
                 width={36}
                 height={36}
                 className="h-9 w-9 object-contain transition-transform duration-300 group-hover:scale-105"
-                style={{ filter: 'brightness(0)' }}
+                style={{ filter: 'saturate(0) brightness(0.15) contrast(1.5)' }}
               />
             </Link>
 
