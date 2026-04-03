@@ -23,6 +23,7 @@ import { cn } from '@/lib/utils';
 import { LowCreditWarning, LOW_CREDIT_THRESHOLD } from '@/components/ai-builder/LowCreditWarning';
 import { CreditTopUpDialog } from '@/components/ai-builder/CreditTopUpDialog';
 import { CreditSegmentBar } from '@/components/ui/CreditSegmentBar';
+import { PricingModal } from '@/components/pricing/PricingModal';
 
 // Marketplace product cards — CapCut style with thumbnails
 const marketplaceCards = [
