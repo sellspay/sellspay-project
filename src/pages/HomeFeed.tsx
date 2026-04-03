@@ -10,6 +10,8 @@ import { TrendingProducts } from '@/components/home/TrendingProducts';
 import { AIToolsShowcase } from '@/components/home/AIToolsShowcase';
 import { EditorMarketplaceTeaser } from '@/components/home/EditorMarketplaceTeaser';
 import { CreatorSpotlights } from '@/components/home/CreatorSpotlights';
+import { BrowseCategories } from '@/components/home/BrowseCategories';
+import { HomeCtaBanner } from '@/components/home/HomeCtaBanner';
 import aiStudioBanner from '@/assets/ai-studio-banner.jpg';
 
 interface Product {
@@ -50,7 +52,6 @@ const HomeFeed = forwardRef<HTMLDivElement>((_, ref) => {
 
     const fetchAll = async () => {
       try {
-        // Fetch recently viewed products
         const viewedRes = await supabase
           .from('product_views')
           .select('product_id')
@@ -76,7 +77,6 @@ const HomeFeed = forwardRef<HTMLDivElement>((_, ref) => {
 
     fetchAll();
   }, [user]);
-  
 
   if (loading) {
     return (
@@ -88,7 +88,7 @@ const HomeFeed = forwardRef<HTMLDivElement>((_, ref) => {
 
   return (
     <div ref={ref} className="min-h-screen bg-background pb-16">
-      {/* Greeting bar */}
+      {/* Greeting */}
       <div className="px-6 sm:px-8 lg:px-10 pt-8 pb-4">
         <h1 className="text-xl sm:text-2xl font-bold text-foreground tracking-tight">
           Welcome back{profile?.full_name ? `, ${profile.full_name.split(' ')[0]}` : ''}
@@ -103,17 +103,13 @@ const HomeFeed = forwardRef<HTMLDivElement>((_, ref) => {
             className="group relative block w-full overflow-hidden rounded-2xl border border-primary/20"
             style={{ aspectRatio: '21/8' }}
           >
-            {/* Background image */}
             <img
               src={aiStudioBanner}
               alt="AI Studio"
               className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.03]"
             />
-            {/* Overlay gradients */}
             <div className="absolute inset-0 bg-gradient-to-r from-background/95 via-background/60 to-transparent" />
             <div className="absolute inset-0 bg-gradient-to-t from-background/80 via-transparent to-transparent" />
-
-            {/* Content */}
             <div className="relative z-10 flex flex-col justify-center h-full px-8 sm:px-12 lg:px-16 max-w-2xl">
               <div className="flex items-center gap-2 mb-3">
                 <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/15 border border-primary/25">
@@ -124,7 +120,7 @@ const HomeFeed = forwardRef<HTMLDivElement>((_, ref) => {
               <h2 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-foreground tracking-tight leading-tight mb-2">
                 Create with AI Studio
               </h2>
-              <p className="text-sm sm:text-base text-zinc-400 leading-relaxed mb-5 max-w-md">
+              <p className="text-sm sm:text-base text-muted-foreground leading-relaxed mb-5 max-w-md">
                 Generate images, isolate vocals, split stems, create SFX, and more — all powered by cutting-edge AI models.
               </p>
               <Button
@@ -141,12 +137,16 @@ const HomeFeed = forwardRef<HTMLDivElement>((_, ref) => {
         </section>
       </Reveal>
 
-      {/* AI Builder — Interactive Demo Teaser */}
+      {/* AI Tools — Artlist-style visual cards */}
+      <AIToolsShowcase />
+
+      {/* Trending Products */}
+      <TrendingProducts />
+
+      {/* VibeCoder — Interactive builder teaser */}
       <Reveal>
         <section className="px-6 sm:px-8 lg:px-10 pb-8">
-          {/* Ambient glow background */}
           <div className="relative py-16 sm:py-24 lg:py-28">
-            {/* Animated gradient orbs */}
             <div className="absolute inset-0 overflow-hidden pointer-events-none">
               <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[450px] bg-emerald-500/[0.07] rounded-full blur-[120px] animate-pulse" />
               <div className="absolute top-1/3 left-1/3 w-[400px] h-[300px] bg-primary/[0.05] rounded-full blur-[100px] animate-pulse" style={{ animationDelay: '1s' }} />
@@ -166,7 +166,6 @@ const HomeFeed = forwardRef<HTMLDivElement>((_, ref) => {
               </p>
             </div>
 
-            {/* Terminal-style prompt */}
             <form
               onSubmit={(e) => {
                 e.preventDefault();
@@ -179,7 +178,6 @@ const HomeFeed = forwardRef<HTMLDivElement>((_, ref) => {
               className="relative z-10 max-w-3xl mx-auto"
             >
               <div className="relative group">
-                {/* Glow ring on focus */}
                 <div className="absolute -inset-[2px] rounded-2xl bg-gradient-to-r from-emerald-500/60 via-primary/40 to-emerald-500/60 opacity-0 group-focus-within:opacity-100 transition-all duration-500 blur-sm" />
                 <div className="absolute -inset-[1px] rounded-2xl bg-gradient-to-r from-emerald-500/40 via-primary/30 to-emerald-500/40 opacity-0 group-focus-within:opacity-100 transition-all duration-500" />
 
@@ -212,7 +210,6 @@ const HomeFeed = forwardRef<HTMLDivElement>((_, ref) => {
               </div>
             </form>
 
-            {/* Quick prompt suggestions */}
             <div className="relative z-10 flex flex-wrap justify-center gap-2.5 mt-6 max-w-3xl mx-auto">
               {['Music producer store', 'Photography portfolio', 'Digital art shop', 'SFX marketplace'].map((suggestion, i) => (
                 <button
@@ -232,14 +229,16 @@ const HomeFeed = forwardRef<HTMLDivElement>((_, ref) => {
         </section>
       </Reveal>
 
-      <TrendingProducts />
+      {/* Browse by Category — Artlist-style image strip */}
+      <BrowseCategories />
 
-      <AIToolsShowcase />
-
+      {/* Editor Marketplace */}
       <EditorMarketplaceTeaser />
 
+      {/* Creator Spotlights */}
       <CreatorSpotlights />
 
+      {/* Recently Viewed */}
       {recentlyViewed.length > 0 && (
         <Reveal>
           <div className="pb-8">
@@ -251,6 +250,8 @@ const HomeFeed = forwardRef<HTMLDivElement>((_, ref) => {
         </Reveal>
       )}
 
+      {/* Final CTA Banner */}
+      <HomeCtaBanner />
     </div>
   );
 });
