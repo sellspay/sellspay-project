@@ -300,15 +300,15 @@ export default function Header() {
             {/* Right Side */}
             <div className="flex items-center gap-2 sm:gap-3">
               {!user && (
-                <Link 
-                  to="/pricing" 
+                <button 
+                  onClick={() => setPricingOpen(true)}
                   className={cn(
                     "hidden lg:inline-flex h-10 items-center justify-center",
-                    isActive('/pricing') ? activeNavLinkStyles : navLinkStyles
+                    navLinkStyles
                   )}
                 >
                   Pricing
-                </Link>
+                </button>
               )}
 
               {user && (
