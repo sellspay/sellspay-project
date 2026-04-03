@@ -361,7 +361,7 @@ export default function Header() {
                 variant="ghost"
                 size="icon"
                 asChild
-                className="hidden lg:inline-flex h-10 w-10 rounded-xl text-foreground/70 hover:text-foreground hover:bg-white/5"
+                className="hidden lg:inline-flex h-10 w-10 rounded-xl text-foreground/70 hover:text-foreground hover:bg-muted"
               >
                 <Link to="/cart">
                   <ShoppingCart className="h-5 w-5" />
