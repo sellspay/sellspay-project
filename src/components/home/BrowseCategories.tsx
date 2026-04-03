@@ -22,26 +22,31 @@ const categories = [
 export function BrowseCategories() {
   return (
     <Reveal>
-      <section className="px-6 sm:px-8 lg:px-10 pb-12">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl sm:text-2xl font-bold text-foreground tracking-tight">
-            Browse by Category
-          </h2>
+      <section className="px-6 sm:px-8 lg:px-10 pb-16 sm:pb-20">
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-8 sm:mb-10">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary mb-3">
+              Marketplace
+            </p>
+            <h2 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-foreground tracking-tight">
+              Browse by Category
+            </h2>
+          </div>
           <Link
             to="/explore"
-            className="text-sm font-medium text-primary hover:text-primary/80 transition-colors flex items-center gap-1"
+            className="text-sm font-semibold text-primary hover:text-primary/80 transition-colors flex items-center gap-1.5 shrink-0"
           >
             Explore All <ArrowRight className="h-3.5 w-3.5" />
           </Link>
         </div>
 
-        {/* Horizontal scroll row like Artlist's category strip */}
-        <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide -mx-6 px-6 sm:-mx-8 sm:px-8 lg:-mx-10 lg:px-10">
+        {/* Grid layout for larger presence */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-3 sm:gap-4">
           {categories.map((cat) => (
             <Link
               key={cat.label}
               to={cat.path}
-              className="group relative flex-shrink-0 w-40 sm:w-48 overflow-hidden rounded-xl"
+              className="group relative overflow-hidden rounded-2xl"
             >
               <div className="aspect-[3/4] relative overflow-hidden">
                 <img
@@ -50,11 +55,10 @@ export function BrowseCategories() {
                   loading="lazy"
                   className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                 />
-                {/* Gradient overlay */}
-                <div className="absolute inset-0 bg-gradient-to-t from-background via-background/20 to-transparent" />
-                {/* Label */}
-                <div className="absolute bottom-0 left-0 right-0 p-4">
-                  <span className="text-sm font-bold text-foreground">{cat.label}</span>
+                <div className="absolute inset-0 bg-gradient-to-t from-background via-background/30 to-transparent" />
+                <div className="absolute inset-0 border border-border/10 rounded-2xl group-hover:border-primary/20 transition-colors" />
+                <div className="absolute bottom-0 left-0 right-0 p-4 sm:p-5">
+                  <span className="text-sm sm:text-base font-bold text-foreground">{cat.label}</span>
                 </div>
               </div>
             </Link>

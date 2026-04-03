@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { Reveal } from './Reveal';
 import { Button } from '@/components/ui/button';
+import { ArrowRight } from 'lucide-react';
 
 interface SectionBannerProps {
   image: string;
@@ -16,7 +17,7 @@ export function SectionBanner({ image, headline, subtitle, ctaLabel, ctaLink }: 
       <section className="px-6 sm:px-8 lg:px-10 pb-10">
         <Link
           to={ctaLink}
-          className="group relative block w-full overflow-hidden rounded-2xl"
+          className="group relative block w-full overflow-hidden rounded-2xl border border-border/15"
           style={{ aspectRatio: '21/6' }}
         >
           <img
@@ -25,11 +26,11 @@ export function SectionBanner({ image, headline, subtitle, ctaLabel, ctaLink }: 
             loading="lazy"
             className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.02]"
           />
-          <div className="absolute inset-0 bg-gradient-to-r from-background/90 via-background/50 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-r from-background/95 via-background/60 to-transparent" />
           <div className="absolute inset-0 bg-gradient-to-t from-background/60 via-transparent to-transparent" />
 
-          <div className="relative z-10 flex flex-col justify-center h-full px-8 sm:px-12 max-w-lg">
-            <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold text-foreground tracking-tight leading-tight mb-2">
+          <div className="relative z-10 flex flex-col justify-center h-full px-8 sm:px-12 lg:px-16 max-w-xl">
+            <h2 className="text-xl sm:text-2xl lg:text-3xl font-extrabold text-foreground tracking-tight leading-tight mb-2">
               {headline}
             </h2>
             {subtitle && (
@@ -38,10 +39,13 @@ export function SectionBanner({ image, headline, subtitle, ctaLabel, ctaLink }: 
               </p>
             )}
             <Button
-              className="w-fit rounded-full px-6 h-10 text-sm font-bold bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg shadow-primary/20"
+              className="w-fit rounded-full px-6 h-10 text-sm font-bold bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg shadow-primary/20 gap-2"
               asChild
             >
-              <span>{ctaLabel}</span>
+              <span>
+                {ctaLabel}
+                <ArrowRight className="h-4 w-4" />
+              </span>
             </Button>
           </div>
         </Link>

@@ -5,8 +5,7 @@ import { useAuth } from '@/lib/auth';
 import { ProductCarousel } from '@/components/home/ProductCarousel';
 import { Reveal } from '@/components/home/Reveal';
 import { Button } from '@/components/ui/button';
-import { ArrowRight, Wand2, Code, Sparkles } from 'lucide-react';
-import { TrendingProducts } from '@/components/home/TrendingProducts';
+import { ArrowRight, Wand2, Code, Sparkles, Zap, Users, Download, ShieldCheck } from 'lucide-react';
 import { AIToolsShowcase } from '@/components/home/AIToolsShowcase';
 import { EditorMarketplaceTeaser } from '@/components/home/EditorMarketplaceTeaser';
 import { CreatorSpotlights } from '@/components/home/CreatorSpotlights';
@@ -93,19 +92,86 @@ const HomeFeed = forwardRef<HTMLDivElement>((_, ref) => {
 
   return (
     <div ref={ref} className="min-h-screen bg-background pb-16">
-      {/* Greeting */}
-      <div className="px-6 sm:px-8 lg:px-10 pt-8 pb-4">
-        <h1 className="text-xl sm:text-2xl font-bold text-foreground tracking-tight">
-          Welcome back{profile?.full_name ? `, ${profile.full_name.split(' ')[0]}` : ''}
-        </h1>
-      </div>
+      {/* ═══════════════════════════════════════════════════════════ */}
+      {/* HERO AREA — Big, cinematic, CapCut-inspired               */}
+      {/* ═══════════════════════════════════════════════════════════ */}
+      <section className="relative px-6 sm:px-8 lg:px-10 pt-10 sm:pt-14 pb-14 sm:pb-20">
+        {/* Ambient glow */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[900px] h-[400px] bg-primary/[0.04] rounded-full blur-[120px]" />
+        </div>
 
-      {/* AI Studio Hero Banner */}
+        <div className="relative z-10 max-w-4xl mx-auto text-center">
+          {/* Greeting pill */}
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-card border border-border/30 mb-8">
+            <Zap className="h-3.5 w-3.5 text-primary" />
+            <span className="text-xs font-medium text-muted-foreground">
+              Welcome back{profile?.full_name ? `, ${profile.full_name.split(' ')[0]}` : ''}
+            </span>
+          </div>
+
+          {/* Hero headline */}
+          <h1 className="text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-extrabold tracking-tight text-foreground leading-[1.1] mb-6">
+            Everything you need to{' '}
+            <span className="text-primary">create</span>,{' '}
+            <span className="text-primary">sell</span> &{' '}
+            <span className="text-primary">grow</span>
+          </h1>
+
+          <p className="text-base sm:text-lg lg:text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed mb-10">
+            AI-powered tools, premium digital assets, and a global marketplace — all in one platform built for creators.
+          </p>
+
+          {/* CTA row */}
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mb-14">
+            <Button
+              asChild
+              size="lg"
+              className="h-13 px-8 text-base font-bold rounded-full shadow-lg shadow-primary/20"
+            >
+              <Link to="/studio">
+                <Wand2 className="h-4 w-4 mr-2" />
+                Try AI Studio
+              </Link>
+            </Button>
+            <Button
+              asChild
+              variant="outline"
+              size="lg"
+              className="h-13 px-8 text-base font-bold rounded-full border-border/50"
+            >
+              <Link to="/explore">
+                Explore Assets
+                <ArrowRight className="h-4 w-4 ml-2" />
+              </Link>
+            </Button>
+          </div>
+
+          {/* Stats strip */}
+          <div className="flex items-center justify-center gap-8 sm:gap-14">
+            {[
+              { icon: Download, label: 'Downloads', value: '50K+' },
+              { icon: Users, label: 'Creators', value: '500+' },
+              { icon: ShieldCheck, label: 'Assets', value: '5,000+' },
+            ].map((stat) => (
+              <div key={stat.label} className="flex flex-col items-center gap-1">
+                <stat.icon className="h-4 w-4 text-muted-foreground/50 mb-0.5" />
+                <span className="text-xl sm:text-2xl font-extrabold text-foreground tracking-tight">{stat.value}</span>
+                <span className="text-[11px] sm:text-xs text-muted-foreground/60 uppercase tracking-wider font-medium">{stat.label}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ═══════════════════════════════════════════════════════════ */}
+      {/* AI STUDIO BANNER — Cinematic card                         */}
+      {/* ═══════════════════════════════════════════════════════════ */}
       <Reveal>
-        <section className="px-6 sm:px-8 lg:px-10 pb-8">
+        <section className="px-6 sm:px-8 lg:px-10 pb-10">
           <Link
             to="/studio"
-            className="group relative block w-full overflow-hidden rounded-2xl border border-primary/20"
+            className="group relative block w-full overflow-hidden rounded-2xl border border-border/20"
             style={{ aspectRatio: '21/8' }}
           >
             <img
@@ -119,17 +185,17 @@ const HomeFeed = forwardRef<HTMLDivElement>((_, ref) => {
               <div className="flex items-center gap-2 mb-3">
                 <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/15 border border-primary/25">
                   <Wand2 className="h-3.5 w-3.5 text-primary" />
-                  <span className="text-[11px] font-semibold uppercase tracking-[0.15em] text-primary">AI-Powered Tools</span>
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.15em] text-primary">AI-Powered</span>
                 </div>
               </div>
               <h2 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-foreground tracking-tight leading-tight mb-2">
                 Create with AI Studio
               </h2>
               <p className="text-sm sm:text-base text-muted-foreground leading-relaxed mb-5 max-w-md">
-                Generate images, isolate vocals, split stems, create SFX, and more — all powered by cutting-edge AI models.
+                Generate images, isolate vocals, split stems, create SFX, and more — all powered by cutting-edge AI.
               </p>
               <Button
-                className="w-fit px-6 h-10 sm:h-11 text-sm font-bold bg-primary text-primary-foreground hover:bg-primary/90 gap-2 shadow-lg shadow-primary/20"
+                className="w-fit px-6 h-10 sm:h-11 text-sm font-bold bg-primary text-primary-foreground hover:bg-primary/90 gap-2 shadow-lg shadow-primary/20 rounded-full"
                 asChild
               >
                 <span>
@@ -142,10 +208,14 @@ const HomeFeed = forwardRef<HTMLDivElement>((_, ref) => {
         </section>
       </Reveal>
 
-      {/* AI Tools — Artlist-style visual cards */}
+      {/* ═══════════════════════════════════════════════════════════ */}
+      {/* AI TOOLS — CapCut-style numbered tabs with previews       */}
+      {/* ═══════════════════════════════════════════════════════════ */}
       <AIToolsShowcase />
 
-      {/* Marketplace Banner */}
+      {/* ═══════════════════════════════════════════════════════════ */}
+      {/* MARKETPLACE BANNER                                        */}
+      {/* ═══════════════════════════════════════════════════════════ */}
       <SectionBanner
         image={bannerMarketplace}
         headline="Discover digital assets made by real creators"
@@ -154,23 +224,30 @@ const HomeFeed = forwardRef<HTMLDivElement>((_, ref) => {
         ctaLink="/explore"
       />
 
-      {/* Music — Artlist-style playable tracks */}
+      {/* ═══════════════════════════════════════════════════════════ */}
+      {/* MUSIC SECTION — Playable tracks                           */}
+      {/* ═══════════════════════════════════════════════════════════ */}
       <HomeMusicSection />
 
-      {/* Browse by Category — Artlist-style image strip */}
+      {/* ═══════════════════════════════════════════════════════════ */}
+      {/* BROWSE CATEGORIES                                         */}
+      {/* ═══════════════════════════════════════════════════════════ */}
       <BrowseCategories />
 
-      {/* VibeCoder — Interactive builder teaser */}
+      {/* ═══════════════════════════════════════════════════════════ */}
+      {/* VIBECODER — Interactive builder                            */}
+      {/* ═══════════════════════════════════════════════════════════ */}
       <Reveal>
-        <section className="px-6 sm:px-8 lg:px-10 pb-8">
-          <div className="relative py-16 sm:py-24 lg:py-28">
+        <section className="px-6 sm:px-8 lg:px-10 pb-10">
+          <div className="relative py-20 sm:py-28 lg:py-32 overflow-hidden rounded-2xl border border-border/20 bg-card/30">
+            {/* Ambient orbs */}
             <div className="absolute inset-0 overflow-hidden pointer-events-none">
-              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[450px] bg-emerald-500/[0.07] rounded-full blur-[120px] animate-pulse" />
-              <div className="absolute top-1/3 left-1/3 w-[400px] h-[300px] bg-primary/[0.05] rounded-full blur-[100px] animate-pulse" style={{ animationDelay: '1s' }} />
-              <div className="absolute bottom-1/4 right-1/3 w-[350px] h-[250px] bg-emerald-400/[0.04] rounded-full blur-[100px] animate-pulse" style={{ animationDelay: '2s' }} />
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[450px] bg-emerald-500/[0.06] rounded-full blur-[120px] animate-pulse" />
+              <div className="absolute top-1/3 left-1/3 w-[400px] h-[300px] bg-primary/[0.04] rounded-full blur-[100px] animate-pulse" style={{ animationDelay: '1s' }} />
+              <div className="absolute bottom-1/4 right-1/3 w-[350px] h-[250px] bg-emerald-400/[0.03] rounded-full blur-[100px] animate-pulse" style={{ animationDelay: '2s' }} />
             </div>
 
-            <div className="relative z-10 text-center mb-10 sm:mb-12">
+            <div className="relative z-10 text-center mb-10 sm:mb-12 px-6">
               <div className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full border border-emerald-500/25 bg-emerald-500/10 mb-6">
                 <Code className="h-4 w-4 text-emerald-400" />
                 <span className="text-xs font-semibold uppercase tracking-[0.15em] text-emerald-400">VibeCoder</span>
@@ -192,7 +269,7 @@ const HomeFeed = forwardRef<HTMLDivElement>((_, ref) => {
                   navigate('/ai-builder');
                 }
               }}
-              className="relative z-10 max-w-3xl mx-auto"
+              className="relative z-10 max-w-3xl mx-auto px-6"
             >
               <div className="relative group">
                 <div className="absolute -inset-[2px] rounded-2xl bg-gradient-to-r from-emerald-500/60 via-primary/40 to-emerald-500/60 opacity-0 group-focus-within:opacity-100 transition-all duration-500 blur-sm" />
@@ -200,12 +277,7 @@ const HomeFeed = forwardRef<HTMLDivElement>((_, ref) => {
 
                 <div className="relative flex items-center bg-card/80 backdrop-blur-sm border border-border/40 rounded-2xl overflow-hidden group-focus-within:border-transparent transition-colors shadow-2xl shadow-background/50">
                   <div className="flex items-center gap-2 pl-5 pr-2">
-                    <div className="relative">
-                      <Sparkles className="h-5 w-5 text-emerald-400/70 group-focus-within:text-emerald-400 transition-colors" />
-                      <div className="absolute inset-0 h-5 w-5 text-emerald-400 blur-sm opacity-0 group-focus-within:opacity-50 transition-opacity">
-                        <Sparkles className="h-5 w-5" />
-                      </div>
-                    </div>
+                    <Sparkles className="h-5 w-5 text-emerald-400/70 group-focus-within:text-emerald-400 transition-colors" />
                   </div>
                   <input
                     type="text"
@@ -227,7 +299,7 @@ const HomeFeed = forwardRef<HTMLDivElement>((_, ref) => {
               </div>
             </form>
 
-            <div className="relative z-10 flex flex-wrap justify-center gap-2.5 mt-6 max-w-3xl mx-auto">
+            <div className="relative z-10 flex flex-wrap justify-center gap-2.5 mt-6 max-w-3xl mx-auto px-6">
               {['Music producer store', 'Photography portfolio', 'Digital art shop', 'SFX marketplace'].map((suggestion, i) => (
                 <button
                   key={suggestion}
@@ -236,7 +308,6 @@ const HomeFeed = forwardRef<HTMLDivElement>((_, ref) => {
                     navigate('/ai-builder', { state: { initialPrompt: suggestion } });
                   }}
                   className="px-4 py-2 text-xs font-medium text-muted-foreground/70 hover:text-emerald-400 bg-card/50 hover:bg-emerald-500/10 border border-border/20 hover:border-emerald-500/30 rounded-full transition-all duration-300"
-                  style={{ animationDelay: `${i * 100}ms` }}
                 >
                   {suggestion}
                 </button>
@@ -246,7 +317,9 @@ const HomeFeed = forwardRef<HTMLDivElement>((_, ref) => {
         </section>
       </Reveal>
 
-      {/* Editors Banner */}
+      {/* ═══════════════════════════════════════════════════════════ */}
+      {/* EDITORS                                                   */}
+      {/* ═══════════════════════════════════════════════════════════ */}
       <SectionBanner
         image={bannerEditors}
         headline="Work with professional editors who bring your vision to life"
@@ -254,11 +327,11 @@ const HomeFeed = forwardRef<HTMLDivElement>((_, ref) => {
         ctaLabel="Browse Editors"
         ctaLink="/editors"
       />
-
-      {/* Editor Marketplace */}
       <EditorMarketplaceTeaser />
 
-      {/* Creators Banner */}
+      {/* ═══════════════════════════════════════════════════════════ */}
+      {/* CREATORS                                                  */}
+      {/* ═══════════════════════════════════════════════════════════ */}
       <SectionBanner
         image={bannerCreators}
         headline="Join a community of independent creators selling worldwide"
@@ -266,11 +339,11 @@ const HomeFeed = forwardRef<HTMLDivElement>((_, ref) => {
         ctaLabel="Become a Creator"
         ctaLink="/apply"
       />
-
-      {/* Creator Spotlights */}
       <CreatorSpotlights />
 
-      {/* Recently Viewed */}
+      {/* ═══════════════════════════════════════════════════════════ */}
+      {/* RECENTLY VIEWED                                           */}
+      {/* ═══════════════════════════════════════════════════════════ */}
       {recentlyViewed.length > 0 && (
         <Reveal>
           <div className="pb-8">
@@ -282,7 +355,9 @@ const HomeFeed = forwardRef<HTMLDivElement>((_, ref) => {
         </Reveal>
       )}
 
-      {/* Final CTA Banner */}
+      {/* ═══════════════════════════════════════════════════════════ */}
+      {/* FINAL CTA                                                 */}
+      {/* ═══════════════════════════════════════════════════════════ */}
       <HomeCtaBanner />
     </div>
   );
