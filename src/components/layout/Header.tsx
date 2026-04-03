@@ -510,8 +510,29 @@ export default function Header() {
           onMouseLeave={handleLeavePanel}
         >
           <div className="bg-background">
-            <div className="mx-auto max-w-5xl px-8 py-8">
-              {activeDropdown === 'marketplace' && renderColumns(marketplaceCategories)}
+            <div className="mx-auto max-w-6xl px-8 py-8">
+              {activeDropdown === 'marketplace' && (
+                <div className="grid grid-cols-6 gap-5">
+                  {marketplaceCards.map((card) => (
+                    <Link
+                      key={card.path}
+                      to={card.path}
+                      onClick={() => setActiveDropdown(null)}
+                      className="group flex flex-col items-center text-center"
+                    >
+                      <div className={cn(
+                        "w-full aspect-[4/3] rounded-2xl flex items-center justify-center mb-3 transition-all duration-200",
+                        `bg-gradient-to-br ${card.gradient}`,
+                        "group-hover:shadow-lg group-hover:scale-[1.03]"
+                      )}>
+                        <span className="text-3xl">{card.icon}</span>
+                      </div>
+                      <span className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors">{card.name}</span>
+                      <span className="text-xs text-muted-foreground mt-0.5">{card.subtitle}</span>
+                    </Link>
+                  ))}
+                </div>
+              )}
               {activeDropdown === 'studio' && renderColumns(studioCategories)}
               {activeDropdown === 'community' && renderColumns(communityCategories)}
             </div>
