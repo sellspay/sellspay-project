@@ -132,7 +132,7 @@ export function CampaignControlPanel({ creditBalance, isLoadingCredits, onGenera
                 key={opt.id}
                 onClick={() => toggleOutput(opt.id)}
                 disabled={isGenerating}
-                className="flex items-center gap-2.5 w-full px-2 py-1.5 rounded-lg text-left transition-colors hover:bg-white/[0.03] disabled:opacity-50"
+                className="flex items-center gap-2.5 w-full px-2 py-1.5 rounded-lg text-left transition-colors hover:bg-muted/30 disabled:opacity-50"
               >
                 <div className={cn(
                   "h-4 w-4 rounded border flex items-center justify-center transition-colors",
