@@ -195,7 +195,7 @@ export default function HeroSection() {
               variant="outline"
               className="h-10 sm:h-12 lg:h-16 px-6 sm:px-10 lg:px-14 text-sm sm:text-base lg:text-lg font-medium tracking-wider rounded-full bg-transparent border-2 border-white/60 text-white hover:bg-white hover:text-black transition-all duration-300"
             >
-              <Link to="/products">
+              <Link to="/login">
                 discover
               </Link>
             </Button>
