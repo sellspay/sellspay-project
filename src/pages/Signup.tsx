@@ -6,6 +6,7 @@ import { Eye, EyeOff, Loader2, Check, X } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { useDebounce } from '@/hooks/use-debounce';
 import AuthMediaCarousel from '@/components/auth/AuthMediaCarousel';
+import sellspayLogo from '@/assets/sellspay-s-logo-new.png';
 
 export default function Signup() {
   const navigate = useNavigate();
@@ -92,8 +93,6 @@ export default function Signup() {
       const { data: { user: newUser } } = await supabase.auth.getUser();
       if (newUser) {
         await supabase.from('profiles').update({ username: cleanUsername, full_name: fullName.trim() }).eq('user_id', newUser.id);
-        
-        // Process referral if ref code in URL
         const params = new URLSearchParams(location.search);
         const refCode = params.get('ref');
         if (refCode) {
@@ -152,10 +151,12 @@ export default function Signup() {
     }
   };
 
+  const inputClass = "w-full h-11 px-4 rounded-lg bg-background border border-border text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all text-sm";
+
   return (
     <div className="min-h-screen flex bg-background">
-      {/* Left Half — Media Carousel (hidden on mobile) */}
-      <div className="hidden lg:block lg:w-1/2 relative">
+      {/* Left Half — Video */}
+      <div className="hidden lg:block lg:w-[55%] relative">
         <AuthMediaCarousel />
       </div>
 
@@ -165,44 +166,45 @@ export default function Signup() {
       </Link>
 
       {/* Right Half — Form */}
-      <div className="w-full lg:w-1/2 flex flex-col min-h-screen overflow-y-auto relative">
-        {/* Mobile-only home link */}
-        <Link to="/" className="absolute top-6 left-6 text-sm text-muted-foreground hover:text-foreground transition-colors z-10 lg:hidden">
-          ← Home
-        </Link>
+      <div className="w-full lg:w-[45%] flex flex-col min-h-screen overflow-y-auto relative bg-background">
+        {/* Logo top-right area */}
+        <div className="flex items-center justify-between px-8 pt-6">
+          <Link to="/" className="lg:hidden text-sm text-muted-foreground hover:text-foreground transition-colors">
+            ← Home
+          </Link>
+          <Link to="/" className="flex items-center gap-2 ml-auto">
+            <img src={sellspayLogo} alt="SellsPay" className="h-8 w-8" />
+            <span className="text-lg font-bold text-foreground tracking-tight">SellsPay</span>
+          </Link>
+        </div>
 
-        <div className="flex-1 flex items-center justify-center px-6 sm:px-12 lg:px-16 py-8">
-          <div className="w-full max-w-[420px]">
+        <div className="flex-1 flex items-center justify-center px-8 sm:px-12 lg:px-16 py-8">
+          <div className="w-full max-w-[400px]">
             {/* Header */}
-            <div className="mb-6">
-              <h1 className="text-3xl font-bold text-foreground mb-2 tracking-tight">Join the Community</h1>
-              <p className="text-muted-foreground">Create your account and start your journey</p>
+            <div className="text-center mb-8">
+              <h1 className="text-2xl font-bold text-foreground mb-1.5 tracking-tight">Welcome to SellsPay</h1>
+              <p className="text-muted-foreground text-sm">Sign up to unlock all features</p>
             </div>
 
-            <p className="text-muted-foreground mb-6 text-sm">
-              Already have an account?{' '}
-              <Link to={`/login${location.search}`} className="text-primary font-medium hover:underline">Log in</Link>
-            </p>
-
-            <div className="space-y-6">
+            <div className="space-y-4">
               {/* Google Sign Up */}
               <button
                 type="button"
                 onClick={handleGoogleSignUp}
                 disabled={googleLoading}
-                className="w-full h-12 flex items-center justify-center gap-3 rounded-lg bg-card/60 border border-border text-foreground font-medium transition-all duration-300 hover:bg-white hover:text-black hover:border-white/60 disabled:opacity-50"
+                className="w-full h-11 flex items-center justify-center gap-3 rounded-lg border border-border text-foreground text-sm font-medium transition-all duration-200 hover:bg-muted/50 disabled:opacity-50"
               >
                 {googleLoading ? (
-                  <Loader2 className="w-5 h-5 animate-spin" />
+                  <Loader2 className="w-4 h-4 animate-spin" />
                 ) : (
-                  <svg className="w-5 h-5" viewBox="0 0 24 24">
+                  <svg className="w-4 h-4" viewBox="0 0 24 24">
                     <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
                     <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
                     <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
                     <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
                   </svg>
                 )}
-                <span>{googleLoading ? 'Connecting...' : 'Sign up with Google'}</span>
+                <span>{googleLoading ? 'Connecting...' : 'Continue with Google'}</span>
               </button>
 
               {/* Divider */}
@@ -211,50 +213,52 @@ export default function Signup() {
                   <div className="w-full border-t border-border" />
                 </div>
                 <div className="relative flex justify-center">
-                  <span className="bg-background px-4 text-xs text-muted-foreground uppercase">or</span>
+                  <span className="bg-background px-4 text-xs text-muted-foreground uppercase tracking-wider">or</span>
                 </div>
               </div>
 
               {/* Form */}
-              <form onSubmit={handleSignup} className="space-y-4">
-                <div className="space-y-2">
-                  <label className="text-sm text-muted-foreground">Full Name</label>
+              <form onSubmit={handleSignup} className="space-y-3">
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Full Name</label>
                   <input type="text" placeholder="John Doe" value={fullName} onChange={(e) => setFullName(e.target.value)} required
-                    className="w-full h-12 px-4 rounded-lg bg-card/60 border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all" />
+                    className={inputClass} />
                 </div>
 
-                <div className="space-y-2">
-                  <label className="text-sm text-muted-foreground">Username</label>
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Username</label>
                   <div className="relative">
                     <input type="text" placeholder="johndoe" value={username} onChange={(e) => setUsername(e.target.value)} required
-                      className={`w-full h-12 px-4 pr-12 rounded-lg bg-card/60 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all ${getInputBorderClass(usernameStatus)}`} />
-                    <div className="absolute right-4 top-1/2 -translate-y-1/2">{renderValidationIcon(usernameStatus)}</div>
+                      className={`${inputClass} pr-10 ${getInputBorderClass(usernameStatus)}`} />
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2">{renderValidationIcon(usernameStatus)}</div>
                   </div>
-                  {usernameStatus === 'taken' && <p className="text-destructive text-xs">Username is already taken</p>}
+                  {usernameStatus === 'taken' && <p className="text-destructive text-xs mt-1">Username is already taken</p>}
                 </div>
 
-                <div className="space-y-2">
-                  <label className="text-sm text-muted-foreground">Email</label>
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Email</label>
                   <div className="relative">
                     <input type="email" placeholder="you@example.com" value={email} onChange={(e) => setEmail(e.target.value)} required
-                      className={`w-full h-12 px-4 pr-12 rounded-lg bg-card/60 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all ${getInputBorderClass(emailStatus)}`} />
-                    <div className="absolute right-4 top-1/2 -translate-y-1/2">{renderValidationIcon(emailStatus)}</div>
+                      className={`${inputClass} pr-10 ${getInputBorderClass(emailStatus)}`} />
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2">{renderValidationIcon(emailStatus)}</div>
                   </div>
-                  {emailStatus === 'taken' && <p className="text-destructive text-xs">This email is already registered.</p>}
+                  {emailStatus === 'taken' && <p className="text-destructive text-xs mt-1">This email is already registered.</p>}
                 </div>
 
-                <div className="space-y-2">
-                  <label className="text-sm text-muted-foreground">Phone <span className="text-muted-foreground/50">(optional)</span></label>
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
+                    Phone <span className="text-muted-foreground/50">(optional)</span>
+                  </label>
                   <input type="tel" placeholder="+1 (555) 000-0000" value={phone} onChange={(e) => setPhone(e.target.value)}
-                    className="w-full h-12 px-4 rounded-lg bg-card/60 border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all" />
+                    className={inputClass} />
                 </div>
 
-                <div className="space-y-2">
-                  <label className="text-sm text-muted-foreground">Password</label>
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Password</label>
                   <div className="relative">
                     <input type={showPassword ? 'text' : 'password'} placeholder="••••••••••••" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6}
-                      className="w-full h-12 px-4 pr-12 rounded-lg bg-card/60 border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all" />
-                    <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors">
+                      className={`${inputClass} pr-10`} />
+                    <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors">
                       {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                     </button>
                   </div>
@@ -263,17 +267,23 @@ export default function Signup() {
                 {error && <p className="text-destructive text-sm text-center">{error}</p>}
 
                 <button type="submit" disabled={loading || usernameStatus === 'taken' || emailStatus === 'taken'}
-                  className="w-full h-12 rounded-lg bg-primary text-primary-foreground font-medium transition-all duration-300 hover:bg-primary/90 disabled:opacity-50">
-                  {loading ? 'Creating Account...' : 'Sign Up'}
+                  className="w-full h-11 rounded-lg bg-primary text-primary-foreground font-semibold text-sm transition-all duration-200 hover:bg-primary/90 disabled:opacity-50">
+                  {loading ? 'Creating Account...' : 'Continue'}
                 </button>
               </form>
 
+              {/* Already have account */}
+              <p className="text-center text-sm text-muted-foreground">
+                Already have an account?{' '}
+                <Link to={`/login${location.search}`} className="text-primary font-medium hover:underline">Log in</Link>
+              </p>
+
               {/* Terms */}
-              <p className="text-center text-xs text-muted-foreground">
-                By signing up, you agree to our{' '}
-                <Link to="/terms" className="underline hover:text-foreground">Terms</Link>
+              <p className="text-center text-[11px] text-muted-foreground/70 leading-relaxed">
+                By clicking Continue, you accept our{' '}
+                <Link to="/terms" className="text-primary hover:underline">Terms of Service</Link>
                 {' '}and{' '}
-                <Link to="/privacy" className="underline hover:text-foreground">Privacy Policy</Link>.
+                <Link to="/privacy" className="text-primary hover:underline">Privacy Policy</Link>
               </p>
             </div>
           </div>
