@@ -213,7 +213,7 @@ function MassiveProductGrid({ products, allProducts, loading }: MassiveProductGr
           <Button 
             onClick={() => navigate('/products')} 
             variant="ghost"
-            className="px-0 h-auto text-base font-medium group text-foreground/70 hover:text-foreground hover:bg-transparent"
+            className="px-0 h-auto text-sm font-semibold group text-primary hover:text-primary/80 hover:bg-transparent"
           >
             View All
             <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
@@ -221,8 +221,8 @@ function MassiveProductGrid({ products, allProducts, loading }: MassiveProductGr
         </div>
       </div>
 
-      <div className="px-0">
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-[2px]">
+      <div className="px-6 sm:px-8 lg:px-12 xl:px-16 max-w-[1400px] mx-auto">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3 sm:gap-4">
           {displayProducts.slice(0, 12).map((product, index) => (
             <div 
               key={product.id}
@@ -246,13 +246,13 @@ function MassiveProductGrid({ products, allProducts, loading }: MassiveProductGr
         </div>
       </div>
 
-      <div className="text-center mt-16 sm:mt-20 px-6">
+      <div className="text-center mt-20 sm:mt-24 px-6">
         <Button 
           onClick={() => navigate('/products')} 
-          className="px-14 h-16 text-lg font-semibold bg-primary text-primary-foreground hover:bg-primary/90 transition-all duration-300"
+          className="px-12 h-14 text-base font-bold rounded-full bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg shadow-primary/20 transition-all duration-300"
         >
           Explore All Assets
-          <ArrowRight className="ml-3 h-6 w-6" />
+          <ArrowRight className="ml-2 h-5 w-5" />
         </Button>
       </div>
     </section>
