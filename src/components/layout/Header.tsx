@@ -399,7 +399,7 @@ export default function Header() {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent 
                   align="end" 
-                  className="w-72 p-0 bg-[#0F1115] border-border/50 rounded-2xl overflow-hidden shadow-2xl shadow-black/60"
+                  className="w-72 p-0 bg-card border-border/50 rounded-2xl overflow-hidden shadow-xl shadow-black/8"
                 >
                   {/* User identity + tier badge */}
                   <div className="px-4 py-3 border-b border-border/30">
