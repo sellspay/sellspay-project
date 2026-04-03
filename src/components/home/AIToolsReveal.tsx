@@ -26,8 +26,8 @@ interface PanelMedia {
   media?: PanelMedia;
  };
  
-const REVEAL_SURFACE = "hsl(var(--background))";
-const REVEAL_FOREGROUND = "hsl(var(--foreground))";
+const REVEAL_SURFACE = "#f8f8f8";
+const REVEAL_FOREGROUND = "#0a0a0a";
 const REVEAL_DARK = "hsl(0 0% 4%)";
 const REVEAL_DARK_TEXT = "hsl(0 0% 100%)";
 const REVEAL_VIDEO = "hsl(15 76% 61%)";
