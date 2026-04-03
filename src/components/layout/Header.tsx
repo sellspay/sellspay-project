@@ -523,20 +523,18 @@ export default function Header() {
               </DropdownMenu>
             ) : (
               <div className="hidden lg:flex items-center gap-3">
-                <Link 
-                  to="/login" 
-                  className={cn(
-                    "inline-flex h-10 items-center justify-center",
-                    navLinkStyles
-                  )}
-                >
-                  Sign In
-                </Link>
                 <Button 
                   asChild 
-                  className="h-10 px-6 text-sm font-semibold rounded-full"
+                  className="h-10 px-6 text-sm font-medium rounded-full"
                 >
-                  <Link to="/signup">Start Free Now</Link>
+                  <Link to="/signup">Get Started</Link>
+                </Button>
+                <Button 
+                  variant="outline"
+                  asChild 
+                  className="h-10 px-6 text-sm font-medium rounded-full"
+                >
+                  <Link to="/login">Sign In</Link>
                 </Button>
               </div>
             )}
