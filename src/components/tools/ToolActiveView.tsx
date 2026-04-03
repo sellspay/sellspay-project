@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { getToolById, ToolData } from "./toolsData";
 import { toolsRegistry } from "./toolsRegistry";
+import { toolThumbnails } from "./studio/toolThumbnails";
 import { ProToolsGate } from "./ProToolsGate";
 import { useSubscription } from "@/hooks/useSubscription";
 import { SourceSelector, type SourceMode, type ProductContext } from "./SourceSelector";
@@ -182,48 +183,71 @@ export function ToolActiveView({
       >
         {/* Hero Banner — only in standalone mode */}
         {embedded ? (
-          <div className="relative overflow-hidden">
-            {/* Gradient hero strip */}
-            <div className={cn("h-32 relative", `bg-gradient-to-br ${tool.gradient}`)}>
-              <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(255,255,255,0.15),transparent_60%)]" />
-              <div className="absolute inset-0 bg-gradient-to-t from-background via-transparent to-transparent" />
+          <div className="relative overflow-hidden bg-background">
+            {/* Visual hero with tool thumbnail */}
+            <div className="relative h-48 overflow-hidden">
+              {/* Background image or gradient */}
+              {toolThumbnails[toolId] ? (
+                <>
+                  <img 
+                    src={toolThumbnails[toolId]} 
+                    alt="" 
+                    className="absolute inset-0 w-full h-full object-cover"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-r from-background via-background/80 to-background/40" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-background via-transparent to-transparent" />
+                </>
+              ) : (
+                <>
+                  <div className={cn("absolute inset-0", `bg-gradient-to-br ${tool.gradient}`)} />
+                  <div className="absolute inset-0 bg-gradient-to-t from-background via-background/30 to-transparent" />
+                </>
+              )}
               
               {/* Back button */}
-              <Button onClick={onClose} variant="ghost" size="sm" className="absolute top-3 left-3 z-10 gap-2 text-white/80 hover:text-white hover:bg-white/15 backdrop-blur-sm">
+              <Button onClick={onClose} variant="ghost" size="sm" className="absolute top-3 left-3 z-10 gap-2 text-foreground/80 hover:text-foreground bg-background/60 backdrop-blur-md hover:bg-background/80 border border-border/30">
                 <ArrowLeft className="w-4 h-4" /> Back
               </Button>
               
               {/* Credits badge */}
-              <div className="absolute top-3 right-3 z-10 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/15 backdrop-blur-sm border border-white/10">
-                <Sparkles className="w-3.5 h-3.5 text-white/80" />
-                <span className="text-xs font-semibold text-white tabular-nums">
+              <div className="absolute top-3 right-3 z-10 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-background/60 backdrop-blur-md border border-border/30">
+                <Sparkles className="w-3.5 h-3.5 text-primary" />
+                <span className="text-xs font-semibold text-foreground tabular-nums">
                   {isLoadingCredits ? "…" : creditBalance} credits
                 </span>
               </div>
-            </div>
-            
-            {/* Tool info overlapping the gradient */}
-            <div className="relative -mt-10 px-6 pb-4 flex items-end gap-4">
-              <div className={cn(
-                "w-16 h-16 rounded-2xl flex items-center justify-center shrink-0 shadow-xl border-2 border-background",
-                `bg-gradient-to-br ${tool.gradient}`
-              )}>
-                <Icon className="w-7 h-7 text-white" />
-              </div>
-              <div className="flex-1 min-w-0 pb-1">
-                <h1 className="text-lg font-bold text-foreground tracking-tight">{tool.title}</h1>
-                <p className="text-xs text-muted-foreground truncate">{tool.tagline}</p>
-              </div>
-              {tool.badge && (
-                <Badge className={cn(
-                  "border-0 shrink-0",
-                  tool.badge === "Pro" && "bg-primary/10 text-primary",
-                  tool.badge === "Free" && "bg-emerald-500/10 text-emerald-600"
+
+              {/* Tool info positioned at bottom-left */}
+              <div className="absolute bottom-4 left-4 z-10 flex items-end gap-3">
+                <div className={cn(
+                  "w-14 h-14 rounded-2xl overflow-hidden shrink-0 shadow-xl border-2 border-background",
+                  !toolThumbnails[toolId] && `bg-gradient-to-br ${tool.gradient}`
                 )}>
-                  {tool.badge === "Pro" && <Crown className="w-3 h-3 mr-1" />}
-                  {tool.badge}
-                </Badge>
-              )}
+                  {toolThumbnails[toolId] ? (
+                    <img src={toolThumbnails[toolId]} alt="" className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                      <Icon className="w-6 h-6 text-white" />
+                    </div>
+                  )}
+                </div>
+                <div className="pb-0.5">
+                  <div className="flex items-center gap-2">
+                    <h1 className="text-xl font-bold text-foreground tracking-tight drop-shadow-sm">{tool.title}</h1>
+                    {tool.badge && (
+                      <Badge className={cn(
+                        "border-0 text-[10px]",
+                        tool.badge === "Pro" && "bg-primary/15 text-primary",
+                        tool.badge === "Free" && "bg-emerald-500/15 text-emerald-600"
+                      )}>
+                        {tool.badge === "Pro" && <Crown className="w-2.5 h-2.5 mr-0.5" />}
+                        {tool.badge}
+                      </Badge>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground">{tool.tagline}</p>
+                </div>
+              </div>
             </div>
           </div>
         
