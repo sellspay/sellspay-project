@@ -1,11 +1,12 @@
 import { useState, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ShoppingBag, Image, Video, Music, Sparkles, ArrowRight } from 'lucide-react';
+import { ShoppingBag, Image, Video, Music, Sparkles, ArrowRight, ArrowUpRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import everythingYouNeedImg from '@/assets/everything-you-need.jpg';
 
 interface FeatureTab {
   id: string;
+  number: string;
   label: string;
   icon: React.ReactNode;
   title: string;
@@ -18,8 +19,9 @@ interface FeatureTab {
 const tabs: FeatureTab[] = [
   {
     id: 'marketplace',
+    number: '01',
     label: 'Marketplace',
-    icon: <ShoppingBag className="h-4 w-4" />,
+    icon: <ShoppingBag className="h-5 w-5" />,
     title: 'Browse & Sell Digital Assets',
     description: 'Discover thousands of premium digital products from top creators worldwide. From LUTs to presets, sound effects to templates — find everything you need to level up your creative workflow.',
     tags: ['LUTs', 'Presets', 'Templates', 'Sound Packs'],
@@ -28,8 +30,9 @@ const tabs: FeatureTab[] = [
   },
   {
     id: 'image-gen',
+    number: '02',
     label: 'Image Generation',
-    icon: <Image className="h-4 w-4" />,
+    icon: <Image className="h-5 w-5" />,
     title: 'AI-Powered Product Visuals',
     description: "Build your store's hero in seconds with our AI image generation models. Create stunning product visuals, banners, and promotional art — no design skills needed.",
     tags: ['Text-to-Image', 'Product Shots', 'Banners', 'Thumbnails'],
@@ -38,8 +41,9 @@ const tabs: FeatureTab[] = [
   },
   {
     id: 'video-gen',
+    number: '03',
     label: 'Video Generation',
-    icon: <Video className="h-4 w-4" />,
+    icon: <Video className="h-5 w-5" />,
     title: 'Text & Image to Video',
     description: 'Transform static images into cinematic video clips or generate entirely new footage from text prompts. Perfect for promos, social content, and product showcases.',
     tags: ['Text-to-Video', 'Image-to-Video', 'Promos', 'Shorts'],
@@ -48,8 +52,9 @@ const tabs: FeatureTab[] = [
   },
   {
     id: 'audio',
+    number: '04',
     label: 'Audio Tools',
-    icon: <Music className="h-4 w-4" />,
+    icon: <Music className="h-5 w-5" />,
     title: 'Professional Audio Suite',
     description: 'Generate custom sound effects, isolate vocals from any track, split stems, and convert between formats. Studio-grade audio tools accessible to everyone.',
     tags: ['SFX Generator', 'Voice Isolator', 'Stem Splitter', 'Converter'],
@@ -58,8 +63,9 @@ const tabs: FeatureTab[] = [
   },
   {
     id: 'storefront',
+    number: '05',
     label: 'AI Storefront',
-    icon: <Sparkles className="h-4 w-4" />,
+    icon: <Sparkles className="h-5 w-5" />,
     title: 'Build Your Creator Page with AI',
     description: 'Describe your brand vibe and watch AI build a fully customized storefront. Unique layouts, color palettes, and sections — all generated in seconds.',
     tags: ['AI Builder', 'Custom Themes', 'Drag & Drop', 'Brand Kit'],
@@ -76,7 +82,6 @@ export function FeatureTabsBar() {
 
   const handleTabClick = useCallback((i: number) => {
     setActiveTab(i);
-    // Scroll the clicked button to center on mobile
     const container = scrollRef.current;
     if (!container) return;
     const button = container.children[i] as HTMLElement;
@@ -86,33 +91,43 @@ export function FeatureTabsBar() {
   }, []);
 
   return (
-    <section className="py-20 sm:py-28 lg:py-32">
-      <div className="px-6 sm:px-8 lg:px-12 max-w-[1400px] mx-auto">
+    <section className="py-24 sm:py-32 lg:py-40">
+      <div className="px-6 sm:px-8 lg:px-12 xl:px-16 max-w-[1400px] mx-auto">
         {/* Section header */}
-        <div className="mb-12 sm:mb-16">
-          <h2 className="text-4xl sm:text-5xl lg:text-6xl font-semibold text-foreground tracking-tight">
+        <div className="mb-16 sm:mb-20">
+          <p className="text-xs font-semibold uppercase tracking-[0.25em] text-primary mb-4">
+            Platform
+          </p>
+          <h2 className="text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-extrabold text-foreground tracking-tight leading-[1.05]">
             Everything you need
           </h2>
+          <p className="text-lg sm:text-xl text-muted-foreground mt-5 max-w-2xl leading-relaxed">
+            One platform for selling, creating, and growing your digital brand.
+          </p>
         </div>
 
-        {/* Tab buttons row — horizontally scrollable */}
+        {/* CapCut-style numbered tabs */}
         <div
           ref={scrollRef}
-          className="flex gap-3 overflow-x-auto pb-4 scrollbar-hide mb-12 sm:mb-16 snap-x snap-mandatory scroll-px-6 -mx-6 px-6"
+          className="flex gap-2 overflow-x-auto pb-6 scrollbar-hide mb-14 sm:mb-16 snap-x snap-mandatory scroll-px-6 -mx-6 px-6"
         >
           {tabs.map((tab, i) => (
             <button
               key={tab.id}
               onClick={() => handleTabClick(i)}
-              className={`flex items-center gap-2.5 px-5 py-3 rounded-full border text-sm font-medium whitespace-nowrap transition-all duration-300 snap-center shrink-0 ${
+              className={`group relative flex items-center gap-3 px-6 py-4 rounded-xl border text-sm font-medium whitespace-nowrap transition-all duration-300 snap-center shrink-0 ${
                 i === activeTab
-                  ? 'bg-primary text-primary-foreground border-primary shadow-lg shadow-primary/20'
-                  : 'bg-transparent text-muted-foreground border-primary/40 hover:border-primary/70 hover:text-foreground'
+                  ? 'bg-primary/10 text-foreground border-primary/30'
+                  : 'bg-card/50 text-muted-foreground border-border/30 hover:border-border/60 hover:text-foreground'
               }`}
             >
+              <span className={`text-xl font-black tabular-nums transition-colors ${
+                i === activeTab ? 'text-primary' : 'text-muted-foreground/25'
+              }`}>
+                {tab.number}
+              </span>
               {tab.icon}
               {tab.label}
-              <ArrowRight className="h-3.5 w-3.5 opacity-60" />
             </button>
           ))}
         </div>
@@ -121,25 +136,25 @@ export function FeatureTabsBar() {
         <AnimatePresence mode="wait">
           <motion.div
             key={active.id}
-            initial={{ opacity: 0, y: 12 }}
+            initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -12 }}
-            transition={{ duration: 0.3 }}
+            exit={{ opacity: 0, y: -16 }}
+            transition={{ duration: 0.35, ease: 'easeOut' }}
             className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16 items-center"
           >
             {/* Left — text */}
             <div>
-              <h3 className="text-3xl sm:text-4xl lg:text-5xl font-semibold text-foreground tracking-tight mb-5">
+              <h3 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-foreground tracking-tight leading-[1.1] mb-6">
                 {active.title}
               </h3>
               <p className="text-base sm:text-lg text-muted-foreground leading-relaxed mb-8">
                 {active.description}
               </p>
-              <div className="flex flex-wrap gap-2 mb-8">
+              <div className="flex flex-wrap gap-2 mb-10">
                 {active.tags.map((tag) => (
                   <span
                     key={tag}
-                    className="px-3.5 py-1.5 rounded-full text-xs font-medium border border-border bg-card text-foreground/80"
+                    className="px-4 py-2 rounded-full text-xs font-semibold border border-border/40 bg-card/50 text-foreground/70 uppercase tracking-wider"
                   >
                     {tag}
                   </span>
@@ -147,21 +162,22 @@ export function FeatureTabsBar() {
               </div>
               <button
                 onClick={() => navigate(active.link)}
-                className="text-primary font-medium text-sm flex items-center gap-2 group hover:gap-3 transition-all"
+                className="inline-flex items-center gap-2 text-primary font-semibold text-sm group/link hover:gap-3 transition-all duration-300"
               >
-                Learn More
-                <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+                Explore
+                <ArrowUpRight className="h-4 w-4 transition-transform group-hover/link:translate-x-0.5 group-hover/link:-translate-y-0.5" />
               </button>
             </div>
 
             {/* Right — image */}
-            <div className="relative rounded-2xl overflow-hidden aspect-[16/10] bg-card border border-border">
+            <div className="relative rounded-2xl overflow-hidden aspect-[16/10] bg-card border border-border/20">
               <img
                 src={active.image}
                 alt={active.title}
-                className="w-full h-full object-cover"
+                className="w-full h-full object-cover transition-transform duration-700 hover:scale-[1.02]"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-background/40 to-transparent" />
+              <div className="absolute inset-0 bg-gradient-to-t from-background/30 via-transparent to-transparent" />
+              <div className="absolute inset-0 border border-border/10 rounded-2xl" />
             </div>
           </motion.div>
         </AnimatePresence>

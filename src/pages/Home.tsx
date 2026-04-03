@@ -199,21 +199,21 @@ function MassiveProductGrid({ products, allProducts, loading }: MassiveProductGr
   }
 
   return (
-    <section className="py-20 sm:py-28 lg:py-36">
-      <div className="px-6 sm:px-8 lg:px-12 mb-14 sm:mb-20">
+    <section className="py-24 sm:py-32 lg:py-40">
+      <div className="px-6 sm:px-8 lg:px-12 xl:px-16 max-w-[1400px] mx-auto mb-14 sm:mb-20">
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6">
           <div>
-            <p className="text-sm uppercase tracking-[0.2em] text-muted-foreground mb-3">
+            <p className="text-xs font-semibold uppercase tracking-[0.25em] text-primary mb-4">
               Curated Collection
             </p>
-            <h2 className="text-4xl sm:text-5xl lg:text-6xl font-semibold text-foreground tracking-tight">
+            <h2 className="text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-extrabold text-foreground tracking-tight leading-[1.05]">
               Featured Assets
             </h2>
           </div>
           <Button 
             onClick={() => navigate('/products')} 
             variant="ghost"
-            className="px-0 h-auto text-base font-medium group text-foreground/70 hover:text-foreground hover:bg-transparent"
+            className="px-0 h-auto text-sm font-semibold group text-primary hover:text-primary/80 hover:bg-transparent"
           >
             View All
             <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
@@ -221,8 +221,8 @@ function MassiveProductGrid({ products, allProducts, loading }: MassiveProductGr
         </div>
       </div>
 
-      <div className="px-0">
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-[2px]">
+      <div className="px-6 sm:px-8 lg:px-12 xl:px-16 max-w-[1400px] mx-auto">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3 sm:gap-4">
           {displayProducts.slice(0, 12).map((product, index) => (
             <div 
               key={product.id}
@@ -246,13 +246,13 @@ function MassiveProductGrid({ products, allProducts, loading }: MassiveProductGr
         </div>
       </div>
 
-      <div className="text-center mt-16 sm:mt-20 px-6">
+      <div className="text-center mt-20 sm:mt-24 px-6">
         <Button 
           onClick={() => navigate('/products')} 
-          className="px-14 h-16 text-lg font-semibold bg-primary text-primary-foreground hover:bg-primary/90 transition-all duration-300"
+          className="px-12 h-14 text-base font-bold rounded-full bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg shadow-primary/20 transition-all duration-300"
         >
           Explore All Assets
-          <ArrowRight className="ml-3 h-6 w-6" />
+          <ArrowRight className="ml-2 h-5 w-5" />
         </Button>
       </div>
     </section>

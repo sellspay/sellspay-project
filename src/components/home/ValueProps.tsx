@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Reveal } from './Reveal';
-import { ShieldCheck, Zap, CreditCard, Download, Users, Award, ChevronDown, Plus } from 'lucide-react';
+import { ShieldCheck, Zap, CreditCard, Download, Users, Award, Plus } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const features = [
@@ -58,63 +58,72 @@ export function ValueProps() {
   const [expandedIndex, setExpandedIndex] = useState<number | null>(0);
 
   return (
-    <section className="py-24 sm:py-32 lg:py-40 bg-background">
-      <div className="px-6 sm:px-8 lg:px-12 xl:px-16">
-        {/* Section header - MASSIVE */}
+    <section className="py-28 sm:py-36 lg:py-44 bg-background">
+      <div className="px-6 sm:px-8 lg:px-12 xl:px-16 max-w-[1400px] mx-auto">
+        {/* Section header */}
         <Reveal>
-          <div className="mb-16 sm:mb-24 max-w-5xl">
-            <h2 className="text-5xl sm:text-6xl lg:text-7xl xl:text-8xl font-bold text-foreground tracking-tight mb-6">
+          <div className="mb-20 sm:mb-28">
+            <p className="text-xs font-semibold uppercase tracking-[0.25em] text-primary mb-4">
+              Trust & Security
+            </p>
+            <h2 className="text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-extrabold text-foreground tracking-tight leading-[1.05] mb-6">
               Why creators choose SellsPay
             </h2>
-            <p className="text-xl sm:text-2xl text-muted-foreground leading-relaxed">
+            <p className="text-lg sm:text-xl text-muted-foreground max-w-2xl leading-relaxed">
               Built for trust, speed, and simplicity. Everything you need to succeed.
             </p>
           </div>
         </Reveal>
 
-        {/* Interactive Feature Accordions - Premium design */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-0 border-t border-border">
+        {/* Feature grid — CapCut clean card style */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-px bg-border/30 border border-border/30 rounded-2xl overflow-hidden">
           {features.map((feature, index) => {
             const Icon = feature.icon;
             const isExpanded = expandedIndex === index;
             
             return (
-              <Reveal key={feature.title} delay={index * 60}>
+              <Reveal key={feature.title} delay={index * 50}>
                 <div 
-                  className={`border-b border-border ${index % 2 === 0 ? 'lg:border-r' : ''} cursor-pointer group`}
+                  className="bg-background cursor-pointer group"
                   onClick={() => setExpandedIndex(isExpanded ? null : index)}
                 >
                   {/* Header Row */}
-                  <div className="flex items-center justify-between p-8 sm:p-10 lg:p-12">
-                    <div className="flex items-center gap-6">
-                      {/* Stat Number - Premium accent */}
-                      <div className="flex flex-col items-center min-w-[80px]">
-                        <span className="text-4xl sm:text-5xl font-bold text-primary tracking-tight">
+                  <div className="flex items-center justify-between p-8 sm:p-10">
+                    <div className="flex items-center gap-5 sm:gap-6">
+                      {/* Stat */}
+                      <div className="flex flex-col items-center min-w-[72px]">
+                        <span className="text-3xl sm:text-4xl font-extrabold text-primary tracking-tight">
                           {feature.stat}
                         </span>
-                        <span className="text-xs uppercase tracking-widest text-muted-foreground mt-1">
+                        <span className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground/60 mt-1 font-semibold">
                           {feature.statLabel}
                         </span>
                       </div>
                       
-                      {/* Title */}
+                      {/* Title + desc */}
                       <div>
-                        <h3 className="text-xl sm:text-2xl lg:text-3xl font-bold text-foreground group-hover:text-primary transition-colors duration-200">
+                        <h3 className="text-lg sm:text-xl lg:text-2xl font-extrabold text-foreground group-hover:text-primary transition-colors duration-200">
                           {feature.title}
                         </h3>
-                        <p className="text-base sm:text-lg text-muted-foreground mt-1 hidden sm:block">
+                        <p className="text-sm sm:text-base text-muted-foreground mt-1 hidden sm:block leading-relaxed">
                           {feature.description}
                         </p>
                       </div>
                     </div>
                     
-                    {/* Expand Icon */}
-                    <div className={`p-3 border border-border transition-all duration-300 ${isExpanded ? 'bg-primary border-primary rotate-45' : 'group-hover:border-primary/50'}`}>
-                      <Plus className={`h-5 w-5 transition-colors ${isExpanded ? 'text-primary-foreground' : 'text-muted-foreground group-hover:text-primary'}`} />
+                    {/* Expand toggle */}
+                    <div className={`p-2.5 rounded-lg border transition-all duration-300 ${
+                      isExpanded 
+                        ? 'bg-primary border-primary rotate-45' 
+                        : 'border-border/40 group-hover:border-primary/40'
+                    }`}>
+                      <Plus className={`h-4 w-4 transition-colors ${
+                        isExpanded ? 'text-primary-foreground' : 'text-muted-foreground/50 group-hover:text-primary'
+                      }`} />
                     </div>
                   </div>
                   
-                  {/* Expandable Content */}
+                  {/* Expandable */}
                   <AnimatePresence>
                     {isExpanded && (
                       <motion.div
@@ -124,19 +133,14 @@ export function ValueProps() {
                         transition={{ duration: 0.3, ease: 'easeInOut' }}
                         className="overflow-hidden"
                       >
-                        <div className="px-8 sm:px-10 lg:px-12 pb-10 lg:pb-12">
-                          <div className="flex items-start gap-6 pt-4 border-t border-border/50">
-                            {/* Icon */}
-                            <div className="p-4 bg-primary/10 border border-primary/20">
-                              <Icon className="h-8 w-8 text-primary" />
+                        <div className="px-8 sm:px-10 pb-8 sm:pb-10">
+                          <div className="flex items-start gap-5 pt-5 border-t border-border/30">
+                            <div className="p-3 rounded-xl bg-primary/10 border border-primary/20 shrink-0">
+                              <Icon className="h-6 w-6 text-primary" />
                             </div>
-                            
-                            {/* Details */}
-                            <div className="flex-1">
-                              <p className="text-lg sm:text-xl text-foreground/90 leading-relaxed">
-                                {feature.details}
-                              </p>
-                            </div>
+                            <p className="text-base sm:text-lg text-foreground/80 leading-relaxed">
+                              {feature.details}
+                            </p>
                           </div>
                         </div>
                       </motion.div>
