@@ -156,7 +156,7 @@ export function CampaignControlPanel({ creditBalance, isLoadingCredits, onGenera
         <div className="h-px bg-border/30" />
 
         {/* Credits */}
-        <div className="rounded-lg bg-white/[0.02] p-3 space-y-1">
+        <div className="rounded-lg bg-muted/30 p-3 space-y-1">
           <div className="flex items-center justify-between">
             <span className="text-xs text-muted-foreground/60">Estimated cost</span>
             <span className="text-sm font-semibold text-foreground tabular-nums">{estimatedCredits} credits</span>
