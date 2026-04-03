@@ -28,8 +28,8 @@ interface PanelMedia {
  
 const DEFAULT_STEPS: Step[] = [
    {
-      bg: "#060606",
-     text: "#ffffff",
+      bg: "#ffffff",
+     text: "#111111",
      headline: ["Building Made", "Simple"],
      image: aiPanel1,
    },
@@ -58,14 +58,14 @@ const DEFAULT_STEPS: Step[] = [
       image: aiPanel5,
     },
    {
-     bg: "#060606",
-      text: "#ffffff",
+     bg: "#ffffff",
+      text: "#111111",
       headline: ["All in", "one"],
       image: aiPanel6,
    },
  ];
  
-const CARD_COLORS = ["#0d0d0d", "#f5f5f5", "#0d0d0d", "#e76e50", "#50A9E7", "#0d0d0d"];
+const CARD_COLORS = ["#ffffff", "#f5f5f5", "#0d0d0d", "#e76e50", "#50A9E7", "#ffffff"];
 const STEP_DISTANCE_DESKTOP = 500;
 const STEP_DISTANCE_MOBILE = 300;
 const STACK_Y = 14;
