@@ -329,10 +329,10 @@ export default function NanoBanana() {
         </aside>
 
         {/* ───── RIGHT CANVAS ───── */}
-        <main className="min-w-0 overflow-hidden rounded-[28px] bg-white border border-[#e3edf5] shadow-[0_4px_20px_rgba(15,23,42,0.05)]">
+        <main className="min-w-0 overflow-hidden rounded-[28px] bg-white border border-[#9fc2d4] shadow-[0_8px_24px_rgba(111,166,189,0.12)]">
           <div className="flex h-full flex-col">
             {/* Canvas header */}
-            <div className="border-b border-[#e3edf5] px-5 py-4">
+            <div className="border-b border-[#cfe3ee] px-5 py-4">
               <div className="flex items-center gap-2">
                 <button className="rounded-full bg-[#e6f3ff] border border-[#3ba6ff]/30 px-4 py-2 text-sm font-medium text-[#3ba6ff]">
                   Creations
