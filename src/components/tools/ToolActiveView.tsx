@@ -158,7 +158,7 @@ export function ToolActiveView({
   if (!tool) {
     return (
       <div className="flex items-center justify-center py-20">
-        <p className="text-muted-foreground">Tool not found</p>
+        <p className="text-[#71717a]">Tool not found</p>
       </div>
     );
   }
