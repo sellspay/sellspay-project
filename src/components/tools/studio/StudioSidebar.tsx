@@ -70,8 +70,8 @@ function SortableToolItem({ tool, isActive, collapsed, onToolSelect, thumbnail }
       className={cn(
         "group/tool flex items-center gap-2 w-full rounded-full px-2 py-1.5 text-[13px] transition-colors duration-150 relative",
         isActive
-          ? "bg-primary text-primary-foreground font-medium shadow-md shadow-primary/20"
-          : "text-muted-foreground hover:text-foreground hover:bg-muted/50",
+          ? "bg-[#1e3a8a]/30 text-[#f9fafb] font-medium shadow-[0_0_0_1px_#3b82f6,0_0_12px_rgba(59,130,246,0.2)] border border-[#3b82f6]"
+          : "text-[#9ca3af] hover:text-[#f9fafb] hover:bg-[#1f2937]",
         collapsed && "justify-center rounded-xl"
       )}
     >
