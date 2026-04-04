@@ -319,7 +319,7 @@ export default function NanoBanana() {
             </div>
 
             {/* Footer */}
-            <div className="border-t border-[#dbeaf3] bg-[#f4f9fd] px-4 py-3">
+            <div className="border-t border-[#cfe3ee] bg-[#f4f9fd] px-4 py-3">
               <p className="flex items-center justify-center gap-1.5 text-center text-xs text-[#94a3b8]">
                 <Sparkles className="h-3.5 w-3.5 text-[#3ba6ff]" />
                 {currentModel.name} · {currentModel.creditCost} credit{currentModel.creditCost > 1 ? "s" : ""}/gen
