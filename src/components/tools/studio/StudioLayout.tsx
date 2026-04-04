@@ -216,7 +216,7 @@ export default function StudioLayout() {
             href="https://discord.gg/sellspay"
             target="_blank"
             rel="noopener noreferrer"
-            className="p-2 rounded-full text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+            className="p-2 rounded-full text-[#a1a1aa] hover:text-[#f4f4f5] hover:bg-white/[0.06] transition-colors"
             title="Discord"
           >
             <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
@@ -228,7 +228,7 @@ export default function StudioLayout() {
             href="https://instagram.com/sellspay.io"
             target="_blank"
             rel="noopener noreferrer"
-            className="p-2 rounded-full text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+            className="p-2 rounded-full text-[#a1a1aa] hover:text-[#f4f4f5] hover:bg-white/[0.06] transition-colors"
             title="Instagram"
           >
             <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
