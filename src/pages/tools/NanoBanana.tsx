@@ -281,8 +281,8 @@ export default function NanoBanana() {
                         onClick={() => setOutput(opt.value)}
                         className={`rounded-[14px] px-3 py-2.5 text-left text-sm transition ${
                           output === opt.value
-                            ? "bg-[#e6f3ff] border border-[#3ba6ff] font-semibold text-[#3ba6ff]"
-                            : "bg-[#f4f9fd] border border-[#e1eef6] font-medium text-[#5b6b7c] hover:border-[#c4d8e6]"
+                            ? "bg-[#e6f3fb] border border-[#6fa6bd] font-semibold text-[#3ba6ff]"
+                            : "bg-[#f4f9fd] border border-[#cfe3ee] font-medium text-[#5b6b7c] hover:border-[#9fc2d4]"
                         }`}
                       >
                         <div className="font-semibold">{opt.label}</div>
