@@ -544,10 +544,6 @@ export function StudioSidebar({
                   )}
                 </div>
               </div>
-            </motion.div>
-
-            <div className="flex-1" aria-hidden="true" />
-          </div>
         </aside>
       </TooltipProvider>
 
