@@ -93,16 +93,17 @@ function SortableToolItem({ tool, isActive, collapsed, onToolSelect, thumbnail }
       >
         <div className={cn(
           "h-7 w-7 rounded-full overflow-hidden shrink-0 border pointer-events-none",
-          isActive ? "border-primary-foreground/30 ring-2 ring-primary-foreground/10" : "border-border/60"
+          isActive ? "border-[#3b82f6]/50 ring-2 ring-[#3b82f6]/20" : "border-[#374151]"
         )}>
           {thumbnail ? (
             <img src={thumbnail} alt="" className="w-full h-full object-cover" />
           ) : (
             <div className={cn(
               "w-full h-full flex items-center justify-center",
-              isActive ? "bg-primary-foreground/20" : "bg-primary/10"
+              isActive ? "bg-[#3b82f6]/20" : "bg-[#1f2937]"
             )}>
-              <Icon className={cn("h-3.5 w-3.5", isActive ? "text-primary-foreground" : "text-primary/60")} />
+              <Icon className={cn("h-3.5 w-3.5", isActive ? "text-[#3b82f6]" : "text-[#6b7280]")} />
+            </div>
             </div>
           )}
         </div>
