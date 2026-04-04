@@ -70,8 +70,8 @@ function SortableToolItem({ tool, isActive, collapsed, onToolSelect, thumbnail }
       className={cn(
         "group/tool flex items-center gap-2 w-full rounded-full px-2 py-1.5 text-[13px] transition-colors duration-150 relative",
         isActive
-          ? "bg-[#1e3a8a]/30 text-[#f5f5f5] font-medium shadow-[0_0_0_1px_#3b82f6,0_0_12px_rgba(59,130,246,0.2)] border border-[#3b82f6]"
-          : "text-[#a3a3a3] hover:text-[#f5f5f5] hover:bg-[#383838]",
+          ? "bg-[#1e3a8a]/30 text-[#111827] font-medium shadow-[0_0_0_1px_#3b82f6,0_0_12px_rgba(59,130,246,0.2)] border border-[#3b82f6]"
+          : "text-[#6b7280] hover:text-[#111827] hover:bg-[#ffffff]",
         collapsed && "justify-center rounded-xl"
       )}
     >
@@ -80,9 +80,9 @@ function SortableToolItem({ tool, isActive, collapsed, onToolSelect, thumbnail }
         <div
           {...attributes}
           {...listeners}
-          className="shrink-0 cursor-grab active:cursor-grabbing p-0.5 rounded hover:bg-[#474747] transition-colors touch-none"
+          className="shrink-0 cursor-grab active:cursor-grabbing p-0.5 rounded hover:bg-[#e0e0e0] transition-colors touch-none"
         >
-          <GripVertical className="h-3.5 w-3.5 opacity-30 group-hover/tool:opacity-70 transition-opacity text-[#a3a3a3]" />
+          <GripVertical className="h-3.5 w-3.5 opacity-30 group-hover/tool:opacity-70 transition-opacity text-[#6b7280]" />
         </div>
       )}
 
@@ -93,16 +93,16 @@ function SortableToolItem({ tool, isActive, collapsed, onToolSelect, thumbnail }
       >
         <div className={cn(
           "h-7 w-7 rounded-full overflow-hidden shrink-0 border pointer-events-none",
-          isActive ? "border-[#3b82f6]/50 ring-2 ring-[#3b82f6]/20" : "border-[#474747]"
+          isActive ? "border-[#3b82f6]/50 ring-2 ring-[#3b82f6]/20" : "border-[#e0e0e0]"
         )}>
           {thumbnail ? (
             <img src={thumbnail} alt="" className="w-full h-full object-cover" />
           ) : (
             <div className={cn(
               "w-full h-full flex items-center justify-center",
-              isActive ? "bg-[#3b82f6]/20" : "bg-[#383838]"
+              isActive ? "bg-[#3b82f6]/20" : "bg-[#ffffff]"
             )}>
-              <Icon className={cn("h-3.5 w-3.5", isActive ? "text-[#3b82f6]" : "text-[#737373]")} />
+              <Icon className={cn("h-3.5 w-3.5", isActive ? "text-[#3b82f6]" : "text-[#9ca3af]")} />
             </div>
           )}
         </div>
@@ -110,7 +110,7 @@ function SortableToolItem({ tool, isActive, collapsed, onToolSelect, thumbnail }
           <span className="truncate flex-1 text-left">{tool.name}</span>
         )}
         {!collapsed && tool.comingSoon && (
-          <span className="text-[8px] text-[#737373] uppercase font-bold shrink-0">Soon</span>
+          <span className="text-[8px] text-[#9ca3af] uppercase font-bold shrink-0">Soon</span>
         )}
       </button>
     </div>
@@ -228,8 +228,8 @@ export function StudioSidebar({
                       className={cn(
                         "flex items-center gap-2.5 w-full rounded-full px-3 py-2.5 text-sm transition-all duration-200",
                         !activeTool && activeSection === "home"
-                          ? "bg-[#1e3a8a]/30 text-[#f5f5f5] font-semibold shadow-[0_0_0_1px_#3b82f6,0_0_12px_rgba(59,130,246,0.2)] border border-[#3b82f6]"
-                          : "text-[#a3a3a3] hover:text-[#f5f5f5] hover:bg-[#383838] border border-transparent",
+                          ? "bg-[#1e3a8a]/30 text-[#111827] font-semibold shadow-[0_0_0_1px_#3b82f6,0_0_12px_rgba(59,130,246,0.2)] border border-[#3b82f6]"
+                          : "text-[#6b7280] hover:text-[#111827] hover:bg-[#ffffff] border border-transparent",
                         collapsed && "justify-center rounded-xl px-2"
                       )}
                     >
@@ -237,11 +237,11 @@ export function StudioSidebar({
                         "h-6 w-6 rounded-md flex items-center justify-center shrink-0",
                         !activeTool && activeSection === "home"
                           ? "bg-[#3b82f6]/20"
-                          : "bg-[#383838]"
+                          : "bg-[#ffffff]"
                       )}>
                         <Home className={cn(
                           "h-3.5 w-3.5",
-                          !activeTool && activeSection === "home" ? "text-[#3b82f6]" : "text-[#a3a3a3]"
+                          !activeTool && activeSection === "home" ? "text-[#3b82f6]" : "text-[#6b7280]"
                         )} />
                       </div>
                       {!collapsed && <span>All Tools</span>}
@@ -253,10 +253,10 @@ export function StudioSidebar({
 
               {!collapsed && (
                 <div className="shrink-0 px-4 pt-3 pb-1 flex items-center justify-between">
-                  <span className="text-[10px] font-semibold text-[#737373] uppercase tracking-widest">Pinned</span>
+                  <span className="text-[10px] font-semibold text-[#9ca3af] uppercase tracking-widest">Pinned</span>
                 </div>
               )}
-              {collapsed && <div className="h-px bg-[#383838] mx-2 my-1" />}
+              {collapsed && <div className="h-px bg-[#ffffff] mx-2 my-1" />}
 
               {/* Add Tools button */}
               <div className="shrink-0 px-2 pb-1">
@@ -267,12 +267,12 @@ export function StudioSidebar({
                         <button
                           className={cn(
                             "flex items-center gap-2.5 w-full rounded-full px-3 py-2 text-sm transition-all duration-150",
-                            "text-[#a3a3a3] hover:text-[#f5f5f5] hover:bg-[#383838]",
+                            "text-[#6b7280] hover:text-[#111827] hover:bg-[#ffffff]",
                             collapsed && "justify-center px-2"
                           )}
                         >
-                          <div className="h-6 w-6 rounded-full border-2 border-dashed border-[#474747] flex items-center justify-center shrink-0">
-                            <Plus className="h-3 w-3 text-[#737373]" />
+                          <div className="h-6 w-6 rounded-full border-2 border-dashed border-[#e0e0e0] flex items-center justify-center shrink-0">
+                            <Plus className="h-3 w-3 text-[#9ca3af]" />
                           </div>
                           {!collapsed && <span>Add Tools</span>}
                         </button>
@@ -280,21 +280,21 @@ export function StudioSidebar({
                     </TooltipTrigger>
                     {collapsed && <TooltipContent side="right">Add Tools</TooltipContent>}
                   </Tooltip>
-                  <PopoverContent side="right" align="start" sideOffset={8} className="w-[540px] p-0 bg-[#333333] border-[#474747] rounded-2xl overflow-hidden shadow-xl">
-                    <div className="px-4 py-3 border-b border-[#383838] flex items-center justify-between">
-                      <span className="text-sm font-bold text-[#f5f5f5]">Add Tools</span>
-                      <button onClick={() => setAddToolsOpen(false)} className="text-[#737373] hover:text-[#f5f5f5] transition-colors">
+                  <PopoverContent side="right" align="start" sideOffset={8} className="w-[540px] p-0 bg-[#ffffff] border-[#e0e0e0] rounded-2xl overflow-hidden shadow-xl">
+                    <div className="px-4 py-3 border-b border-[#ffffff] flex items-center justify-between">
+                      <span className="text-sm font-bold text-[#111827]">Add Tools</span>
+                      <button onClick={() => setAddToolsOpen(false)} className="text-[#9ca3af] hover:text-[#111827] transition-colors">
                         <X className="h-4 w-4" />
                       </button>
                     </div>
-                    <div className="grid grid-cols-2 gap-0 divide-x divide-[#383838] max-h-[460px] overflow-y-auto custom-scrollbar">
+                    <div className="grid grid-cols-2 gap-0 divide-x divide-[#ffffff] max-h-[460px] overflow-y-auto custom-scrollbar">
                       {categoryOrder.map(cat => {
                         const tools = toolsByCategory[cat];
                         if (!tools || tools.length === 0) return null;
                         return (
                           <div key={cat} className="p-3">
                             <div className="flex items-center gap-2 px-1 mb-2">
-                              <span className="text-[10px] font-bold text-[#737373] uppercase tracking-widest">
+                              <span className="text-[10px] font-bold text-[#9ca3af] uppercase tracking-widest">
                                 {SUBCATEGORY_LABELS[cat]}
                               </span>
                             </div>
@@ -305,7 +305,7 @@ export function StudioSidebar({
                                 return (
                                   <div
                                     key={tool.id}
-                                    className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-[#383838] group"
+                                    className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-[#ffffff] group"
                                   >
                                     <button
                                       type="button"
@@ -316,7 +316,7 @@ export function StudioSidebar({
                                       className="flex items-center gap-2 flex-1 min-w-0 text-left cursor-pointer"
                                     >
                                       <Icon className="h-3.5 w-3.5 text-[#3b82f6] shrink-0" />
-                                      <span className="text-sm text-[#f5f5f5] flex-1 truncate">{tool.name}</span>
+                                      <span className="text-sm text-[#111827] flex-1 truncate">{tool.name}</span>
                                     </button>
                                     <button
                                       type="button"
@@ -328,7 +328,7 @@ export function StudioSidebar({
                                         "shrink-0 p-1 rounded-md transition-all",
                                         isPinned
                                           ? "text-[#3b82f6] opacity-100"
-                                          : "text-[#737373] opacity-0 group-hover:opacity-100 hover:text-[#3b82f6]"
+                                          : "text-[#9ca3af] opacity-0 group-hover:opacity-100 hover:text-[#3b82f6]"
                                       )}
                                       title={isPinned ? "Unpin from sidebar" : "Pin to sidebar"}
                                     >
@@ -367,7 +367,7 @@ export function StudioSidebar({
                 </DndContext>
               </nav>
 
-              <div className="shrink-0 border-t border-[#383838]">
+              <div className="shrink-0 border-t border-[#ffffff]">
                 <div className="px-2 py-2">
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -375,7 +375,7 @@ export function StudioSidebar({
                         onClick={() => onSectionChange("assets")}
                         className={cn(
                           "flex items-center gap-2.5 w-full rounded-lg px-2.5 py-2 text-sm transition-colors",
-                          "text-[#a3a3a3] hover:text-[#f5f5f5] hover:bg-[#383838]",
+                          "text-[#6b7280] hover:text-[#111827] hover:bg-[#ffffff]",
                           collapsed && "justify-center"
                         )}
                       >
@@ -388,7 +388,7 @@ export function StudioSidebar({
                 </div>
 
                 <div className={cn(
-                  "px-3 py-3 border-t border-[#383838]",
+                  "px-3 py-3 border-t border-[#ffffff]",
                   collapsed && "flex justify-center px-2"
                 )}>
                   {!user ? (
@@ -419,11 +419,11 @@ export function StudioSidebar({
                         {collapsed ? (
                           <Tooltip>
                             <TooltipTrigger asChild>
-                               <button className="w-8 h-8 rounded-full overflow-hidden border border-[#474747] hover:ring-2 hover:ring-[#3b82f6]/40 transition-all mx-auto block">
+                               <button className="w-8 h-8 rounded-full overflow-hidden border border-[#e0e0e0] hover:ring-2 hover:ring-[#3b82f6]/40 transition-all mx-auto block">
                                 {profile?.avatar_url ? (
                                   <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
                                 ) : (
-                                  <div className="w-full h-full bg-[#383838] flex items-center justify-center">
+                                  <div className="w-full h-full bg-[#ffffff] flex items-center justify-center">
                                     <span className="text-[10px] font-bold text-[#3b82f6]">
                                       {(profile?.username || "U").slice(0, 2).toUpperCase()}
                                     </span>
@@ -434,19 +434,19 @@ export function StudioSidebar({
                             <TooltipContent side="right">Profile</TooltipContent>
                           </Tooltip>
                         ) : (
-                          <button className="flex items-center gap-2.5 w-full rounded-lg px-2.5 py-2 text-sm text-[#a3a3a3] hover:text-[#f5f5f5] hover:bg-[#383838] transition-colors">
-                            <div className="w-7 h-7 rounded-full overflow-hidden border border-[#474747] shrink-0">
+                          <button className="flex items-center gap-2.5 w-full rounded-lg px-2.5 py-2 text-sm text-[#6b7280] hover:text-[#111827] hover:bg-[#ffffff] transition-colors">
+                            <div className="w-7 h-7 rounded-full overflow-hidden border border-[#e0e0e0] shrink-0">
                               {profile?.avatar_url ? (
                                 <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
                               ) : (
-                                <div className="w-full h-full bg-[#383838] flex items-center justify-center">
+                                <div className="w-full h-full bg-[#ffffff] flex items-center justify-center">
                                   <span className="text-[9px] font-bold text-[#3b82f6]">
                                     {(profile?.username || "U").slice(0, 2).toUpperCase()}
                                   </span>
                                 </div>
                               )}
                             </div>
-                            <span className="truncate flex-1 text-left font-medium text-[#f5f5f5]">{profile?.username || "Creator"}</span>
+                            <span className="truncate flex-1 text-left font-medium text-[#111827]">{profile?.username || "Creator"}</span>
                           </button>
                         )}
                       </PopoverTrigger>

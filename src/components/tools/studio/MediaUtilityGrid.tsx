@@ -26,7 +26,7 @@ export function MediaUtilityGrid({ tools, onLaunch }: MediaUtilityGridProps) {
       variants={container}
       className="max-w-7xl mx-auto px-4 sm:px-6"
     >
-      <motion.h2 variants={item} className="text-xl sm:text-2xl font-bold text-[#f5f5f5] mb-6 flex items-center gap-2">
+      <motion.h2 variants={item} className="text-xl sm:text-2xl font-bold text-[#111827] mb-6 flex items-center gap-2">
         🛠 Media Utilities
       </motion.h2>
       <motion.div variants={container} className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
@@ -36,12 +36,12 @@ export function MediaUtilityGrid({ tools, onLaunch }: MediaUtilityGridProps) {
             variants={item}
             onClick={() => onLaunch(tool.id)}
             whileHover={{ y: -2 }}
-            className="group relative flex items-center gap-3 p-4 rounded-2xl text-left overflow-hidden bg-[#333333] border border-[#383838] shadow-[0_2px_12px_rgba(0,0,0,0.3)] hover:border-emerald-500/60 hover:shadow-[0_4px_20px_rgba(16,185,129,0.15)] transition-all duration-250"
+            className="group relative flex items-center gap-3 p-4 rounded-2xl text-left overflow-hidden bg-[#ffffff] border border-[#ffffff] shadow-[0_2px_12px_rgba(0,0,0,0.3)] hover:border-emerald-500/60 hover:shadow-[0_4px_20px_rgba(16,185,129,0.15)] transition-all duration-250"
           >
             <div className="w-[3px] h-full absolute left-0 top-0 bg-emerald-500/60 group-hover:bg-emerald-400 transition-colors" />
-            <tool.icon className="h-5 w-5 text-[#737373] group-hover:text-emerald-400 transition-colors shrink-0 ml-1" />
+            <tool.icon className="h-5 w-5 text-[#9ca3af] group-hover:text-emerald-400 transition-colors shrink-0 ml-1" />
             <div className="flex-1 min-w-0">
-              <span className="text-xs font-medium text-[#f5f5f5] block truncate">{tool.name}</span>
+              <span className="text-xs font-medium text-[#111827] block truncate">{tool.name}</span>
             </div>
             <ArrowRight className="h-3 w-3 text-transparent group-hover:text-emerald-400/60 transition-all shrink-0" />
           </motion.button>

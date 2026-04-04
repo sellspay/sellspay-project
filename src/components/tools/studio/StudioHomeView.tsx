@@ -132,7 +132,7 @@ export function StudioHomeView({
               }}
               className={cn(
                 "group relative p-4 rounded-2xl text-left overflow-hidden",
-                "bg-[#333333] border border-[#383838]",
+                "bg-[#ffffff] border border-[#ffffff]",
                 "shadow-[0_2px_12px_rgba(0,0,0,0.3)]",
                 "hover:border-emerald-500/60 hover:shadow-[0_4px_20px_rgba(16,185,129,0.15)] hover:-translate-y-1",
                 "transition-all duration-250"
@@ -141,8 +141,8 @@ export function StudioHomeView({
               <div className="w-[3px] h-full absolute left-0 top-0 bg-emerald-500/60 group-hover:bg-emerald-400 transition-colors" />
               <div className="relative z-10 pl-2">
                 <q.icon className="h-5 w-5 text-emerald-400 mb-2" />
-                <p className="text-sm font-bold text-[#f5f5f5]">{q.label}</p>
-                <p className="text-[11px] text-[#a3a3a3] mt-0.5">{q.desc}</p>
+                <p className="text-sm font-bold text-[#111827]">{q.label}</p>
+                <p className="text-[11px] text-[#6b7280] mt-0.5">{q.desc}</p>
               </div>
             </button>
           ))}
@@ -160,7 +160,7 @@ export function StudioHomeView({
                 onClick={() => onLaunchTool(tool.id)}
                 className={cn(
                   "group relative p-4 rounded-2xl text-left overflow-hidden",
-                  "bg-[#333333] border border-[#383838]",
+                  "bg-[#ffffff] border border-[#ffffff]",
                   "shadow-[0_2px_12px_rgba(0,0,0,0.3)]",
                   "hover:border-emerald-500/60 hover:shadow-[0_4px_20px_rgba(16,185,129,0.15)] hover:-translate-y-1",
                   "transition-all duration-250"
@@ -169,12 +169,12 @@ export function StudioHomeView({
                 <div className="w-[3px] h-full absolute left-0 top-0 bg-emerald-500/60 group-hover:bg-emerald-400 transition-colors" />
                 <div className="relative z-10 pl-2">
                   <tool.icon className="h-5 w-5 text-emerald-400 mb-2" />
-                  <p className="text-sm font-bold text-[#f5f5f5]">{tool.name}</p>
-                  <p className="text-[11px] text-[#a3a3a3] mt-0.5 line-clamp-2">{tool.description}</p>
+                  <p className="text-sm font-bold text-[#111827]">{tool.name}</p>
+                  <p className="text-[11px] text-[#6b7280] mt-0.5 line-clamp-2">{tool.description}</p>
                   {tool.creditCost > 0 && (
                     <div className="flex items-center gap-1 mt-2">
                       <Zap className="h-3 w-3 text-emerald-400" />
-                      <span className="text-[10px] text-[#737373]">{tool.creditCost} credits</span>
+                      <span className="text-[10px] text-[#9ca3af]">{tool.creditCost} credits</span>
                     </div>
                   )}
                 </div>
