@@ -190,20 +190,98 @@ export default function StudioLayout() {
   return (
     <div className="h-screen flex flex-col overflow-hidden bg-background">
       {/* Fixed top header - independent of sidebar */}
-      <header className="h-12 shrink-0 flex items-center px-3 gap-2 bg-background">
-        <button
-          onClick={() => setSidebarCollapsed(v => !v)}
-          className="shrink-0 p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
-        >
-          {sidebarCollapsed ? <PanelLeft className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
-        </button>
-        <button
-          onClick={() => navigate("/")}
-          className="flex items-center gap-2 rounded-lg px-1 py-1 text-sm hover:opacity-80 transition-opacity"
-        >
-          <img src={sellspayLogo} alt="SellsPay" className="h-6 w-6 shrink-0" />
-          <span className="font-bold text-foreground tracking-tight">SellsPay</span>
-        </button>
+      <header className="h-12 shrink-0 flex items-center justify-between px-3 bg-background">
+        {/* Left: sidebar toggle + logo */}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setSidebarCollapsed(v => !v)}
+            className="shrink-0 p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+          >
+            {sidebarCollapsed ? <PanelLeft className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
+          </button>
+          <button
+            onClick={() => navigate("/")}
+            className="flex items-center gap-2 rounded-lg px-1 py-1 text-sm hover:opacity-80 transition-opacity"
+          >
+            <img src={sellspayLogo} alt="SellsPay" className="h-6 w-6 shrink-0" />
+            <span className="font-bold text-foreground tracking-tight">SellsPay</span>
+          </button>
+        </div>
+
+        {/* Right: social icons + auth buttons */}
+        <div className="flex items-center gap-1.5">
+          {/* Discord */}
+          <a
+            href="https://discord.gg/lovable-dev"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="p-2 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+            title="Discord"
+          >
+            <MessageCircle className="h-4 w-4" />
+          </a>
+          {/* Instagram */}
+          <a
+            href="https://instagram.com/sellspay"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="p-2 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+            title="Instagram"
+          >
+            <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect width="20" height="20" x="2" y="2" rx="5" ry="5" />
+              <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
+              <line x1="17.5" x2="17.51" y1="6.5" y2="6.5" />
+            </svg>
+          </a>
+          {/* YouTube */}
+          <a
+            href="https://youtube.com/@sellspay"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="p-2 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+            title="YouTube"
+          >
+            <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M2.5 17a24.12 24.12 0 0 1 0-10 2 2 0 0 1 1.4-1.4 49.56 49.56 0 0 1 16.2 0A2 2 0 0 1 21.5 7a24.12 24.12 0 0 1 0 10 2 2 0 0 1-1.4 1.4 49.55 49.55 0 0 1-16.2 0A2 2 0 0 1 2.5 17" />
+              <path d="m10 15 5-3-5-3z" />
+            </svg>
+          </a>
+
+          <div className="w-px h-5 bg-border mx-1" />
+
+          {/* Pricing */}
+          <button
+            onClick={() => navigate("/pricing")}
+            className="px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
+            Pricing
+          </button>
+
+          {profile ? (
+            <button
+              onClick={() => navigate("/profile")}
+              className="px-3 py-1.5 text-sm font-medium text-foreground hover:opacity-80 transition-opacity"
+            >
+              My Profile
+            </button>
+          ) : (
+            <>
+              <button
+                onClick={() => navigate("/auth")}
+                className="px-3 py-1.5 text-sm font-medium text-foreground border border-border rounded-full hover:bg-muted/50 transition-colors"
+              >
+                Login
+              </button>
+              <button
+                onClick={() => navigate("/auth")}
+                className="px-4 py-1.5 text-sm font-semibold text-primary-foreground bg-primary rounded-full hover:bg-primary/90 transition-colors"
+              >
+                Get Started →
+              </button>
+            </>
+          )}
+        </div>
       </header>
 
       {/* Sidebar + Workspace below header */}
