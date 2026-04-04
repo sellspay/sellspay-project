@@ -64,7 +64,6 @@ export default function StudioLayout() {
   useEffect(() => {
     if (routeToolId) {
       setActiveTool(routeToolId);
-      if (activeSection === "home") setActiveSection("campaign");
     }
   }, [routeToolId]);
 
