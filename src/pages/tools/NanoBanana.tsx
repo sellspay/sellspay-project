@@ -15,7 +15,6 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useSubscription } from "@/hooks/useSubscription";
-import { uiSurfaces } from "@/components/tools/uiSurfaces";
 import {
   IMAGE_MODELS,
   MODEL_CATEGORIES,
@@ -32,6 +31,23 @@ const OUTPUT_OPTIONS = [
   { value: "16:9-1k", label: "16:9 | 1K", hint: "Wide" },
   { value: "9:16-1k", label: "9:16 | 1K", hint: "Vertical" },
 ];
+
+// Dark palette
+const C = {
+  bg: "#06090d",
+  panel: "#0f141b",
+  panel2: "#131922",
+  inner: "#0c1117",
+  border: "rgba(255,255,255,0.06)",
+  borderLight: "rgba(255,255,255,0.08)",
+  borderMid: "rgba(255,255,255,0.10)",
+  text: "#f8fafc",
+  textSoft: "#94a3b8",
+  textMuted: "#64748b",
+  accent: "#2563eb",
+  cta: "#ff2bb8",
+  ctaShadow: "rgba(255,43,184,0.35)",
+} as const;
 
 export default function NanoBanana() {
   const [mode, setMode] = useState<Mode>("create");
@@ -81,20 +97,27 @@ export default function NanoBanana() {
   };
 
   return (
-    <div className="h-full overflow-hidden bg-background px-4 py-4">
-      <div className="grid h-full min-h-0 grid-cols-[390px_minmax(0,1fr)] gap-4">
+    <div className="h-full overflow-hidden p-3" style={{ background: C.bg }}>
+      <div className="grid h-full min-h-0 grid-cols-[380px_minmax(0,1fr)] gap-3">
+
         {/* ───── LEFT PANEL ───── */}
-        <aside className="min-h-0 overflow-hidden rounded-[24px] bg-[#ffffff] border border-[#ffffff] shadow-sm">
+        <aside
+          className="min-h-0 overflow-hidden rounded-[28px]"
+          style={{ background: C.panel, border: `1px solid ${C.border}` }}
+        >
           <div className="flex h-full flex-col">
             {/* Header */}
-            <div className="border-b border-[#ffffff] px-5 pb-4 pt-5">
+            <div className="px-5 pb-4 pt-5" style={{ borderBottom: `1px solid ${C.border}` }}>
               <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#2563eb] text-foreground shadow-[0_0_20px_rgba(37,99,235,0.4)]">
+                <div
+                  className="flex h-10 w-10 items-center justify-center rounded-xl text-white"
+                  style={{ background: C.accent, boxShadow: `0 0 20px rgba(37,99,235,0.4)` }}
+                >
                   <ImageIcon className="h-5 w-5" />
                 </div>
                 <div>
-                  <h1 className="text-xl font-semibold text-[#111827]">Image Generator</h1>
-                  <p className="text-sm text-[#6b7280]">
+                  <h1 className="text-xl font-semibold" style={{ color: C.text }}>Image Generator</h1>
+                  <p className="text-sm" style={{ color: C.textSoft }}>
                     {mode === "create" ? "Create Image" : "Image Variations"}
                   </p>
                 </div>
@@ -107,32 +130,33 @@ export default function NanoBanana() {
                 <ModeTabs mode={mode} setMode={setMode} />
 
                 {/* Model selector */}
-                <div className={`p-4 ${uiSurfaces.section}`}>
+                <Section>
                   <div className="mb-2 flex items-center justify-between">
-                    <span className="text-sm text-[#6b7280]">Model</span>
+                    <span className="text-sm" style={{ color: C.textSoft }}>Model</span>
                     {currentModel.tag && <TagBadge tag={currentModel.tag} />}
                   </div>
 
                   <button
                     onClick={() => setModelSelectorOpen(!modelSelectorOpen)}
-                    className={`flex w-full items-center justify-between gap-3 px-4 py-3.5 text-left transition ${uiSurfaces.input}`}
+                    className="flex w-full items-center justify-between gap-3 px-4 py-3.5 text-left transition rounded-[14px]"
+                    style={{ background: C.inner, border: `1px solid ${C.border}` }}
                   >
                     <div>
-                      <div className="font-semibold text-[#111827]">{currentModel.name}</div>
-                      <div className="text-xs text-[#6b7280]">{currentModel.description}</div>
+                      <div className="font-semibold" style={{ color: C.text }}>{currentModel.name}</div>
+                      <div className="text-xs" style={{ color: C.textSoft }}>{currentModel.description}</div>
                     </div>
-                    <ChevronDown className={`h-4 w-4 shrink-0 text-[#9ca3af] transition-transform ${modelSelectorOpen ? "rotate-180" : ""}`} />
+                    <ChevronDown className={`h-4 w-4 shrink-0 transition-transform ${modelSelectorOpen ? "rotate-180" : ""}`} style={{ color: C.textMuted }} />
                   </button>
 
                   {modelSelectorOpen && (
-                    <div className="mt-3 space-y-4 rounded-[14px] bg-background border border-[#e0e0e0] p-3">
+                    <div className="mt-3 space-y-4 rounded-[14px] p-3" style={{ background: C.inner, border: `1px solid ${C.border}` }}>
                       {(Object.keys(MODEL_CATEGORIES) as ModelCategory[]).map((cat) => {
                         const models = grouped[cat];
                         if (!models?.length) return null;
                         const meta = MODEL_CATEGORIES[cat];
                         return (
                           <div key={cat}>
-                            <div className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-[#9ca3af]">
+                            <div className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider" style={{ color: C.textMuted }}>
                               <span>{meta.emoji}</span> {meta.label}
                             </div>
                             <div className="space-y-1.5">
@@ -142,27 +166,33 @@ export default function NanoBanana() {
                                   <button
                                     key={m.id}
                                     onClick={() => { setModel(m.id); setModelSelectorOpen(false); }}
-                                    className={`flex w-full items-center gap-3 rounded-[12px] px-3.5 py-3 text-left transition-all ${
-                                      selected
-                                        ? "bg-[#1e3a8a]/20 border border-[#3b82f6] shadow-[0_0_20px_rgba(59,130,246,0.2)]"
-                                        : "bg-[#ffffff] border border-[#ffffff] hover:border-[#e0e0e0] hover:bg-[#ffffff]"
-                                    }`}
+                                    className="flex w-full items-center gap-3 rounded-[12px] px-3.5 py-3 text-left transition-all"
+                                    style={{
+                                      background: selected ? "rgba(37,99,235,0.15)" : C.panel2,
+                                      border: `1px solid ${selected ? "rgba(59,130,246,0.5)" : C.border}`,
+                                      boxShadow: selected ? "0 0 20px rgba(59,130,246,0.2)" : "none",
+                                    }}
                                   >
-                                    <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${
-                                      selected ? "bg-[#2563eb] text-foreground shadow-[0_0_12px_rgba(37,99,235,0.5)]" : "bg-[#ffffff] text-[#9ca3af]"
-                                    }`}>
+                                    <div
+                                      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg"
+                                      style={{
+                                        background: selected ? C.accent : C.panel2,
+                                        color: selected ? "#fff" : C.textMuted,
+                                        boxShadow: selected ? "0 0 12px rgba(37,99,235,0.5)" : "none",
+                                      }}
+                                    >
                                       {selected ? <Check className="h-4 w-4" /> : <Wand2 className="h-3.5 w-3.5" />}
                                     </div>
                                     <div className="min-w-0 flex-1">
                                       <div className="flex items-center gap-2">
-                                        <span className={`text-sm font-semibold ${selected ? "text-[#3b82f6]" : "text-[#111827]"}`}>
+                                        <span className="text-sm font-semibold" style={{ color: selected ? "#60a5fa" : C.text }}>
                                           {m.name}
                                         </span>
                                         {m.tag && <TagBadge tag={m.tag} small />}
                                       </div>
-                                      <p className="text-xs text-[#9ca3af] truncate">{m.description}</p>
+                                      <p className="text-xs truncate" style={{ color: C.textMuted }}>{m.description}</p>
                                     </div>
-                                    <span className="shrink-0 text-[10px] font-semibold text-[#9ca3af]">
+                                    <span className="shrink-0 text-[10px] font-semibold" style={{ color: C.textMuted }}>
                                       {m.creditCost} cr
                                     </span>
                                   </button>
@@ -174,30 +204,33 @@ export default function NanoBanana() {
                       })}
                     </div>
                   )}
-                </div>
+                </Section>
 
                 {/* Upload for variations mode */}
                 {mode === "variations" && (
-                  <div className={`p-4 ${uiSurfaces.section}`}>
-                    <h3 className="text-lg font-semibold text-[#111827]">Start with an image</h3>
-                    <p className="mt-1 text-sm text-[#6b7280]">Upload a reference, then generate new versions.</p>
-                    <div className={`mt-4 flex flex-col items-center justify-center px-6 py-10 text-center ${uiSurfaces.dropzone}`}>
-                      <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#ffffff] border border-[#e0e0e0]">
-                        <Upload className="h-6 w-6 text-[#6b7280]" />
+                  <Section>
+                    <h3 className="text-lg font-semibold" style={{ color: C.text }}>Start with an image</h3>
+                    <p className="mt-1 text-sm" style={{ color: C.textSoft }}>Upload a reference, then generate new versions.</p>
+                    <div
+                      className="mt-4 flex flex-col items-center justify-center rounded-[16px] px-6 py-10 text-center border-dashed border-2"
+                      style={{ background: C.inner, borderColor: C.borderLight }}
+                    >
+                      <div className="flex h-14 w-14 items-center justify-center rounded-2xl" style={{ background: C.panel2, border: `1px solid ${C.border}` }}>
+                        <Upload className="h-6 w-6" style={{ color: C.textSoft }} />
                       </div>
-                      <div className="mt-4 text-lg font-semibold text-[#111827]">Upload or choose an image</div>
-                      <div className="mt-1 max-w-sm text-sm text-[#9ca3af]">Click or drag to upload · JPEG / PNG / WEBP</div>
+                      <div className="mt-4 text-lg font-semibold" style={{ color: C.text }}>Upload or choose an image</div>
+                      <div className="mt-1 max-w-sm text-sm" style={{ color: C.textMuted }}>Click or drag to upload · JPEG / PNG / WEBP</div>
                     </div>
-                  </div>
+                  </Section>
                 )}
 
                 {/* Prompt section */}
-                <div className={`p-4 ${uiSurfaces.section}`}>
+                <Section>
                   <div className="flex items-start justify-between gap-3">
-                    <h3 className="text-lg font-semibold text-[#111827]">
+                    <h3 className="text-lg font-semibold" style={{ color: C.text }}>
                       {mode === "create" ? "Describe your image" : "Describe your variation"}
                     </h3>
-                    <CopyPlus className="h-4 w-4 text-[#9ca3af]" />
+                    <CopyPlus className="h-4 w-4" style={{ color: C.textMuted }} />
                   </div>
 
                   {mode === "create" && <ReferenceBox />}
@@ -210,76 +243,83 @@ export default function NanoBanana() {
                         ? 'Example: "Luxury skincare bottle on wet stone, soft studio light, premium ecommerce photo"'
                         : 'Example: "Keep the subject, but make it sunset with cinematic lighting and richer color"'
                     }
-                    className={`mt-3 min-h-[150px] w-full resize-none px-4 py-4 text-sm outline-none focus:ring-2 focus:ring-[#3b82f6]/40 ${uiSurfaces.input}`}
+                    className="mt-3 min-h-[150px] w-full resize-none rounded-[16px] px-4 py-4 text-sm outline-none placeholder:text-slate-500 focus:ring-2 focus:ring-blue-500/40"
+                    style={{ background: C.inner, border: `1px solid ${C.border}`, color: C.text }}
                     disabled={isGenerating}
                   />
-                  <div className="mt-1.5 text-right text-xs text-[#9ca3af]">{prompt.length}/500</div>
+                  <div className="mt-1.5 text-right text-xs" style={{ color: C.textMuted }}>{prompt.length}/500</div>
 
                   {mode === "variations" && (
-                    <button className="mt-2 inline-flex items-center gap-2 text-sm font-medium text-[#6b7280] transition-colors hover:text-[#111827]">
+                    <button className="mt-2 inline-flex items-center gap-2 text-sm font-medium transition-colors hover:text-white" style={{ color: C.textSoft }}>
                       <Sparkles className="h-4 w-4" /> Prompt from Image
                     </button>
                   )}
-                </div>
+                </Section>
 
                 {/* Creativity (variations only) */}
                 {mode === "variations" && (
-                  <div className={`p-4 ${uiSurfaces.section}`}>
+                  <Section>
                     <div className="flex items-center justify-between">
-                      <h3 className="text-lg font-semibold text-[#111827]">Creativity level</h3>
-                      <span className="text-xs text-[#6b7280]">{creativity}%</span>
+                      <h3 className="text-lg font-semibold" style={{ color: C.text }}>Creativity level</h3>
+                      <span className="text-xs" style={{ color: C.textSoft }}>{creativity}%</span>
                     </div>
                     <input type="range" min={0} max={100} value={creativity}
                       onChange={(e) => setCreativity(Number(e.target.value))}
-                      className="mt-3 w-full accent-[#3b82f6]"
+                      className="mt-3 w-full accent-blue-500"
                     />
-                    <div className="mt-2 flex items-center justify-between text-xs text-[#9ca3af]">
+                    <div className="mt-2 flex items-center justify-between text-xs" style={{ color: C.textMuted }}>
                       <span>Closer to original</span><span>More different</span>
                     </div>
-                  </div>
+                  </Section>
                 )}
 
                 {/* Output selector */}
-                <div className={`p-4 ${uiSurfaces.section}`}>
-                  <div className="mb-2 text-sm text-[#6b7280]">Output</div>
+                <Section>
+                  <div className="mb-2 text-sm" style={{ color: C.textSoft }}>Output</div>
                   <div className="grid grid-cols-2 gap-2">
                     {OUTPUT_OPTIONS.map((opt) => (
                       <button
                         key={opt.value}
                         onClick={() => setOutput(opt.value)}
-                        className={`rounded-[12px] px-3 py-2.5 text-left text-sm transition ${
-                          output === opt.value
-                            ? "bg-[#1e3a8a]/20 border border-[#3b82f6] font-semibold text-[#3b82f6] shadow-[0_0_20px_rgba(59,130,246,0.2)]"
-                            : "bg-[#ffffff] border border-[#e0e0e0] font-medium text-[#6b7280] hover:border-[#3b82f6]/40"
-                        }`}
+                        className="rounded-[12px] px-3 py-2.5 text-left text-sm transition"
+                        style={{
+                          background: output === opt.value ? "rgba(37,99,235,0.15)" : C.inner,
+                          border: `1px solid ${output === opt.value ? "rgba(59,130,246,0.5)" : C.border}`,
+                          color: output === opt.value ? "#60a5fa" : C.textSoft,
+                          boxShadow: output === opt.value ? "0 0 20px rgba(59,130,246,0.15)" : "none",
+                        }}
                       >
                         <div className="font-semibold">{opt.label}</div>
-                        <div className="text-[10px] text-[#9ca3af]">{opt.hint}</div>
+                        <div className="text-[10px]" style={{ color: C.textMuted }}>{opt.hint}</div>
                       </button>
                     ))}
                   </div>
-                </div>
+                </Section>
 
                 {/* Count + Generate */}
-                <div className="grid grid-cols-[122px_minmax(0,1fr)] gap-3">
-                  <div className={`flex h-12 items-center justify-between px-4 ${uiSurfaces.input}`}>
+                <div className="grid grid-cols-[120px_minmax(0,1fr)] gap-3">
+                  <div
+                    className="flex h-12 items-center justify-between rounded-[14px] px-4"
+                    style={{ background: C.inner, border: `1px solid ${C.border}` }}
+                  >
                     <button onClick={() => setCount(Math.max(1, count - 1))} type="button">
-                      <Minus className="h-4 w-4 text-[#6b7280]" />
+                      <Minus className="h-4 w-4" style={{ color: C.textSoft }} />
                     </button>
-                    <span className="text-sm font-semibold text-[#111827]">{count}/4</span>
+                    <span className="text-sm font-semibold" style={{ color: C.text }}>{count}/4</span>
                     <button onClick={() => setCount(Math.min(4, count + 1))} type="button">
-                      <Plus className="h-4 w-4 text-[#6b7280]" />
+                      <Plus className="h-4 w-4" style={{ color: C.textSoft }} />
                     </button>
                   </div>
                   <button
                     onClick={handleGenerate}
                     disabled={isGenerating || !prompt.trim()}
-                    className="inline-flex h-12 items-center justify-center gap-2 rounded-[14px] btn-premium px-5 text-sm font-semibold disabled:pointer-events-none disabled:opacity-50"
+                    className="inline-flex h-12 items-center justify-center gap-2 rounded-[14px] px-5 text-sm font-semibold text-white disabled:pointer-events-none disabled:opacity-50 transition-all hover:brightness-110"
+                    style={{ background: C.cta, boxShadow: `0 8px 24px ${C.ctaShadow}` }}
                   >
                     {isGenerating ? (
                       <><Loader2 className="h-4 w-4 animate-spin" /> Generating...</>
                     ) : (
-                      <><Wand2 className="h-4 w-4" /> Generate ({currentModel.creditCost} cr)</>
+                      <><Wand2 className="h-4 w-4" /> Create ({currentModel.creditCost} cr)</>
                     )}
                   </button>
                 </div>
@@ -287,9 +327,9 @@ export default function NanoBanana() {
             </div>
 
             {/* Footer */}
-            <div className="border-t border-[#ffffff] bg-background px-4 py-3">
-              <p className="flex items-center justify-center gap-1.5 text-center text-xs text-[#9ca3af]">
-                <Sparkles className="h-3.5 w-3.5 text-[#3b82f6]" />
+            <div className="px-4 py-3" style={{ borderTop: `1px solid ${C.border}`, background: C.inner }}>
+              <p className="flex items-center justify-center gap-1.5 text-center text-xs" style={{ color: C.textMuted }}>
+                <Sparkles className="h-3.5 w-3.5" style={{ color: C.accent }} />
                 {currentModel.name} · {currentModel.creditCost} credit{currentModel.creditCost > 1 ? "s" : ""}/gen
               </p>
             </div>
@@ -297,75 +337,103 @@ export default function NanoBanana() {
         </aside>
 
         {/* ───── RIGHT CANVAS ───── */}
-        <main className="min-w-0 overflow-hidden rounded-[22px] bg-background border border-[#ffffff]">
-          <div className="flex h-full flex-col">
-            {/* Canvas header */}
-            <div className="border-b border-[#ffffff] px-5 py-4">
+        <main
+          className="relative min-w-0 overflow-hidden rounded-[30px]"
+          style={{ background: "#090d12", border: `1px solid ${C.border}` }}
+        >
+          {/* Ambient glow backdrop */}
+          <div
+            className="absolute inset-0 blur-2xl pointer-events-none"
+            style={{
+              background: [
+                "radial-gradient(circle at center, rgba(255,120,60,0.18), transparent 35%)",
+                "radial-gradient(circle at top, rgba(255,0,170,0.10), transparent 25%)",
+                "radial-gradient(circle at bottom, rgba(0,120,255,0.12), transparent 30%)",
+              ].join(","),
+            }}
+          />
+
+          <div className="relative z-10 flex h-full flex-col">
+            {/* Canvas header tabs */}
+            <div className="px-6 pt-5 pb-3">
               <div className="flex items-center gap-2">
-                <button className="rounded-full bg-[#1e3a8a]/20 border border-[#3b82f6]/40 px-4 py-2 text-sm font-medium text-[#3b82f6]">
+                <button className="rounded-full bg-white text-black px-4 py-2 text-sm font-medium">
                   Creations
                 </button>
-                <button className="px-3 py-2 text-sm text-[#9ca3af] transition-colors hover:text-[#6b7280]">
+                <button className="px-3 py-2 text-sm transition-colors hover:text-white" style={{ color: C.textSoft }}>
                   Collections
                 </button>
-                <button className="px-3 py-2 text-sm text-[#9ca3af] transition-colors hover:text-[#6b7280]">
+                <button className="px-3 py-2 text-sm transition-colors hover:text-white" style={{ color: C.textSoft }}>
                   Templates
                 </button>
               </div>
             </div>
 
             {/* Canvas body */}
-            <div className="min-h-0 flex-1 overflow-y-auto">
-              <div className="px-6 py-6">
-                {generatedImage ? (
-                  <div className="space-y-4">
-                    <div className="overflow-hidden rounded-[18px] bg-[#ffffff] border border-[#e0e0e0] p-1">
-                      <img src={generatedImage} alt="Generated result" className="h-auto w-full rounded-[14px]" />
-                    </div>
-                    <div className="flex justify-end gap-2">
-                      <button
-                        onClick={() => setGeneratedImage(null)}
-                        className="inline-flex items-center gap-2 rounded-xl bg-[#ffffff] border border-[#e0e0e0] px-4 py-2 text-sm font-medium text-[#6b7280] transition hover:border-[#3b82f6]/40 hover:text-[#111827]"
-                      >
-                        Generate another
-                      </button>
-                      <button
-                        onClick={handleDownload}
-                        className="inline-flex items-center gap-2 rounded-xl btn-premium px-4 py-2 text-sm font-medium"
-                      >
-                        <Download className="h-4 w-4" /> Download
-                      </button>
-                    </div>
+            <div className="min-h-0 flex-1 overflow-y-auto px-6 pb-6">
+              {generatedImage ? (
+                <div className="space-y-4">
+                  <div className="overflow-hidden rounded-[22px] p-1" style={{ background: C.panel, border: `1px solid ${C.borderMid}` }}>
+                    <img src={generatedImage} alt="Generated result" className="h-auto w-full rounded-[18px]" />
                   </div>
-                ) : (
-                  <>
-                    {/* Hero card */}
-                    <div className="rounded-[20px] bg-[#ffffff] border border-[#e0e0e0] p-6">
-                      <h2 className="text-4xl font-semibold tracking-tight text-[#111827] sm:text-5xl">
-                        AI Image Generator
-                      </h2>
-                      <div className="mt-4 flex flex-wrap gap-2">
-                        {IMAGE_MODELS.filter((m) => m.tag).slice(0, 6).map((m) => (
-                          <span key={m.id} className={`px-3 py-1 text-xs font-medium text-[#6b7280] ${uiSurfaces.chip}`}>
-                            {m.name}
-                          </span>
-                        ))}
-                      </div>
-                      <p className="mt-4 max-w-3xl text-lg text-[#6b7280]">
-                        {IMAGE_MODELS.length} models across {Object.keys(MODEL_CATEGORIES).length} categories.
-                        Select a model, write a prompt, and generate stunning images.
-                      </p>
+                  <div className="flex justify-end gap-2">
+                    <button
+                      onClick={() => setGeneratedImage(null)}
+                      className="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium transition hover:text-white"
+                      style={{ background: C.panel2, border: `1px solid ${C.border}`, color: C.textSoft }}
+                    >
+                      Generate another
+                    </button>
+                    <button
+                      onClick={handleDownload}
+                      className="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium text-white transition-all hover:brightness-110"
+                      style={{ background: C.cta, boxShadow: `0 8px 24px ${C.ctaShadow}` }}
+                    >
+                      <Download className="h-4 w-4" /> Download
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  {/* Hero text */}
+                  <div className="mt-4 max-w-5xl">
+                    <h2 className="text-5xl font-semibold tracking-tight lg:text-6xl" style={{ color: C.text }}>
+                      Free AI Image Creation
+                    </h2>
+
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      {IMAGE_MODELS.filter((m) => m.tag).slice(0, 6).map((m) => (
+                        <span
+                          key={m.id}
+                          className="rounded-full px-3 py-1 text-xs font-medium"
+                          style={{ background: "rgba(255,255,255,0.05)", border: `1px solid ${C.borderMid}`, color: C.textSoft }}
+                        >
+                          {m.name}
+                        </span>
+                      ))}
                     </div>
 
-                    {/* Preview cards */}
-                    <div className="mt-6 grid grid-cols-3 gap-4">
-                      <PreviewCard />
-                      <PreviewCard featured />
-                      <PreviewCard />
-                    </div>
-                  </>
-                )}
-              </div>
+                    <p className="mt-4 max-w-4xl text-lg" style={{ color: C.textSoft }}>
+                      {IMAGE_MODELS.length} models across {Object.keys(MODEL_CATEGORIES).length} categories.
+                      Select a model, write a prompt, and generate stunning images.
+                    </p>
+
+                    <button
+                      className="mt-6 h-12 rounded-[14px] px-8 text-sm font-semibold text-white transition-all hover:brightness-110"
+                      style={{ background: C.cta, boxShadow: `0 8px 24px ${C.ctaShadow}` }}
+                    >
+                      Sign up to create for FREE
+                    </button>
+                  </div>
+
+                  {/* Preview cards — cinematic 3-column */}
+                  <div className="grid grid-cols-[0.8fr_1.3fr_0.8fr] gap-4 mt-8">
+                    <PreviewCard />
+                    <PreviewCard featured />
+                    <PreviewCard />
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </main>
@@ -376,6 +444,17 @@ export default function NanoBanana() {
 
 /* ── Sub-components ── */
 
+function Section({ children }: { children: React.ReactNode }) {
+  return (
+    <div
+      className="rounded-[18px] p-3"
+      style={{ background: C.panel2, border: `1px solid ${C.border}` }}
+    >
+      {children}
+    </div>
+  );
+}
+
 function TagBadge({ tag, small = false }: { tag: string; small?: boolean }) {
   const base = small ? "px-1.5 py-0.5 text-[9px]" : "px-2 py-0.5 text-[10px]";
   const colors =
@@ -385,22 +464,27 @@ function TagBadge({ tag, small = false }: { tag: string; small?: boolean }) {
       ? "text-emerald-400 bg-emerald-500/10 border border-emerald-500/20"
       : tag === "Fast"
       ? "text-sky-400 bg-sky-500/10 border border-sky-500/20"
-      : "text-[#3b82f6] bg-[#3b82f6]/10 border border-[#3b82f6]/20";
+      : "text-blue-400 bg-blue-500/10 border border-blue-500/20";
   return <span className={`${base} ${colors} rounded-full font-bold uppercase tracking-wider`}>{tag}</span>;
 }
 
 function ModeTabs({ mode, setMode }: { mode: Mode; setMode: (m: Mode) => void }) {
   return (
-    <div className="grid grid-cols-2 gap-2 rounded-[16px] bg-background border border-[#e0e0e0] p-1.5">
+    <div
+      className="grid grid-cols-2 gap-2 rounded-[18px] p-2"
+      style={{ background: C.panel2, border: `1px solid ${C.border}` }}
+    >
       {(["create", "variations"] as const).map((entry) => (
         <button
           key={entry}
           onClick={() => setMode(entry)}
-          className={`rounded-[12px] px-4 py-3 text-center text-sm font-semibold transition ${
-            mode === entry
-              ? "bg-[#2563eb] text-foreground shadow-[0_0_20px_rgba(37,99,235,0.4)]"
-              : "text-[#9ca3af] hover:bg-[#ffffff] hover:text-[#6b7280]"
-          }`}
+          className="rounded-[14px] px-4 py-4 text-center text-sm font-semibold transition"
+          style={{
+            background: mode === entry
+              ? "radial-gradient(circle at top, #ff70d7 0%, #b1268f 45%, #171c25 100%)"
+              : "transparent",
+            color: mode === entry ? "#fff" : C.textSoft,
+          }}
         >
           {entry === "create" ? "Create Image" : "Image Variations"}
         </button>
@@ -411,20 +495,28 @@ function ModeTabs({ mode, setMode }: { mode: Mode; setMode: (m: Mode) => void })
 
 function ReferenceBox() {
   return (
-    <div className="mt-3 rounded-[14px] bg-[#ffffff] border border-[#e0e0e0] p-3">
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <div className="flex -space-x-2">
-            {[0, 1, 2].map((i) => (
-              <div key={i} className="h-9 w-9 rounded-lg bg-[#ffffff] border border-[#e0e0e0]" />
-            ))}
+    <div
+      className="mt-3 rounded-[14px] p-[1px]"
+      style={{
+        border: `1px solid rgba(255,43,184,0.5)`,
+        background: "linear-gradient(180deg, rgba(255,43,184,0.18), rgba(255,43,184,0.04))",
+      }}
+    >
+      <div className="rounded-[13px] px-4 py-3" style={{ background: C.inner }}>
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="flex -space-x-2">
+              {[0, 1, 2].map((i) => (
+                <div key={i} className="h-9 w-9 rounded-lg" style={{ background: C.panel2, border: `1px solid ${C.border}` }} />
+              ))}
+            </div>
+            <div>
+              <div className="text-sm font-semibold" style={{ color: C.text }}>Add visual references</div>
+              <div className="text-xs" style={{ color: C.textMuted }}>JPEG / PNG / WEBP / GIF, 20 MB max</div>
+            </div>
           </div>
-          <div>
-            <div className="text-sm font-semibold text-[#111827]">Add visual references</div>
-            <div className="text-xs text-[#9ca3af]">JPEG / PNG / WEBP / GIF, 20 MB max</div>
-          </div>
+          <span className="rounded-full px-2 py-1 text-xs font-semibold" style={{ background: C.panel2, border: `1px solid ${C.border}`, color: C.textSoft }}>0/14</span>
         </div>
-        <span className="rounded-full bg-[#ffffff] border border-[#e0e0e0] px-2 py-1 text-xs font-semibold text-[#6b7280]">0/14</span>
       </div>
     </div>
   );
@@ -432,15 +524,18 @@ function ReferenceBox() {
 
 function PreviewCard({ featured = false }: { featured?: boolean }) {
   return (
-    <div className={`h-[320px] overflow-hidden rounded-[18px] border transition hover:scale-[1.02] hover:border-[#3b82f6] ${
-      featured ? "bg-[#ffffff] border-[#e0e0e0]" : "bg-background border-[#ffffff] opacity-70"
-    }`}>
-      <div className={`flex h-full w-full items-center justify-center ${
-        featured
-          ? "bg-gradient-to-b from-[#1e3a8a]/20 to-[#ffffff]"
-          : "bg-gradient-to-b from-[#ffffff]/50 to-[#f3f5f8]"
-      }`}>
-        <ImageIcon className={`h-12 w-12 ${featured ? "text-[#3b82f6]/30" : "text-[#e0e0e0]"}`} />
+    <div
+      className="h-[520px] overflow-hidden rounded-[22px] transition hover:scale-[1.01]"
+      style={{
+        background: C.panel,
+        border: `1px solid ${featured ? C.borderMid : C.borderLight}`,
+        opacity: featured ? 1 : 0.6,
+        filter: featured ? "none" : "blur(1px)",
+        boxShadow: featured ? "0 20px 60px rgba(0,0,0,0.45)" : "none",
+      }}
+    >
+      <div className="flex h-full w-full items-center justify-center">
+        <ImageIcon className="h-12 w-12" style={{ color: featured ? "rgba(59,130,246,0.3)" : "rgba(255,255,255,0.08)" }} />
       </div>
     </div>
   );
