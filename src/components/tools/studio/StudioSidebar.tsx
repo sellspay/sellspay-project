@@ -218,23 +218,7 @@ export function StudioSidebar({
   return (
     <>
       <TooltipProvider delayDuration={0}>
-        <aside className="h-full w-[220px] bg-background overflow-hidden flex flex-col">
-          <div className="shrink-0 px-3 pt-3 pb-2 flex items-center gap-2">
-            <button
-              onClick={onToggleCollapse}
-              className="shrink-0 p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
-            >
-              {collapsed ? <PanelLeft className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
-            </button>
-            <button
-              onClick={() => navigate("/")}
-              className="flex items-center gap-2 rounded-lg px-1 py-1 text-sm hover:opacity-80 transition-opacity"
-            >
-              <img src={sellspayLogo} alt="SellsPay" className="h-6 w-6 shrink-0" />
-              <span className="font-bold text-foreground tracking-tight">SellsPay</span>
-            </button>
-          </div>
-
+        <aside className="h-full bg-background overflow-hidden flex flex-col">
           <div className="flex flex-1 min-h-0">
             <motion.div
               className="h-full flex flex-col overflow-hidden border-r border-border/60"
