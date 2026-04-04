@@ -274,7 +274,7 @@ export default function NanoBanana() {
                   <button
                     onClick={handleGenerate}
                     disabled={isGenerating || !prompt.trim()}
-                    className="inline-flex h-12 items-center justify-center gap-2 rounded-[14px] bg-[#2563eb] px-5 text-sm font-semibold text-white shadow-[0_10px_30px_rgba(37,99,235,0.5)] transition hover:bg-[#3b82f6] hover:shadow-[0_14px_40px_rgba(59,130,246,0.5)] disabled:pointer-events-none disabled:opacity-50"
+                    className="inline-flex h-12 items-center justify-center gap-2 rounded-[14px] btn-premium px-5 text-sm font-semibold disabled:pointer-events-none disabled:opacity-50"
                   >
                     {isGenerating ? (
                       <><Loader2 className="h-4 w-4 animate-spin" /> Generating...</>
