@@ -47,6 +47,7 @@ export default function SFXGenerator() {
   const isGeneratingRef = useRef(false);
   
   const { deductCredits, credits: creditBalance, canUseFeature } = useSubscription();
+  const { user } = useAuth();
 
   const handleEnhancePrompt = async () => {
     if (!prompt.trim()) { toast.error("Please enter a prompt first"); return; }
