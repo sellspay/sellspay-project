@@ -254,7 +254,7 @@ export function StudioSidebar({
 
               {!collapsed && (
                 <div className="shrink-0 px-4 pt-3 pb-1 flex items-center justify-between">
-                  <span className="text-[10px] font-semibold text-muted-foreground/50 uppercase tracking-widest">Pinned</span>
+                  <span className="text-[10px] font-semibold text-[#6b7280] uppercase tracking-widest">Pinned</span>
                 </div>
               )}
               {collapsed && <div className="h-px bg-border/40 mx-2 my-1" />}
