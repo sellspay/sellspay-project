@@ -254,7 +254,7 @@ export function StudioSidebar({
                         <button
                           className={cn(
                             "flex items-center gap-2.5 w-full rounded-full px-3 py-2 text-sm transition-all duration-150",
-                            "text-muted-foreground hover:text-foreground hover:bg-accent",
+                            "text-[#a1a1aa] hover:text-[#f4f4f5] hover:bg-white/[0.06]",
                             collapsed && "justify-center px-2"
                           )}
                         >
