@@ -331,7 +331,7 @@ export default function NanoBanana() {
                       </button>
                       <button
                         onClick={handleDownload}
-                        className="inline-flex items-center gap-2 rounded-xl bg-[#2563eb] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#3b82f6]"
+                        className="inline-flex items-center gap-2 rounded-xl btn-premium px-4 py-2 text-sm font-medium"
                       >
                         <Download className="h-4 w-4" /> Download
                       </button>
