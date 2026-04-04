@@ -382,26 +382,50 @@ body[style*="margin-right"] {
   animation: marquee 30s linear infinite;
 }
 
-/* Premium Button Styles - Blue Gradient */
+/* Premium Button Styles - Glossy Blue Gradient */
 .btn-premium {
   position: relative;
-  background: linear-gradient(180deg, hsl(210 100% 55%) 0%, hsl(210 100% 45%) 100%);
-  border: 1px solid hsl(210 100% 40% / 0.3);
-  box-shadow: 0 2px 8px hsl(210 100% 50% / 0.25), inset 0 1px 0 hsl(0 0% 100% / 0.2);
+  background: linear-gradient(180deg, hsl(217 91% 60%) 0%, hsl(221 83% 53%) 50%, hsl(224 76% 48%) 100%);
+  border: 1px solid hsl(221 83% 53% / 0.6);
+  box-shadow:
+    inset 0 1px 0 hsl(0 0% 100% / 0.25),
+    inset 0 -1px 0 hsl(221 83% 40% / 0.3),
+    0 1px 3px hsl(221 83% 30% / 0.2),
+    0 4px 12px hsl(221 83% 53% / 0.3),
+    0 8px 24px hsl(221 83% 53% / 0.15);
   color: hsl(0 0% 100%);
-  transition: all 0.15s ease;
+  transition: all 0.2s ease;
   overflow: hidden;
+  text-shadow: 0 1px 2px hsl(221 83% 30% / 0.3);
+}
+
+.btn-premium::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, hsl(0 0% 100% / 0.15) 0%, hsl(0 0% 100% / 0) 50%, hsl(0 0% 0% / 0.05) 100%);
+  border-radius: inherit;
+  pointer-events: none;
 }
 
 .btn-premium:hover {
-  filter: brightness(1.08);
+  background: linear-gradient(180deg, hsl(217 91% 65%) 0%, hsl(221 83% 58%) 50%, hsl(224 76% 53%) 100%);
   transform: translateY(-1px);
-  box-shadow: 0 4px 16px hsl(210 100% 50% / 0.35), inset 0 1px 0 hsl(0 0% 100% / 0.2);
+  box-shadow:
+    inset 0 1px 0 hsl(0 0% 100% / 0.3),
+    inset 0 -1px 0 hsl(221 83% 40% / 0.3),
+    0 2px 4px hsl(221 83% 30% / 0.2),
+    0 8px 20px hsl(221 83% 53% / 0.4),
+    0 12px 32px hsl(221 83% 53% / 0.2);
 }
 
 .btn-premium:active {
-  filter: brightness(0.95);
+  background: linear-gradient(180deg, hsl(221 83% 53%) 0%, hsl(224 76% 48%) 50%, hsl(226 71% 40%) 100%);
   transform: translateY(0);
+  box-shadow:
+    inset 0 1px 0 hsl(0 0% 100% / 0.1),
+    inset 0 2px 4px hsl(221 83% 30% / 0.2),
+    0 1px 2px hsl(221 83% 30% / 0.15);
 }
 
 /* Hero Section Button Styles - Blue */
