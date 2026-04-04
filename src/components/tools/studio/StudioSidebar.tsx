@@ -251,65 +251,26 @@ export function StudioSidebar({
           </Popover>
         </div>
 
-        {/* Pinned tools list */}
+        {/* Pinned tools list with drag-and-drop */}
         <nav className="flex-1 overflow-y-auto custom-scrollbar px-2 py-1 space-y-0.5">
-          {pinnedTools.map(tool => {
-            const Icon = tool.icon;
-            const isActive = activeTool === tool.id || activeTool === tool.legacyRoute;
-            const thumb = toolThumbnails[tool.id];
-
-            const btn = (
-              <button
-                key={tool.id}
-                onClick={() => onToolSelect(tool.id)}
-                className={cn(
-                  "group/tool flex items-center gap-2 w-full rounded-full px-2 py-1.5 text-[13px] transition-all duration-150 relative",
-                  isActive
-                    ? "bg-primary text-primary-foreground font-medium shadow-md shadow-primary/20"
-                    : "text-muted-foreground hover:text-foreground hover:bg-muted/50",
-                  collapsed && "justify-center rounded-xl"
-                )}
-              >
-                {/* Drag handle - visible on hover */}
-                {!collapsed && (
-                  <GripVertical className="h-3 w-3 shrink-0 opacity-0 group-hover/tool:opacity-40 transition-opacity cursor-grab text-muted-foreground" />
-                )}
-                
-                {/* Colorful thumbnail circle */}
-                <div className={cn(
-                  "h-7 w-7 rounded-full overflow-hidden shrink-0 border",
-                  isActive ? "border-primary-foreground/30 ring-2 ring-primary-foreground/10" : "border-border/60"
-                )}>
-                  {thumb ? (
-                    <img src={thumb} alt="" className="w-full h-full object-cover" />
-                  ) : (
-                    <div className={cn(
-                      "w-full h-full flex items-center justify-center",
-                      isActive ? "bg-primary-foreground/20" : "bg-primary/10"
-                    )}>
-                      <Icon className={cn("h-3.5 w-3.5", isActive ? "text-primary-foreground" : "text-primary/60")} />
-                    </div>
-                  )}
-                </div>
-                {!collapsed && (
-                  <span className="truncate flex-1 text-left">{tool.name}</span>
-                )}
-                {!collapsed && tool.comingSoon && (
-                  <span className="text-[8px] text-muted-foreground/50 uppercase font-bold shrink-0">Soon</span>
-                )}
-              </button>
-            );
-
-            if (collapsed) {
-              return (
-                <Tooltip key={tool.id}>
-                  <TooltipTrigger asChild>{btn}</TooltipTrigger>
-                  <TooltipContent side="right">{tool.name}</TooltipContent>
-                </Tooltip>
-              );
-            }
-            return <div key={tool.id}>{btn}</div>;
-          })}
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
+          >
+            <SortableContext items={pinnedToolIds} strategy={verticalListSortingStrategy}>
+              {pinnedTools.map(tool => (
+                <SortableToolItem
+                  key={tool.id}
+                  tool={tool}
+                  isActive={activeTool === tool.id || activeTool === tool.legacyRoute}
+                  collapsed={collapsed}
+                  onToolSelect={onToolSelect}
+                  thumbnail={toolThumbnails[tool.id]}
+                />
+              ))}
+            </SortableContext>
+          </DndContext>
         </nav>
 
         {/* Bottom section */}
