@@ -191,7 +191,7 @@ export default function StudioLayout() {
   return (
     <div className="studio-dark h-screen flex flex-col overflow-hidden bg-[#f8fafc]">
       {/* Fixed top header - independent of sidebar */}
-      <header className="h-12 shrink-0 flex items-center justify-between px-3 bg-background">
+      <header className="h-12 shrink-0 flex items-center justify-between px-3 bg-[#f8fafc]">
         {/* Left: sidebar toggle + logo */}
         <div className="flex items-center gap-2">
           <button
