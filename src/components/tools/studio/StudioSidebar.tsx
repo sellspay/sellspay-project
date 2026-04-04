@@ -80,37 +80,21 @@ export function StudioSidebar({
         animate={{ width: collapsed ? 56 : 220 }}
         transition={{ duration: 0.2, ease: "easeInOut" }}
       >
-        {/* Logo + collapse toggle */}
-        <div className="shrink-0 px-2 pt-3 pb-1 flex items-center gap-1">
-          {collapsed ? (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  onClick={onToggleCollapse}
-                  className="flex items-center justify-center w-full p-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
-                >
-                  <PanelLeft className="h-4 w-4" />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="right">Expand sidebar</TooltipContent>
-            </Tooltip>
-          ) : (
-            <>
-              <button
-                onClick={() => navigate("/")}
-                className="flex items-center gap-2 flex-1 rounded-lg px-2 py-1.5 text-sm text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
-              >
-                <img src={sellspayLogo} alt="SellsPay" className="h-6 w-6 shrink-0" />
-                <span className="font-bold text-foreground tracking-tight">SellsPay</span>
-              </button>
-              <button
-                onClick={onToggleCollapse}
-                className="shrink-0 p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
-              >
-                <PanelLeftClose className="h-4 w-4" />
-              </button>
-            </>
-          )}
+        {/* Logo - always full size, never collapses */}
+        <div className="shrink-0 px-3 pt-3 pb-2 flex items-center gap-2">
+          <button
+            onClick={onToggleCollapse}
+            className="shrink-0 p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+          >
+            {collapsed ? <PanelLeft className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
+          </button>
+          <button
+            onClick={() => navigate("/")}
+            className="flex items-center gap-2 rounded-lg px-1 py-1 text-sm hover:opacity-80 transition-opacity"
+          >
+            <img src={sellspayLogo} alt="SellsPay" className="h-6 w-6 shrink-0" />
+            {!collapsed && <span className="font-bold text-foreground tracking-tight">SellsPay</span>}
+          </button>
         </div>
 
         {/* All Tools button */}
