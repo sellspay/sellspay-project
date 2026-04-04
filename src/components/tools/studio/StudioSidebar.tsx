@@ -10,6 +10,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { useNavigate } from "react-router-dom";
 import { useState, useEffect, useCallback } from "react";
 import { ReferralDialog } from "@/components/studio/ReferralDialog";
+import { SignUpPromoDialog } from "@/components/tools/SignUpPromoDialog";
 import {
   DndContext,
   closestCenter,
