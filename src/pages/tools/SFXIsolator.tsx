@@ -35,6 +35,7 @@ export default function SFXIsolator() {
   const isProcessingRef = useRef(false);
 
   const { deductCredits, canUseFeature } = useSubscription();
+  const { user } = useAuth();
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
