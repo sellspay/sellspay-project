@@ -295,9 +295,9 @@ export default function StudioLayout() {
         </motion.div>
 
         {/* Workspace */}
-        <div className="flex-1 flex min-w-0 gap-0 bg-background">
-          <main className="flex-1 min-w-0 overflow-hidden bg-background">
-            <div className="h-full overflow-y-auto custom-scrollbar bg-background px-4">
+        <div className="flex-1 flex min-w-0 gap-0 bg-[#f8fafc]">
+          <main className="flex-1 min-w-0 overflow-hidden bg-[#f8fafc]">
+            <div className="h-full overflow-y-auto custom-scrollbar bg-[#f8fafc] px-4">
             {isHome ? (
               <StudioHomeBanner
                 creditBalance={creditBalance}

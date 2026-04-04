@@ -1,28 +1,32 @@
 /**
- * Shared surface system for layered depth across all Studio tools.
+ * Shared surface system — contrast ladder for layered depth.
  *
- * Neutral dark workspace palette with blue glow accents.
- *   App bg (#f3f5f8) → Surface (#ffffff) → Panel (#ffffff) → Card (#f3f5f8)
- *   Borders: soft (#3a3a3a) · mid (#e0e0e0)
- *   Blue: dark (#1d4ed8) · mid (#2563eb) · glow (#3b82f6)
- *   Text: primary (#111827) · secondary (#6b7280) · muted (#9ca3af)
+ *   Page bg (#f8fafc) → Tool shell (#e9eef5) → Panels (#dde5ee) → Inner cards (#cfd8e3)
+ *   Borders step down with the surfaces for consistent separation.
  */
 export const uiSurfaces = {
-  /** Main tool container */
+  /** Page-level background */
+  pageBg: "bg-[#f8fafc]",
+
+  /** Outer tool container / shell */
   toolPanel:
-    "rounded-[24px] bg-[#f3f5f8] border border-[#3a3a3a] shadow-sm",
+    "rounded-[24px] bg-[#e9eef5] border border-[#d1d5db] shadow-[0_10px_30px_rgba(0,0,0,0.06)]",
 
-  /** Section card */
+  /** Left / Right panel cards */
   section:
-    "rounded-[16px] bg-[#ffffff] border border-[#e0e0e0]",
+    "rounded-[16px] bg-[#dde5ee] border border-[#cbd5e1] shadow-[0_1px_2px_rgba(0,0,0,0.04)]",
 
-  /** Alternate section card */
+  /** Alternate section card (same as section for consistency) */
   sectionAlt:
-    "rounded-[16px] bg-[#ffffff] border border-[#e0e0e0]",
+    "rounded-[16px] bg-[#dde5ee] border border-[#cbd5e1] shadow-[0_1px_2px_rgba(0,0,0,0.04)]",
+
+  /** Inner cards (prompt area, settings, etc.) */
+  innerCard:
+    "rounded-[14px] bg-[#cfd8e3] border border-[#bfc9d6]",
 
   /** Input areas */
   input:
-    "rounded-[14px] bg-[#ffffff] border border-[#e0e0e0] text-foreground placeholder:text-[#9ca3af]",
+    "rounded-[14px] bg-[#f8fafc] border border-[#cbd5e1] text-foreground placeholder:text-[#9ca3af]",
 
   /** Active / selected state — blue glow */
   active:
@@ -30,9 +34,9 @@ export const uiSurfaces = {
 
   /** Small chips and tags */
   chip:
-    "rounded-full bg-[#ffffff] border border-[#e0e0e0]",
+    "rounded-full bg-[#dde5ee] border border-[#cbd5e1]",
 
   /** Upload / drop zones */
   dropzone:
-    "rounded-[16px] bg-[#ffffff] border border-dashed border-[#e0e0e0]",
+    "rounded-[16px] bg-[#dde5ee] border border-dashed border-[#cbd5e1]",
 } as const;
