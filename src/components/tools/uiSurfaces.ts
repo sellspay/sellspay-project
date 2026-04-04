@@ -1,31 +1,31 @@
 /**
  * Shared surface system for layered depth across all Studio tools.
- * 
+ *
  * Hierarchy (strongest → lightest):
- *   workspace shell → inner page → tool panel (anchor) → section cards → inputs (anchor) → chips
+ *   app bg (#f7fbff) → window shell (#eef6fb) → card (#ffffff) → inner card (#f4f9fd) → inputs (#f8fcff) → chips
  */
 export const uiSurfaces = {
-  /** Main tool container — darker anchor layer */
+  /** Main tool container — soft ice shell */
   toolPanel:
-    "rounded-[24px] bg-gradient-to-br from-[#e6f2f8] to-[#dbeaf3] border border-[#cde0eb] shadow-[0_4px_14px_rgba(15,23,42,0.05)]",
+    "rounded-[24px] bg-[#eef6fb] border border-[#dbeaf3] shadow-[0_4px_14px_rgba(15,23,42,0.04)]",
 
-  /** Primary section card — lighter than tool panel */
+  /** Primary section card — white */
   section:
-    "rounded-[20px] bg-gradient-to-br from-[#f8fcff] to-[#eef7fb] border border-[#dbeaf1]",
+    "rounded-[20px] bg-white border border-[#e3edf5]",
 
-  /** Alternate section card (result, output) — slightly different tint */
+  /** Alternate section card (result, output) — soft ice */
   sectionAlt:
-    "rounded-[20px] bg-gradient-to-br from-[#f6fbff] to-[#edf6fb] border border-[#d7e7ef]",
+    "rounded-[20px] bg-[#f4f9fd] border border-[#e1eef6]",
 
-  /** Input areas — darker anchor for contrast rhythm */
+  /** Input areas — lightest ice with subtle inset */
   input:
-    "rounded-[16px] bg-[#e3eef6] border border-[#cddfea] shadow-[inset_0_1px_2px_rgba(15,23,42,0.06)]",
+    "rounded-[16px] bg-[#f8fcff] border border-[#dceaf4] shadow-[inset_0_1px_2px_rgba(15,23,42,0.04)]",
 
-  /** Small chips and tags — darker pop */
+  /** Small chips and tags */
   chip:
-    "rounded-full bg-[#dcecf7] border border-[#c6ddea]",
+    "rounded-full bg-[#eef6fb] border border-[#dbeaf3]",
 
   /** Upload / drop zones */
   dropzone:
-    "rounded-[18px] bg-[#e3eef6] border border-dashed border-[#c4d8e6] shadow-[inset_0_1px_3px_rgba(15,23,42,0.05)]",
+    "rounded-[18px] bg-[#f8fcff] border border-dashed border-[#c4d8e6] shadow-[inset_0_1px_3px_rgba(15,23,42,0.03)]",
 } as const;
