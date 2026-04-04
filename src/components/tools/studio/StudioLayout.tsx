@@ -190,7 +190,7 @@ export default function StudioLayout() {
   return (
     <div className="h-screen flex flex-col overflow-hidden bg-background">
       {/* Fixed top header - independent of sidebar */}
-      <header className="h-12 shrink-0 flex items-center px-3 gap-2 bg-background border-b border-border/40">
+      <header className="h-12 shrink-0 flex items-center px-3 gap-2 bg-background">
         <button
           onClick={() => setSidebarCollapsed(v => !v)}
           className="shrink-0 p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
