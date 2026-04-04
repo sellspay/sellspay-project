@@ -155,6 +155,7 @@ export function StudioSidebar({
   const navigate = useNavigate();
   const [referralOpen, setReferralOpen] = useState(false);
   const [addToolsOpen, setAddToolsOpen] = useState(false);
+  const [showAuthPromo, setShowAuthPromo] = useState(false);
 
   // DnD sensors
   const sensors = useSensors(
