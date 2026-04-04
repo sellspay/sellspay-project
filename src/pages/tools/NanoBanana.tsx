@@ -464,15 +464,15 @@ function ReferenceBox() {
 
 function PreviewCard({ featured = false }: { featured?: boolean }) {
   return (
-    <div className={`h-[320px] overflow-hidden rounded-[20px] border ${
-      featured ? "bg-white border-[#e3edf5]" : "bg-[#f4f9fd] border-[#e1eef6] opacity-70"
+    <div className={`h-[320px] overflow-hidden rounded-[20px] border shadow-[0_8px_24px_rgba(111,166,189,0.12)] ${
+      featured ? "bg-white border-[#9fc2d4]" : "bg-[#f4f9fd] border-[#cfe3ee] opacity-70"
     }`}>
       <div className={`flex h-full w-full items-center justify-center ${
         featured
-          ? "bg-gradient-to-b from-[#e6f3ff] to-white"
+          ? "bg-gradient-to-b from-[#e6f3fb] to-white"
           : "bg-gradient-to-b from-[#eef6fb] to-[#f4f9fd]"
       }`}>
-        <ImageIcon className={`h-12 w-12 ${featured ? "text-[#3ba6ff]/40" : "text-[#94a3b8]/40"}`} />
+        <ImageIcon className={`h-12 w-12 ${featured ? "text-[#6fa6bd]/50" : "text-[#9fc2d4]/40"}`} />
       </div>
     </div>
   );
