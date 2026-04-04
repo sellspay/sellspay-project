@@ -4,7 +4,10 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { 
-  ArrowLeft, Loader2, Crown, Sparkles,
+  ArrowLeft, 
+  Loader2, 
+  Crown, 
+  Sparkles,
 } from "lucide-react";
 import { getToolById, ToolData } from "./toolsData";
 import { toolsRegistry } from "./toolsRegistry";
@@ -23,6 +26,7 @@ import { useContentModeration } from "@/hooks/useContentModeration";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
+// Lazy load tool components
 const AudioCutter = lazy(() => import("@/pages/tools/AudioCutter"));
 const AudioRecorder = lazy(() => import("@/pages/tools/AudioRecorder"));
 const AudioJoiner = lazy(() => import("@/pages/tools/AudioJoiner"));
@@ -40,11 +44,16 @@ interface ToolActiveViewProps {
   onClose: () => void;
   creditBalance?: number;
   isLoadingCredits?: boolean;
+  /** When true, renders in embedded canvas mode (no hero banner, slim top bar) */
   embedded?: boolean;
 }
 
 export function ToolActiveView({ 
-  toolId, onClose, creditBalance = 0, isLoadingCredits, embedded = false,
+  toolId, 
+  onClose,
+  creditBalance = 0,
+  isLoadingCredits,
+  embedded = false,
 }: ToolActiveViewProps) {
   const [showIntro, setShowIntro] = useState(true);
   const [isReady, setIsReady] = useState(false);
@@ -54,14 +63,17 @@ export function ToolActiveView({
   const tool = getToolById(toolId);
   const registryEntry = toolsRegistry.find((t) => t.id === toolId);
 
+  // --- Source & product context state ---
   const [sourceMode, setSourceMode] = useState<SourceMode>("blank");
   const [selectedProduct, setSelectedProduct] = useState<ProductContext | null>(null);
   const [selectedProducts, setSelectedProducts] = useState<ProductContext[]>([]);
   const isMultiSelect = registryEntry?.supportsMultiProduct ?? false;
 
+  // --- Brand kit state ---
   const [brandKitEnabled, setBrandKitEnabled] = useState(false);
   const [brandKitData, setBrandKitData] = useState<BrandKitData | null>(null);
 
+  // --- Mode toggles ---
   const [imageMode, setImageMode] = useState<ImageToolMode>("enhance");
   const [keepRecognizable, setKeepRecognizable] = useState(true);
   const [variations, setVariations] = useState(1);
@@ -71,12 +83,14 @@ export function ToolActiveView({
   const [videoStyle, setVideoStyle] = useState<VideoStyle>("cinematic");
   const [voiceoverEnabled, setVoiceoverEnabled] = useState(false);
 
+  // --- Generated asset state ---
   const [generatedAsset, setGeneratedAsset] = useState<{
     type: "image" | "audio" | "video" | "text" | "file";
     storageUrl: string;
     filename: string;
   } | null>(null);
 
+  // Product helpers
   const activeProducts = isMultiSelect ? selectedProducts : selectedProduct ? [selectedProduct] : [];
 
   const handleRemoveProduct = useCallback((productId: string) => {
@@ -88,6 +102,7 @@ export function ToolActiveView({
     }
   }, [isMultiSelect]);
 
+  // --- Post-gen actions ---
   const handleSetAsThumbnail = useCallback(async () => {
     const product = activeProducts[0];
     if (!product || !generatedAsset?.storageUrl) return;
@@ -95,13 +110,17 @@ export function ToolActiveView({
       .from("products")
       .update({ cover_image_url: generatedAsset.storageUrl })
       .eq("id", product.id);
-    if (error) { toast.error("Failed to set thumbnail"); }
-    else { toast.success("Thumbnail updated!"); }
+    if (error) {
+      toast.error("Failed to set thumbnail");
+    } else {
+      toast.success("Thumbnail updated!");
+    }
   }, [activeProducts, generatedAsset]);
 
   const handleAddToGallery = useCallback(async () => {
     const product = activeProducts[0];
     if (!product || !generatedAsset?.storageUrl) return;
+    // Update tool_assets.used_on_page
     await supabase
       .from("tool_assets" as any)
       .update({ used_on_page: "gallery" })
@@ -129,7 +148,7 @@ export function ToolActiveView({
   if (!tool) {
     return (
       <div className="flex items-center justify-center py-20">
-        <p className="text-slate-400">Tool not found</p>
+        <p className="text-[#71717a]">Tool not found</p>
       </div>
     );
   }
@@ -137,6 +156,7 @@ export function ToolActiveView({
   const Icon = tool.icon;
   const creditCost = registryEntry?.creditCost ?? 0;
 
+  // Image generator gets its own full-bleed layout — skip the hero/wrapper entirely
   if (toolId === "image-generator") {
     return (
       <div className="h-full">
@@ -148,22 +168,27 @@ export function ToolActiveView({
   }
 
   return (
-    <div className="h-full bg-[#f7fbff]">
+    <div className="h-full bg-[#0e0e10]">
+      {/* Intro Animation Overlay */}
       <AnimatePresence>
         {showIntro && !embedded && (
           <ToolIntroOverlay tool={tool} />
         )}
       </AnimatePresence>
 
+      {/* Main Tool Interface */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: (embedded || isReady) ? 1 : 0 }}
         transition={{ duration: 0.5 }}
         className="h-full"
       >
+        {/* Hero Banner — only in standalone mode */}
         {embedded ? (
-          <div className="relative overflow-hidden bg-white border-b border-[#e3edf5]">
+          <div className="relative overflow-hidden bg-background">
+            {/* Visual hero with tool thumbnail */}
             <div className="relative h-48 overflow-hidden">
+              {/* Background image or gradient */}
               {toolThumbnails[toolId] ? (
                 <>
                   <img 
@@ -171,26 +196,30 @@ export function ToolActiveView({
                     alt="" 
                     className="absolute inset-0 w-full h-full object-cover"
                   />
-                  <div className="absolute inset-0 bg-gradient-to-r from-white via-white/80 to-white/40" />
-                  <div className="absolute inset-0 bg-gradient-to-t from-white via-transparent to-transparent" />
+                  <div className="absolute inset-0 bg-gradient-to-r from-background via-background/80 to-background/40" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-background via-transparent to-transparent" />
                 </>
               ) : (
                 <>
                   <div className={cn("absolute inset-0", `bg-gradient-to-br ${tool.gradient}`)} />
-                  <div className="absolute inset-0 bg-gradient-to-t from-white via-white/30 to-transparent" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-background via-background/30 to-transparent" />
                 </>
               )}
               
-              <div className="absolute top-3 right-3 z-10 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/80 backdrop-blur-md border border-[#e3edf5]">
-                <Sparkles className="w-3.5 h-3.5 text-blue-500" />
-                <span className="text-xs font-semibold text-slate-800 tabular-nums">
+              
+              
+              {/* Credits badge */}
+              <div className="absolute top-3 right-3 z-10 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-background/60 backdrop-blur-md border border-border/30">
+                <Sparkles className="w-3.5 h-3.5 text-primary" />
+                <span className="text-xs font-semibold text-foreground tabular-nums">
                   {isLoadingCredits ? "…" : creditBalance} credits
                 </span>
               </div>
 
+              {/* Tool info positioned at bottom-left */}
               <div className="absolute bottom-4 left-4 z-10 flex items-end gap-3">
                 <div className={cn(
-                  "w-14 h-14 rounded-2xl overflow-hidden shrink-0 shadow-xl border-2 border-white",
+                  "w-14 h-14 rounded-2xl overflow-hidden shrink-0 shadow-xl border-2 border-background",
                   !toolThumbnails[toolId] && `bg-gradient-to-br ${tool.gradient}`
                 )}>
                   {toolThumbnails[toolId] ? (
@@ -203,23 +232,24 @@ export function ToolActiveView({
                 </div>
                 <div className="pb-0.5">
                   <div className="flex items-center gap-2">
-                    <h1 className="text-xl font-bold text-slate-900 tracking-tight drop-shadow-sm">{tool.title}</h1>
+                    <h1 className="text-xl font-bold text-foreground tracking-tight drop-shadow-sm">{tool.title}</h1>
                     {tool.badge && (
                       <Badge className={cn(
                         "border-0 text-[10px]",
-                        tool.badge === "Pro" && "bg-blue-50 text-blue-500",
-                        tool.badge === "Free" && "bg-emerald-50 text-emerald-600"
+                        tool.badge === "Pro" && "bg-primary/15 text-primary",
+                        tool.badge === "Free" && "bg-emerald-500/15 text-emerald-600"
                       )}>
                         {tool.badge === "Pro" && <Crown className="w-2.5 h-2.5 mr-0.5" />}
                         {tool.badge}
                       </Badge>
                     )}
                   </div>
-                  <p className="text-xs text-slate-500">{tool.tagline}</p>
+                  <p className="text-xs text-muted-foreground">{tool.tagline}</p>
                 </div>
               </div>
             </div>
           </div>
+        
         ) : (
           <ToolHeroBanner
             tool={tool}
@@ -229,7 +259,9 @@ export function ToolActiveView({
           />
         )}
 
+        {/* Tool Content */}
         <div className={cn("mx-auto py-6 space-y-4", embedded ? "px-6" : "container px-6")}>
+          {/* Context Controls — hidden in embedded mode (moved to right panel) */}
           {!embedded && (
             <motion.div
               initial={{ opacity: 0, y: 10 }}
@@ -237,6 +269,7 @@ export function ToolActiveView({
               transition={{ duration: 0.3 }}
               className="space-y-3"
             >
+              {/* Source Selector */}
               {isMultiSelect ? (
                 <SourceSelector
                   mode={sourceMode}
@@ -254,6 +287,7 @@ export function ToolActiveView({
                 />
               )}
 
+              {/* Product Context Card(s) */}
               {sourceMode === "product" && activeProducts.length > 0 && (
                 <ProductContextCard
                   products={activeProducts}
@@ -265,6 +299,7 @@ export function ToolActiveView({
                 />
               )}
 
+              {/* Mode toggles */}
               {registryEntry?.supportsModes === "image" && (
                 <ImageToolModeToggle
                   mode={imageMode}
@@ -290,6 +325,7 @@ export function ToolActiveView({
                 />
               )}
 
+              {/* Brand Kit + Credit Estimator row */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <BrandKitToggle
                   enabled={brandKitEnabled}
@@ -305,8 +341,10 @@ export function ToolActiveView({
           </motion.div>
           )}
 
+          {/* Content Moderation Banner */}
           <ContentModerationBanner result={moderationResult} onDismiss={clearModeration} />
 
+          {/* Tool Component */}
           <Suspense fallback={<ToolLoadingState tool={tool} />}>
             <ProToolsGate
               isProTool={isProTool(toolId)}
@@ -323,6 +361,7 @@ export function ToolActiveView({
             </ProToolsGate>
           </Suspense>
 
+          {/* Asset Output Panel (shown after generation) */}
           {generatedAsset && (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -345,6 +384,8 @@ export function ToolActiveView({
   );
 }
 
+// --- Sub-components extracted for readability ---
+
 function ToolIntroOverlay({ tool }: { tool: ToolData }) {
   const Icon = tool.icon;
   return (
@@ -352,7 +393,7 @@ function ToolIntroOverlay({ tool }: { tool: ToolData }) {
       initial={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.5 }}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-[#f7fbff]"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-[#0e0e10]"
     >
       <motion.div
         initial={{ scale: 0.8, opacity: 0 }}
@@ -377,7 +418,7 @@ function ToolIntroOverlay({ tool }: { tool: ToolData }) {
           initial={{ y: 20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ duration: 0.4, delay: 0.4 }}
-          className="text-3xl font-bold mb-2 text-slate-900"
+          className="text-3xl font-bold mb-2 text-[#f4f4f5]"
         >
           {tool.title}
         </motion.h1>
@@ -385,7 +426,7 @@ function ToolIntroOverlay({ tool }: { tool: ToolData }) {
           initial={{ y: 20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ duration: 0.4, delay: 0.5 }}
-          className="text-slate-400"
+          className="text-[#71717a]"
         >
           Activating premium experience...
         </motion.p>
@@ -404,7 +445,10 @@ function ToolIntroOverlay({ tool }: { tool: ToolData }) {
 }
 
 function ToolHeroBanner({
-  tool, onClose, creditBalance, isLoadingCredits,
+  tool,
+  onClose,
+  creditBalance,
+  isLoadingCredits,
 }: {
   tool: ToolData;
   onClose: () => void;
@@ -418,30 +462,43 @@ function ToolHeroBanner({
       `bg-gradient-to-br ${tool.gradient}`
     )}>
       <div className="absolute inset-0">
-        <div className="absolute inset-0 bg-[url('data:image/svg+xml,...')] opacity-5" />
+        <div className="absolute inset-0 bg-[linear-gradient(45deg,transparent_25%,rgba(255,255,255,0.05)_25%,rgba(255,255,255,0.05)_50%,transparent_50%,transparent_75%,rgba(255,255,255,0.05)_75%)] bg-[length:100px_100px] animate-[slide_20s_linear_infinite]" />
       </div>
-      <div className="relative z-10 container mx-auto px-6 h-full flex flex-col justify-end pb-8">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={onClose}
-          className="absolute top-4 left-4 text-white/80 hover:text-white hover:bg-white/10"
-        >
-          <ArrowLeft className="w-4 h-4 mr-1" /> Back
-        </Button>
-        <div className="flex items-center gap-1.5 absolute top-4 right-4 px-3 py-1.5 rounded-full bg-white/20 backdrop-blur-md border border-white/20">
-          <Sparkles className="w-3.5 h-3.5 text-white" />
-          <span className="text-xs font-semibold text-white tabular-nums">
-            {isLoadingCredits ? "…" : creditBalance} credits
-          </span>
-        </div>
-        <div className="flex items-center gap-4">
-          <div className={cn("w-16 h-16 rounded-2xl flex items-center justify-center bg-white/20 backdrop-blur-sm border border-white/20")}>
-            <Icon className="w-8 h-8 text-white" />
+      <div className="absolute inset-0 bg-gradient-to-t from-background via-background/20 to-transparent" />
+      
+      <div className="absolute top-4 right-4 z-10 flex items-center gap-2 px-3 py-1.5 rounded-lg bg-black/20 backdrop-blur-sm text-white">
+        <Sparkles className="w-4 h-4" />
+        <span className="text-sm font-medium">
+          {isLoadingCredits ? "..." : creditBalance} credits
+        </span>
+      </div>
+      <div className="absolute bottom-0 left-0 right-0 p-6 md:p-8">
+        <div className="container mx-auto flex items-end gap-6">
+          <div className={cn(
+            "w-16 h-16 md:w-20 md:h-20 rounded-2xl flex items-center justify-center",
+            "bg-white/20 backdrop-blur-sm shadow-xl"
+          )}>
+            <Icon className="w-8 h-8 md:w-10 md:h-10 text-white" />
           </div>
-          <div>
-            <h1 className="text-3xl font-bold text-white mb-1">{tool.title}</h1>
-            <p className="text-white/80 text-sm">{tool.tagline}</p>
+          <div className="flex-1">
+            <div className="flex items-center gap-3 mb-2">
+              <h1 className="text-2xl md:text-4xl font-bold text-white">
+                {tool.title}
+              </h1>
+              {tool.badge && (
+                <Badge className={cn(
+                  "border-0",
+                  tool.badge === "Pro" && "bg-white/20 text-white",
+                  tool.badge === "Free" && "bg-green-500/80 text-white"
+                )}>
+                  {tool.badge === "Pro" && <Crown className="w-3 h-3 mr-1" />}
+                  {tool.badge}
+                </Badge>
+              )}
+            </div>
+            <p className="text-white/80 text-sm md:text-base max-w-2xl">
+              {tool.tagline}
+            </p>
           </div>
         </div>
       </div>
@@ -451,30 +508,30 @@ function ToolHeroBanner({
 
 function ToolLoadingState({ tool }: { tool: ToolData }) {
   return (
-    <div className="flex flex-col items-center justify-center py-20 gap-4">
-      <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
-      <p className="text-slate-500">Loading {tool.title}...</p>
+    <div className="flex flex-col items-center justify-center py-20">
+      <div className={cn(
+        "w-16 h-16 rounded-2xl flex items-center justify-center mb-6",
+        `bg-gradient-to-br ${tool.gradient}`
+      )}>
+        <Loader2 className="w-8 h-8 text-white animate-spin" />
+      </div>
+      <p className="text-[#71717a]">Loading {tool.title}...</p>
     </div>
   );
 }
 
 function ToolComponent({ toolId }: { toolId: string }) {
   switch (toolId) {
+    case "voice-isolator": return <VoiceIsolator />;
+    case "sfx-isolator": return <SFXIsolator />;
+    case "music-splitter": return <MusicSplitter />;
     case "audio-cutter": return <AudioCutter />;
     case "audio-recorder": return <AudioRecorder />;
     case "audio-joiner": return <AudioJoiner />;
     case "video-to-audio": return <VideoToAudio />;
     case "audio-converter": return <AudioConverter />;
     case "waveform-generator": return <WaveformGenerator />;
-    case "voice-isolator": return <VoiceIsolator />;
-    case "sfx-isolator": return <SFXIsolator />;
-    case "music-splitter": return <MusicSplitter />;
     case "sfx-generator": return <SFXGenerator />;
-    case "image-generator": return <NanoBanana />;
-    default: return (
-      <div className="rounded-2xl bg-white border border-[#e3edf5] p-12 text-center shadow-sm">
-        <p className="text-slate-500">This tool is coming soon!</p>
-      </div>
-    );
+    default: return <div>Tool not implemented</div>;
   }
 }

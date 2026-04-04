@@ -1,10 +1,18 @@
 import { useState, useRef } from "react";
+import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Slider } from "@/components/ui/slider";
+import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { 
-  Loader2, Sparkles, Download, RotateCcw, Volume2, Wand2, Lightbulb
+  Loader2, 
+  Sparkles, 
+  Download, 
+  RotateCcw, 
+  Volume2, 
+  Wand2,
+  Lightbulb
 } from "lucide-react";
 import { SFXWaveform } from "@/components/tools/SFXWaveform";
 import { useSubscription } from "@/hooks/useSubscription";
@@ -13,20 +21,18 @@ import { useAuth } from "@/lib/auth";
 import { dispatchAuthGate } from "@/utils/authGateEvent";
 
 const C = {
-  pageBg: "#f7fbff",
-  shell: "#eef6fb",
-  shellBorder: "#dbeaf3",
-  card: "#ffffff",
-  cardBorder: "#e3edf5",
-  inner: "#f4f9fd",
-  innerBorder: "#e1eef6",
-  input: "#f8fcff",
-  inputBorder: "#dceaf4",
-  text: "#0f172a",
-  textSoft: "#475569",
-  textMuted: "#94a3b8",
-  accent: "#3ba6ff",
-  accentHover: "#2f95ea",
+  bg: "#0e0e10",
+  panel: "#18181b",
+  panel2: "#1e1e22",
+  inner: "#141416",
+  deepInner: "#0c0c0e",
+  border: "rgba(255,255,255,0.06)",
+  borderMid: "rgba(255,255,255,0.10)",
+  text: "#f4f4f5",
+  textSoft: "#a1a1aa",
+  textMuted: "#71717a",
+  accent: "#06b6d4",
+  accentBg: "rgba(6,182,212,0.12)",
 } as const;
 
 export default function SFXGenerator() {
@@ -129,25 +135,25 @@ export default function SFXGenerator() {
       {/* Header */}
       <div>
         <div className="flex items-center gap-2 mb-2">
-          <h2 className="text-2xl font-bold text-slate-900">SFX Generator</h2>
-          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider text-blue-500 bg-blue-50 border border-blue-200">AI</span>
+          <h2 className="text-2xl font-bold" style={{ color: C.text }}>SFX Generator</h2>
+          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider text-cyan-400 bg-cyan-500/10 border border-cyan-500/20">AI</span>
         </div>
-        <p className="text-slate-500">
+        <p style={{ color: C.textMuted }}>
           Create professional-grade sound effects from text descriptions.
         </p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Input Section */}
-        <div className="rounded-[24px] p-5 space-y-5 bg-white border border-[#e3edf5] shadow-sm">
+        <div className="rounded-[16px] p-5 space-y-5" style={{ background: C.panel2, border: `1px solid ${C.border}` }}>
           <div>
-            <label className="text-sm font-medium mb-2 block text-slate-900">Prompt</label>
+            <label className="text-sm font-medium mb-2 block" style={{ color: C.text }}>Prompt</label>
             <div className="relative">
               <Textarea
                 placeholder="Describe the sound effect you want to generate..."
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
-                className="min-h-[120px] resize-none pr-4 pb-14 rounded-[16px] bg-[#f8fcff] border-[#dceaf4] text-slate-800 placeholder:text-slate-400 focus:border-blue-400"
+                className="min-h-[120px] resize-none pr-4 pb-14 rounded-[12px] bg-[#0c0c0e] border-white/[0.08] text-white placeholder:text-zinc-500 focus:border-cyan-500/40"
                 disabled={isGenerating}
               />
               
@@ -170,7 +176,8 @@ export default function SFXGenerator() {
                   key={i}
                   onClick={() => setPrompt((prev) => prev ? `${prev}, ${suggestion.toLowerCase()}` : suggestion)}
                   disabled={isGenerating}
-                  className="text-[10px] px-2.5 py-1 rounded-full border border-[#dceaf4] bg-[#eef6fb] text-slate-500 transition-colors disabled:opacity-50 flex items-center gap-1 hover:bg-[#dbeaf3]"
+                  className="text-[10px] px-2.5 py-1 rounded-full border transition-colors disabled:opacity-50 flex items-center gap-1"
+                  style={{ background: "rgba(255,255,255,0.04)", border: `1px solid ${C.border}`, color: C.textSoft }}
                 >
                   <Lightbulb className="w-2.5 h-2.5" />
                   {suggestion}
@@ -181,8 +188,8 @@ export default function SFXGenerator() {
 
           <div>
             <div className="flex items-center justify-between mb-2">
-              <label className="text-sm font-medium text-slate-900">Duration</label>
-              <span className="text-sm text-slate-500">{duration}s</span>
+              <label className="text-sm font-medium" style={{ color: C.text }}>Duration</label>
+              <span className="text-sm" style={{ color: C.textMuted }}>{duration}s</span>
             </div>
             <Slider
               value={[duration]}
@@ -190,15 +197,15 @@ export default function SFXGenerator() {
               min={1} max={30} step={1}
               disabled={isGenerating}
             />
-            <p className="text-xs mt-1 text-slate-400">1-30 seconds</p>
+            <p className="text-xs mt-1" style={{ color: C.textMuted }}>1-30 seconds</p>
           </div>
 
           <div className="flex gap-2">
             <button
               onClick={handleGenerate}
               disabled={isGenerating || !prompt.trim()}
-              className="flex-1 inline-flex items-center justify-center gap-2 rounded-[16px] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-40 transition hover:brightness-110"
-              style={{ background: C.accent, boxShadow: `0 4px 16px rgba(59,166,255,0.3)` }}
+              className="flex-1 inline-flex items-center justify-center gap-2 rounded-[12px] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-40 transition hover:brightness-110"
+              style={{ background: C.accent, boxShadow: `0 4px 16px rgba(6,182,212,0.3)` }}
             >
               {isGenerating ? (
                 <><Loader2 className="w-4 h-4 animate-spin" /> Generating...</>
@@ -209,7 +216,8 @@ export default function SFXGenerator() {
             {result && (
               <button
                 onClick={handleReset}
-                className="rounded-[16px] px-3 py-2.5 transition hover:bg-slate-100 border border-[#e3edf5] text-slate-500"
+                className="rounded-[12px] px-3 py-2.5 transition hover:brightness-110"
+                style={{ background: C.inner, border: `1px solid ${C.borderMid}`, color: C.textSoft }}
               >
                 <RotateCcw className="w-4 h-4" />
               </button>
@@ -218,14 +226,15 @@ export default function SFXGenerator() {
 
           {/* Example Prompts */}
           <div>
-            <label className="text-sm font-medium mb-2 block text-slate-500">Example prompts</label>
+            <label className="text-sm font-medium mb-2 block" style={{ color: C.textMuted }}>Example prompts</label>
             <div className="flex flex-wrap gap-2">
               {examplePrompts.map((example, i) => (
                 <button
                   key={i}
                   onClick={() => setPrompt(example)}
                   disabled={isGenerating}
-                  className="text-xs px-2.5 py-1 rounded-full border border-[#dceaf4] bg-[#eef6fb] text-slate-500 transition-colors disabled:opacity-50 hover:bg-[#dbeaf3]"
+                  className="text-xs px-2.5 py-1 rounded-full border transition-colors disabled:opacity-50"
+                  style={{ background: "rgba(255,255,255,0.04)", border: `1px solid ${C.border}`, color: C.textMuted }}
                 >
                   {example.slice(0, 40)}...
                 </button>
@@ -235,13 +244,13 @@ export default function SFXGenerator() {
         </div>
 
         {/* Result Section */}
-        <div className="rounded-[24px] p-5 flex flex-col bg-white border border-[#e3edf5] shadow-sm">
+        <div className="rounded-[16px] p-5 flex flex-col" style={{ background: C.panel2, border: `1px solid ${C.border}` }}>
           <div className="flex items-center justify-between mb-4">
-            <h3 className="font-semibold text-slate-900">Result</h3>
+            <h3 className="font-semibold" style={{ color: C.text }}>Result</h3>
             <span className="text-xs px-2 py-0.5 rounded-full border" style={{
-              color: result ? C.accent : "#94a3b8",
-              border: `1px solid ${result ? 'rgba(59,166,255,0.3)' : '#e3edf5'}`,
-              background: result ? 'rgba(59,166,255,0.08)' : '#f8fcff',
+              color: result ? C.accent : C.textMuted,
+              border: `1px solid ${result ? 'rgba(6,182,212,0.3)' : C.border}`,
+              background: result ? C.accentBg : 'transparent',
             }}>
               {result ? "Ready" : isGenerating ? "Generating..." : "Idle"}
             </span>
@@ -251,8 +260,8 @@ export default function SFXGenerator() {
             {isGenerating ? (
               <div className="text-center space-y-6">
                 <div className="relative w-24 h-24 mx-auto">
-                  <span className="absolute inset-0 rounded-full border-2 border-blue-300/40 animate-ping" />
-                  <span className="absolute inset-2 rounded-full border-2 border-blue-400/50 animate-ping [animation-delay:0.2s]" />
+                  <span className="absolute inset-0 rounded-full border-2 border-cyan-500/30 animate-ping" />
+                  <span className="absolute inset-2 rounded-full border-2 border-cyan-500/40 animate-ping [animation-delay:0.2s]" />
                   <div className="absolute inset-0 flex items-center justify-center">
                     <div className="w-12 h-12 rounded-full flex items-center justify-center shadow-lg" style={{ background: `linear-gradient(135deg, ${C.accent}, #8b5cf6)` }}>
                       <Sparkles className="w-6 h-6 text-white animate-pulse" />
@@ -261,7 +270,7 @@ export default function SFXGenerator() {
                 </div>
                 <div className="space-y-2">
                   <p className="text-base font-semibold" style={{ color: C.accent }}>Generating sound effect...</p>
-                  <p className="text-sm text-slate-400">This may take 10-30 seconds</p>
+                  <p className="text-sm" style={{ color: C.textMuted }}>This may take 10-30 seconds</p>
                 </div>
               </div>
             ) : result ? (
@@ -275,7 +284,7 @@ export default function SFXGenerator() {
                 <div className="flex justify-center">
                   <button
                     onClick={handleDownload}
-                    className="inline-flex items-center gap-2 rounded-[16px] px-5 py-2.5 text-sm font-semibold text-white transition hover:brightness-110"
+                    className="inline-flex items-center gap-2 rounded-[12px] px-5 py-2.5 text-sm font-semibold text-white transition hover:brightness-110"
                     style={{ background: C.accent }}
                   >
                     <Download className="w-4 h-4" /> Download
@@ -291,19 +300,19 @@ export default function SFXGenerator() {
               </div>
             ) : (
               <div className="text-center space-y-3">
-                <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto bg-[#f4f9fd] border border-[#e1eef6]">
-                  <Volume2 className="w-8 h-8 text-slate-400" />
+                <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto" style={{ background: C.inner, border: `1px solid ${C.border}` }}>
+                  <Volume2 className="w-8 h-8" style={{ color: C.textMuted }} />
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-slate-600">No sound generated yet</p>
-                  <p className="text-xs text-slate-400">Enter a prompt and click Generate</p>
+                  <p className="text-sm font-medium" style={{ color: C.textSoft }}>No sound generated yet</p>
+                  <p className="text-xs" style={{ color: C.textMuted }}>Enter a prompt and click Generate</p>
                 </div>
               </div>
             )}
           </div>
 
-          <div className="mt-4 pt-4 border-t border-[#e3edf5]">
-            <p className="text-xs text-center text-slate-400">~$0.10 per generation</p>
+          <div className="mt-4 pt-4" style={{ borderTop: `1px solid ${C.border}` }}>
+            <p className="text-xs text-center" style={{ color: C.textMuted }}>~$0.10 per generation</p>
           </div>
         </div>
       </div>
