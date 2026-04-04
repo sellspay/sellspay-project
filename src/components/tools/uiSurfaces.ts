@@ -2,37 +2,37 @@
  * Shared surface system for layered depth across all Studio tools.
  *
  * Neutral dark workspace palette with blue glow accents.
- *   App bg (#2e2e2e) → Surface (#383838) → Panel (#383838) → Card (#2e2e2e)
- *   Borders: soft (#3a3a3a) · mid (#474747)
+ *   App bg (#f3f5f8) → Surface (#ffffff) → Panel (#ffffff) → Card (#f3f5f8)
+ *   Borders: soft (#3a3a3a) · mid (#e0e0e0)
  *   Blue: dark (#1d4ed8) · mid (#2563eb) · glow (#3b82f6)
- *   Text: primary (#f5f5f5) · secondary (#a3a3a3) · muted (#737373)
+ *   Text: primary (#111827) · secondary (#6b7280) · muted (#9ca3af)
  */
 export const uiSurfaces = {
   /** Main tool container */
   toolPanel:
-    "rounded-[24px] bg-[#2e2e2e] border border-[#3a3a3a] shadow-[0_20px_60px_rgba(0,0,0,0.6)]",
+    "rounded-[24px] bg-[#f3f5f8] border border-[#3a3a3a] shadow-[0_20px_60px_rgba(0,0,0,0.08)]",
 
   /** Section card */
   section:
-    "rounded-[16px] bg-[#383838] border border-[#474747]",
+    "rounded-[16px] bg-[#ffffff] border border-[#e0e0e0]",
 
   /** Alternate section card */
   sectionAlt:
-    "rounded-[16px] bg-[#333333] border border-[#474747]",
+    "rounded-[16px] bg-[#ffffff] border border-[#e0e0e0]",
 
   /** Input areas */
   input:
-    "rounded-[14px] bg-[#333333] border border-[#474747] text-white placeholder:text-[#737373]",
+    "rounded-[14px] bg-[#ffffff] border border-[#e0e0e0] text-foreground placeholder:text-[#9ca3af]",
 
   /** Active / selected state — blue glow */
   active:
-    "rounded-[14px] bg-[#1e3a8a]/20 border border-[#3b82f6] text-white shadow-[0_0_0_1px_#3b82f6,0_0_20px_rgba(59,130,246,0.3)]",
+    "rounded-[14px] bg-[#1e3a8a]/20 border border-[#3b82f6] text-foreground shadow-[0_0_0_1px_#3b82f6,0_0_20px_rgba(59,130,246,0.3)]",
 
   /** Small chips and tags */
   chip:
-    "rounded-full bg-[#383838] border border-[#474747]",
+    "rounded-full bg-[#ffffff] border border-[#e0e0e0]",
 
   /** Upload / drop zones */
   dropzone:
-    "rounded-[16px] bg-[#333333] border border-dashed border-[#474747]",
+    "rounded-[16px] bg-[#ffffff] border border-dashed border-[#e0e0e0]",
 } as const;

@@ -80,32 +80,32 @@
 
 /* ── Studio Dark Workspace Override ── */
 .studio-dark {
-  --background: 0 0% 18%;
-  --foreground: 0 0% 96%;
-  --card: 0 0% 22%;
-  --card-foreground: 0 0% 96%;
-  --popover: 0 0% 18%;
-  --popover-foreground: 0 0% 96%;
+  --background: 210 20% 96%;
+  --foreground: 0 0% 9%;
+  --card: 0 0% 100%;
+  --card-foreground: 0 0% 9%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 0 0% 9%;
   --primary: 217 91% 60%;
   --primary-foreground: 0 0% 100%;
-  --secondary: 0 0% 22%;
-  --secondary-foreground: 0 0% 96%;
-  --muted: 0 0% 22%;
-  --muted-foreground: 0 0% 64%;
-  --accent: 0 0% 26%;
-  --accent-foreground: 0 0% 96%;
+  --secondary: 210 20% 96%;
+  --secondary-foreground: 0 0% 9%;
+  --muted: 210 15% 93%;
+  --muted-foreground: 0 0% 40%;
+  --accent: 210 15% 93%;
+  --accent-foreground: 0 0% 9%;
   --destructive: 0 72% 51%;
   --destructive-foreground: 0 0% 98%;
-  --border: 0 0% 28%;
-  --input: 0 0% 28%;
+  --border: 0 0% 88%;
+  --input: 0 0% 88%;
   --ring: 217 91% 60%;
-  --sidebar-background: 0 0% 18%;
-  --sidebar-foreground: 0 0% 96%;
+  --sidebar-background: 0 0% 100%;
+  --sidebar-foreground: 0 0% 9%;
   --sidebar-primary: 217 91% 60%;
   --sidebar-primary-foreground: 0 0% 100%;
-  --sidebar-accent: 0 0% 22%;
-  --sidebar-accent-foreground: 0 0% 96%;
-  --sidebar-border: 0 0% 28%;
+  --sidebar-accent: 210 15% 93%;
+  --sidebar-accent-foreground: 0 0% 9%;
+  --sidebar-border: 0 0% 88%;
   --sidebar-ring: 217 91% 60%;
 }
 
