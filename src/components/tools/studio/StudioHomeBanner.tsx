@@ -60,7 +60,7 @@ export function StudioHomeBanner({ creditBalance, isLoadingCredits, onToolSelect
                     onClick={() => !tool.comingSoon && onToolSelect(tool.id)}
                     className={cn(
                       "group relative flex flex-row items-stretch rounded-2xl text-left overflow-hidden",
-                      "bg-[#111827] border border-[#1f2937]",
+                      "bg-[#333333] border border-[#383838]",
                       "shadow-[0_2px_12px_rgba(0,0,0,0.3)]",
                       "hover:border-emerald-500/60 hover:shadow-[0_4px_20px_rgba(16,185,129,0.15)] hover:-translate-y-1",
                       "transition-all duration-250",
@@ -75,18 +75,18 @@ export function StudioHomeBanner({ creditBalance, isLoadingCredits, onToolSelect
                       <p className="text-[13px] font-bold text-emerald-400 leading-tight truncate">
                         {tool.name}
                       </p>
-                      <p className="text-[11px] text-[#9ca3af] mt-1 line-clamp-2 leading-relaxed">
+                      <p className="text-[11px] text-[#a3a3a3] mt-1 line-clamp-2 leading-relaxed">
                         {tool.description}
                       </p>
                       {tool.comingSoon && (
-                        <span className="inline-block mt-1.5 text-[9px] font-bold text-[#6b7280] uppercase tracking-wider">
+                        <span className="inline-block mt-1.5 text-[9px] font-bold text-[#737373] uppercase tracking-wider">
                           Coming Soon
                         </span>
                       )}
                     </div>
 
                     {/* Thumbnail */}
-                    <div className="w-20 h-20 shrink-0 overflow-hidden self-center mr-2 rounded-xl bg-[#1f2937]">
+                    <div className="w-20 h-20 shrink-0 overflow-hidden self-center mr-2 rounded-xl bg-[#383838]">
                       {thumb ? (
                         <img
                           src={thumb}
@@ -98,7 +98,7 @@ export function StudioHomeBanner({ creditBalance, isLoadingCredits, onToolSelect
                         />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center">
-                          <Icon className="h-7 w-7 text-[#374151]" />
+                          <Icon className="h-7 w-7 text-[#474747]" />
                         </div>
                       )}
                     </div>
