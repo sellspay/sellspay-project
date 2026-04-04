@@ -407,7 +407,7 @@ export function StudioSidebar({
                     ) : (
                       <button
                         onClick={() => navigate("/signup")}
-                        className="flex items-center justify-center gap-2 w-full px-3 py-2.5 rounded-lg bg-[#2563eb] text-white text-sm font-semibold hover:bg-[#3b82f6] transition-colors shadow-[0_10px_30px_rgba(37,99,235,0.4)]"
+                        className="flex items-center justify-center gap-2 w-full px-3 py-2.5 rounded-lg btn-premium text-sm font-semibold"
                       >
                         <Zap className="h-4 w-4" />
                         Start Now for Free

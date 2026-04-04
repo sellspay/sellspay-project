@@ -265,7 +265,7 @@ export default function StudioLayout() {
               </button>
               <button
                 onClick={() => navigate("/auth")}
-                className="px-4 py-1.5 text-sm font-semibold text-white bg-[#2563eb] rounded-full hover:bg-[#3b82f6] transition-colors"
+                className="px-4 py-1.5 text-sm font-semibold text-white btn-premium rounded-full"
               >
                 Get Started →
               </button>
