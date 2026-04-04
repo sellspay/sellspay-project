@@ -203,7 +203,7 @@ export default function StudioLayout() {
         onGoHome={handleGoHome}
       />
 
-      <main className="relative overflow-y-auto custom-scrollbar bg-background">
+      <main className="relative overflow-y-auto custom-scrollbar" style={{ backgroundColor: 'hsl(210 40% 97%)' }}>
         {isHome ? (
           <StudioHomeBanner
             creditBalance={creditBalance}
