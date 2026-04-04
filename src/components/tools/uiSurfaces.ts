@@ -1,36 +1,37 @@
 /**
  * Shared surface system for layered depth across all Studio tools.
  *
- * 5-layer palette + 3 anchor blues for structure:
- *   App bg (#f7fbff) → Shell (#eef6fb) → Card (#fff) → Inner (#f4f9fd) → Input (#f8fcff)
- *   Mid blue (#cfe3ee) · Strong blue (#9fc2d4) · Deep accent (#6fa6bd)
+ * Palette: white + neutral grays base, blue only for accent/active.
+ *   App bg (#f5f7fa) → Shell (#fff) → Card (#f9fafb) → Inner (#f3f4f6) → Input (#f1f5f9)
+ *   Borders: light (#e5e7eb) · mid (#d1d5db) · strong (#9ca3af)
+ *   Blue: light (#e0f2fe) · mid (#3b82f6) · dark (#1e40af)
  */
 export const uiSurfaces = {
-  /** Main tool container — shell with depth shadow */
+  /** Main tool container — clean white shell */
   toolPanel:
-    "rounded-[24px] bg-[#eef6fb] border border-[#cfe3ee] shadow-[inset_0_1px_0_#ffffff,0_4px_20px_rgba(111,166,189,0.15)]",
+    "rounded-[24px] bg-[#f9fafb] border border-[#e5e7eb] shadow-[0_10px_30px_rgba(0,0,0,0.05)]",
 
-  /** Primary section card — white with mid-blue border */
+  /** Primary section card */
   section:
-    "rounded-[20px] bg-white border border-[#cfe3ee]",
+    "rounded-[16px] bg-[#f3f4f6] border border-[#d1d5db]",
 
-  /** Alternate section card — inner tint with strong-blue border */
+  /** Alternate section card */
   sectionAlt:
-    "rounded-[20px] bg-[#f4f9fd] border border-[#9fc2d4]",
+    "rounded-[16px] bg-white border border-[#d1d5db] shadow-[0_6px_16px_rgba(0,0,0,0.06)]",
 
-  /** Input areas — lightest ice, strong border */
+  /** Input areas */
   input:
-    "rounded-[16px] bg-[#f8fcff] border border-[#9fc2d4] shadow-[inset_0_1px_2px_rgba(111,166,189,0.10)]",
+    "rounded-[14px] bg-[#f1f5f9] border border-[#d1d5db] shadow-[inset_0_1px_2px_rgba(0,0,0,0.04)]",
 
-  /** Active / selected state */
+  /** Active / selected state — blue accent */
   active:
-    "rounded-[16px] bg-[#e6f3fb] border border-[#6fa6bd]",
+    "rounded-[14px] bg-[#e0f2fe] border border-[#3b82f6]",
 
   /** Small chips and tags */
   chip:
-    "rounded-full bg-[#eef6fb] border border-[#cfe3ee]",
+    "rounded-full bg-[#f3f4f6] border border-[#d1d5db]",
 
   /** Upload / drop zones */
   dropzone:
-    "rounded-[18px] bg-[#f8fcff] border border-dashed border-[#9fc2d4] shadow-[inset_0_1px_3px_rgba(111,166,189,0.08)]",
+    "rounded-[16px] bg-[#f1f5f9] border border-dashed border-[#9ca3af] shadow-[inset_0_1px_3px_rgba(0,0,0,0.03)]",
 } as const;
