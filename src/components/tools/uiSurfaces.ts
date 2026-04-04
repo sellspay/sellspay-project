@@ -1,28 +1,28 @@
 /**
  * Shared surface system for layered depth across all Studio tools.
  *
- * Dark workspace palette with blue glow accents.
- *   App bg (#0f172a) → Surface (#111827) → Panel (#1f2937) → Card (#111827)
- *   Borders: soft (#1f2937) · mid (#374151)
+ * Neutral dark workspace palette with blue glow accents.
+ *   App bg (#2e2e2e) → Surface (#383838) → Panel (#383838) → Card (#2e2e2e)
+ *   Borders: soft (#3a3a3a) · mid (#474747)
  *   Blue: dark (#1d4ed8) · mid (#2563eb) · glow (#3b82f6)
- *   Text: primary (#f9fafb) · secondary (#9ca3af) · muted (#6b7280)
+ *   Text: primary (#f5f5f5) · secondary (#a3a3a3) · muted (#737373)
  */
 export const uiSurfaces = {
   /** Main tool container */
   toolPanel:
-    "rounded-[24px] bg-[#0f172a] border border-[#1f2937] shadow-[0_20px_60px_rgba(0,0,0,0.6)]",
+    "rounded-[24px] bg-[#2e2e2e] border border-[#3a3a3a] shadow-[0_20px_60px_rgba(0,0,0,0.6)]",
 
   /** Section card */
   section:
-    "rounded-[16px] bg-[#1f2937] border border-[#374151]",
+    "rounded-[16px] bg-[#383838] border border-[#474747]",
 
   /** Alternate section card */
   sectionAlt:
-    "rounded-[16px] bg-[#111827] border border-[#374151]",
+    "rounded-[16px] bg-[#333333] border border-[#474747]",
 
   /** Input areas */
   input:
-    "rounded-[14px] bg-[#111827] border border-[#374151] text-white placeholder:text-[#6b7280]",
+    "rounded-[14px] bg-[#333333] border border-[#474747] text-white placeholder:text-[#737373]",
 
   /** Active / selected state — blue glow */
   active:
@@ -30,9 +30,9 @@ export const uiSurfaces = {
 
   /** Small chips and tags */
   chip:
-    "rounded-full bg-[#1f2937] border border-[#374151]",
+    "rounded-full bg-[#383838] border border-[#474747]",
 
   /** Upload / drop zones */
   dropzone:
-    "rounded-[16px] bg-[#111827] border border-dashed border-[#374151]",
+    "rounded-[16px] bg-[#333333] border border-dashed border-[#474747]",
 } as const;
