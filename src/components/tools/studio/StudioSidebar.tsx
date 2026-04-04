@@ -406,7 +406,7 @@ export function StudioSidebar({
                         {collapsed ? (
                           <Tooltip>
                             <TooltipTrigger asChild>
-                               <button className="w-8 h-8 rounded-full overflow-hidden border border-border hover:ring-2 hover:ring-[#3b82f6]/40 transition-all mx-auto block">
+                               <button className="w-8 h-8 rounded-full overflow-hidden border border-white/[0.08] hover:ring-2 hover:ring-[#3b82f6]/40 transition-all mx-auto block">
                                 {profile?.avatar_url ? (
                                   <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
                                 ) : (
