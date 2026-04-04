@@ -347,7 +347,7 @@ export default function NanoBanana() {
             </div>
 
             {/* Canvas body */}
-            <div className="min-h-0 flex-1 overflow-y-auto bg-[#f7fbff]">
+            <div className="min-h-0 flex-1 overflow-y-auto bg-gradient-to-br from-[#f4f9fd] to-[#cfe3ee]">
               <div className="px-6 py-6">
                 {generatedImage ? (
                   <div className="space-y-4">
