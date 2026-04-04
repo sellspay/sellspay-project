@@ -423,7 +423,7 @@ function TagBadge({ tag, small = false }: { tag: string; small?: boolean }) {
 
 function ModeTabs({ mode, setMode }: { mode: Mode; setMode: (m: Mode) => void }) {
   return (
-    <div className="grid grid-cols-2 gap-2 rounded-[18px] bg-[#f4f9fd] border border-[#e1eef6] p-1.5">
+    <div className="grid grid-cols-2 gap-2 rounded-[18px] bg-[#f4f9fd] border border-[#9fc2d4] p-1.5">
       {(["create", "variations"] as const).map((entry) => (
         <button
           key={entry}
