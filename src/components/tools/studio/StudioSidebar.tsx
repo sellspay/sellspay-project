@@ -354,7 +354,7 @@ export function StudioSidebar({
                 </DndContext>
               </nav>
 
-              <div className="shrink-0 border-t border-[#ffffff]">
+              <div className="shrink-0 border-t border-white/[0.06]">
                 <div className="px-2 py-2">
                   <Tooltip>
                     <TooltipTrigger asChild>
