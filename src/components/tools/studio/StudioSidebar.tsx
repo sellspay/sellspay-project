@@ -328,8 +328,8 @@ export function StudioSidebar({
                                       className={cn(
                                         "shrink-0 p-1 rounded-md transition-all",
                                         isPinned
-                                          ? "text-primary opacity-100"
-                                          : "text-muted-foreground/40 opacity-0 group-hover:opacity-100 hover:text-primary"
+                                          ? "text-[#3b82f6] opacity-100"
+                                          : "text-[#6b7280] opacity-0 group-hover:opacity-100 hover:text-[#3b82f6]"
                                       )}
                                       title={isPinned ? "Unpin from sidebar" : "Pin to sidebar"}
                                     >
