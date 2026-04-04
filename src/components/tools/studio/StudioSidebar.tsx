@@ -155,6 +155,23 @@ export function StudioSidebar({
   const navigate = useNavigate();
   const [referralOpen, setReferralOpen] = useState(false);
   const [addToolsOpen, setAddToolsOpen] = useState(false);
+
+  // DnD sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor)
+  );
+
+  const handleDragEnd = useCallback((event: DragEndEvent) => {
+    const { active, over } = event;
+    if (over && active.id !== over.id) {
+      setPinnedToolIds(prev => {
+        const oldIndex = prev.indexOf(active.id as string);
+        const newIndex = prev.indexOf(over.id as string);
+        return arrayMove(prev, oldIndex, newIndex);
+      });
+    }
+  }, []);
   
   // Pinned tools state with localStorage persistence
   const [pinnedToolIds, setPinnedToolIds] = useState<string[]>(() => {
