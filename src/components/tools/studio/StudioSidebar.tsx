@@ -368,7 +368,7 @@ export function StudioSidebar({
                 </DndContext>
               </nav>
 
-              <div className="shrink-0 border-t border-border/50">
+              <div className="shrink-0 border-t border-[#1f2937]">
                 <div className="px-2 py-2">
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -376,7 +376,7 @@ export function StudioSidebar({
                         onClick={() => onSectionChange("assets")}
                         className={cn(
                           "flex items-center gap-2.5 w-full rounded-lg px-2.5 py-2 text-sm transition-colors",
-                          "text-muted-foreground hover:text-foreground hover:bg-muted/50",
+                          "text-[#9ca3af] hover:text-[#f9fafb] hover:bg-[#1f2937]",
                           collapsed && "justify-center"
                         )}
                       >
