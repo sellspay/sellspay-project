@@ -196,7 +196,7 @@ export default function StudioLayout() {
         <div className="flex items-center gap-2">
           <button
             onClick={() => setSidebarCollapsed(v => !v)}
-            className="shrink-0 p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+            className="shrink-0 p-1.5 rounded-lg text-[#9ca3af] hover:text-[#f9fafb] hover:bg-[#1f2937] transition-colors"
           >
             {sidebarCollapsed ? <PanelLeft className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
           </button>
@@ -205,7 +205,7 @@ export default function StudioLayout() {
             className="flex items-center gap-2 rounded-lg px-1 py-1 text-sm hover:opacity-80 transition-opacity"
           >
             <img src={sellspayLogo} alt="SellsPay" className="h-6 w-6 shrink-0" />
-            <span className="font-bold text-foreground tracking-tight">SellsPay</span>
+            <span className="font-bold text-[#f9fafb] tracking-tight">SellsPay</span>
           </button>
         </div>
 
