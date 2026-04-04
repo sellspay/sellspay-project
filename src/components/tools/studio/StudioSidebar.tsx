@@ -91,9 +91,9 @@ function SortableToolItem({ tool, isActive, collapsed, onToolSelect, thumbnail }
         onClick={(e) => { e.stopPropagation(); onToolSelect(tool.id); }}
         className="flex items-center gap-2 flex-1 min-w-0 cursor-pointer"
       >
-        <div className={cn(
+          <div className={cn(
           "h-7 w-7 rounded-full overflow-hidden shrink-0 border pointer-events-none",
-          isActive ? "border-[#3b82f6]/50 ring-2 ring-[#3b82f6]/20" : "border-border"
+          isActive ? "border-[#3b82f6]/50 ring-2 ring-[#3b82f6]/20" : "border-white/[0.08]"
         )}>
           {thumbnail ? (
             <img src={thumbnail} alt="" className="w-full h-full object-cover" />
