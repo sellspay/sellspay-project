@@ -186,11 +186,7 @@ export default function StudioLayout() {
   const showRightPanel = !isHome && !campaignResult && !activeTool && activeSection === "campaign";
 
   return (
-    <div className="studio-layout h-screen grid overflow-hidden" style={{
-      gridTemplateColumns: showRightPanel
-        ? `${sidebarWidth}px 1fr 320px`
-        : `${sidebarWidth}px 1fr`,
-    }}>
+    <div className="studio-layout h-screen flex overflow-hidden bg-background">
       <StudioSidebar
         collapsed={sidebarCollapsed}
         onToggleCollapse={() => setSidebarCollapsed(v => !v)}
@@ -203,7 +199,8 @@ export default function StudioLayout() {
         onGoHome={handleGoHome}
       />
 
-      <main className="relative overflow-y-auto custom-scrollbar" style={{ backgroundColor: 'hsl(210 40% 97%)' }}>
+      <div className="flex-1 flex min-w-0 p-2.5 gap-0" style={{ backgroundColor: 'hsl(210 40% 97%)' }}>
+        <main className="flex-1 min-w-0 overflow-y-auto custom-scrollbar rounded-[22px] border border-border/40 bg-background shadow-[0_8px_30px_rgba(15,23,42,0.06)]">
         {isHome ? (
           <StudioHomeBanner
             creditBalance={creditBalance}
