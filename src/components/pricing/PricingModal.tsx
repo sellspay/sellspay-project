@@ -205,7 +205,7 @@ export function PricingModal({ open, onOpenChange }: PricingModalProps) {
 
           {/* ─── Plan Cards ─── */}
           <div className="px-6 pb-8">
-            <div className="grid grid-cols-4 gap-4 max-w-[1100px] mx-auto items-start">
+            <div className="grid grid-cols-4 gap-4 max-w-[1100px] mx-auto items-stretch">
               {PLAN_CARDS.map((plan) => {
                 const price = billingPeriod === "annually" ? plan.yearlyPrice : plan.monthlyPrice;
                 const originalPrice = billingPeriod === "annually" && plan.monthlyPrice > 0 ? plan.monthlyPrice : null;
