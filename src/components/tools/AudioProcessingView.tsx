@@ -334,7 +334,7 @@ export function AudioProcessingView({
             ? "bg-gradient-to-br from-primary via-primary/60 to-primary/30"
             : "bg-gradient-to-br from-border/80 via-border/40 to-border/80 group-hover:from-primary/40 group-hover:via-primary/20 group-hover:to-primary/40"
         }`}>
-          <div className="rounded-2xl bg-card">
+          <div className="rounded-2xl bg-white/90 backdrop-blur-sm shadow-sm">
             {/* Inner dashed zone */}
             <div className={`m-3 rounded-xl border-2 border-dashed transition-all duration-300 ${
               isDragging
