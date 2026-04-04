@@ -420,12 +420,12 @@ export function StudioSidebar({
                         {collapsed ? (
                           <Tooltip>
                             <TooltipTrigger asChild>
-                              <button className="w-8 h-8 rounded-full overflow-hidden border border-border hover:ring-2 hover:ring-primary/40 transition-all mx-auto block">
+                               <button className="w-8 h-8 rounded-full overflow-hidden border border-[#374151] hover:ring-2 hover:ring-[#3b82f6]/40 transition-all mx-auto block">
                                 {profile?.avatar_url ? (
                                   <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
                                 ) : (
-                                  <div className="w-full h-full bg-primary/10 flex items-center justify-center">
-                                    <span className="text-[10px] font-bold text-primary">
+                                  <div className="w-full h-full bg-[#1f2937] flex items-center justify-center">
+                                    <span className="text-[10px] font-bold text-[#3b82f6]">
                                       {(profile?.username || "U").slice(0, 2).toUpperCase()}
                                     </span>
                                   </div>
@@ -435,8 +435,8 @@ export function StudioSidebar({
                             <TooltipContent side="right">Profile</TooltipContent>
                           </Tooltip>
                         ) : (
-                          <button className="flex items-center gap-2.5 w-full rounded-lg px-2.5 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors">
-                            <div className="w-7 h-7 rounded-full overflow-hidden border border-border shrink-0">
+                          <button className="flex items-center gap-2.5 w-full rounded-lg px-2.5 py-2 text-sm text-[#9ca3af] hover:text-[#f9fafb] hover:bg-[#1f2937] transition-colors">
+                            <div className="w-7 h-7 rounded-full overflow-hidden border border-[#374151] shrink-0">
                               {profile?.avatar_url ? (
                                 <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
                               ) : (
