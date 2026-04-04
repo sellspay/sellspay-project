@@ -8,19 +8,26 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+// Model ID → Gemini endpoint mapping (mirrors src/models/imageModels.ts)
 const MODEL_MAP: Record<string, string> = {
-  "nano-banana": "gemini-2.5-flash-image",
+  // Fast
   "nano-banana-2": "gemini-3.1-flash-image-preview",
-  "nano-banana-pro": "gemini-3-pro-image-preview",
-  "flux-pro": "gemini-3.1-flash-image-preview",
-  "recraft-v3": "gemini-3.1-flash-image-preview",
   "sdxl-turbo": "gemini-2.5-flash-image",
-  "juggernaut-flux": "gemini-3.1-flash-image-preview",
+  "nano-banana": "gemini-2.5-flash-image",
+  // Realistic
+  "flux-pro": "gemini-3.1-flash-image-preview",
   "photo-real-v2": "gemini-3-pro-image-preview",
-  "anime-xl": "gemini-2.5-flash-image",
-  "product-shot-pro": "gemini-3-pro-image-preview",
-  "editorial-fashion": "gemini-3.1-flash-image-preview",
   "cinematic-scene": "gemini-3-pro-image-preview",
+  // Stylized
+  "recraft-v3": "gemini-3.1-flash-image-preview",
+  "juggernaut-flux": "gemini-3.1-flash-image-preview",
+  "editorial-fashion": "gemini-3.1-flash-image-preview",
+  // Anime
+  "anime-xl": "gemini-2.5-flash-image",
+  "anime-diffusion": "gemini-3.1-flash-image-preview",
+  // Product
+  "product-shot-pro": "gemini-3-pro-image-preview",
+  "nano-banana-pro": "gemini-3-pro-image-preview",
 };
 
 serve(async (req) => {
