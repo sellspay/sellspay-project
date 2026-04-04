@@ -360,9 +360,9 @@ export function StudioSidebar({
                     <TooltipTrigger asChild>
                       <button
                         onClick={() => onSectionChange("assets")}
-                        className={cn(
+                         className={cn(
                           "flex items-center gap-2.5 w-full rounded-lg px-2.5 py-2 text-sm transition-colors",
-                          "text-muted-foreground hover:text-foreground hover:bg-accent",
+                          "text-[#a1a1aa] hover:text-[#f4f4f5] hover:bg-white/[0.06]",
                           collapsed && "justify-center"
                         )}
                       >
