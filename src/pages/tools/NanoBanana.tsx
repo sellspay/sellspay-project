@@ -84,7 +84,7 @@ export default function NanoBanana() {
     <div className="h-full overflow-hidden bg-[#f3f5f8] px-4 py-4">
       <div className="grid h-full min-h-0 grid-cols-[390px_minmax(0,1fr)] gap-4">
         {/* ───── LEFT PANEL ───── */}
-        <aside className="min-h-0 overflow-hidden rounded-[24px] bg-[#ffffff] border border-[#ffffff] shadow-[0_20px_60px_rgba(0,0,0,0.6)]">
+        <aside className="min-h-0 overflow-hidden rounded-[24px] bg-[#ffffff] border border-[#ffffff] shadow-[0_20px_60px_rgba(0,0,0,0.08)]">
           <div className="flex h-full flex-col">
             {/* Header */}
             <div className="border-b border-[#ffffff] px-5 pb-4 pt-5">

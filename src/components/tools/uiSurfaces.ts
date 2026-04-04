@@ -10,7 +10,7 @@
 export const uiSurfaces = {
   /** Main tool container */
   toolPanel:
-    "rounded-[24px] bg-[#f3f5f8] border border-[#3a3a3a] shadow-[0_20px_60px_rgba(0,0,0,0.6)]",
+    "rounded-[24px] bg-[#f3f5f8] border border-[#3a3a3a] shadow-[0_20px_60px_rgba(0,0,0,0.08)]",
 
   /** Section card */
   section:
