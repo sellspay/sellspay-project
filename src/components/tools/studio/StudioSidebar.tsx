@@ -437,51 +437,51 @@ export function StudioSidebar({
                           </button>
                         )}
                       </PopoverTrigger>
-                      <PopoverContent side="right" align="end" sideOffset={8} className="w-72 p-0 bg-background border-border rounded-2xl overflow-hidden shadow-xl">
-                        <div className="px-4 py-3 border-b border-border/50">
+                      <PopoverContent side="right" align="end" sideOffset={8} className="w-72 p-0 bg-[#18181b] border-white/[0.06] rounded-2xl overflow-hidden shadow-xl">
+                        <div className="px-4 py-3 border-b border-white/[0.06]">
                           <button
                             onClick={() => navigate("/")}
-                            className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                            className="flex items-center gap-2 text-sm text-[#a1a1aa] hover:text-[#f4f4f5] transition-colors"
                           >
                             <ArrowLeft className="h-3.5 w-3.5" />
                             <span>Go to Dashboard</span>
                           </button>
                         </div>
 
-                        <div className="px-4 py-3 border-b border-border/50">
+                        <div className="px-4 py-3 border-b border-white/[0.06]">
                           <div className="flex items-center gap-2.5">
-                            <div className="w-8 h-8 rounded-lg overflow-hidden border border-border shrink-0 bg-primary/10 flex items-center justify-center">
+                            <div className="w-8 h-8 rounded-lg overflow-hidden border border-white/[0.08] shrink-0 bg-[#3b82f6]/10 flex items-center justify-center">
                               {profile?.avatar_url ? (
                                 <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
                               ) : (
-                                <span className="text-xs font-bold text-primary">
+                                <span className="text-xs font-bold text-[#3b82f6]">
                                   {(profile?.username || "U").slice(0, 1).toUpperCase()}
                                 </span>
                               )}
                             </div>
-                            <span className="text-sm font-semibold text-foreground truncate">{profile?.username || "Creator"}</span>
+                            <span className="text-sm font-semibold text-[#f4f4f5] truncate">{profile?.username || "Creator"}</span>
                             {(() => {
                               const tier = plan;
-                              if (tier === 'agency') return <span className="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-600 border border-amber-500/20">Agency</span>;
-                              if (tier === 'creator') return <span className="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded bg-primary/10 text-primary border border-primary/20">Pro</span>;
-                              if (tier === 'basic') return <span className="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-600 border border-emerald-500/20">Basic</span>;
-                              return <span className="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded bg-muted text-muted-foreground border border-border">Free</span>;
+                              if (tier === 'agency') return <span className="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20">Agency</span>;
+                              if (tier === 'creator') return <span className="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded bg-[#3b82f6]/10 text-[#3b82f6] border border-[#3b82f6]/20">Pro</span>;
+                              if (tier === 'basic') return <span className="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Basic</span>;
+                              return <span className="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded bg-white/[0.06] text-[#71717a] border border-white/[0.06]">Free</span>;
                             })()}
                           </div>
                         </div>
 
-                        <div className="px-4 py-3 border-b border-border/50 space-y-2.5">
+                        <div className="px-4 py-3 border-b border-white/[0.06] space-y-2.5">
                           <div className="flex items-center justify-between">
-                            <span className="text-sm font-medium text-foreground">Credits</span>
+                            <span className="text-sm font-medium text-[#f4f4f5]">Credits</span>
                             <button
                               onClick={() => navigate("/pricing")}
-                              className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                              className="flex items-center gap-1 text-sm text-[#a1a1aa] hover:text-[#f4f4f5] transition-colors"
                             >
-                              <span className="font-bold text-foreground tabular-nums">
+                              <span className="font-bold text-[#f4f4f5] tabular-nums">
                                 {isLoadingCredits ? "…" : creditBalance.toLocaleString()}
                               </span>
-                              <span className="text-muted-foreground">left</span>
-                              <ChevRight className="h-3.5 w-3.5 text-muted-foreground" />
+                              <span className="text-[#71717a]">left</span>
+                              <ChevRight className="h-3.5 w-3.5 text-[#71717a]" />
                             </button>
                           </div>
                           {!isLoadingCredits && (
@@ -503,10 +503,10 @@ export function StudioSidebar({
                           )}
                         </div>
 
-                        <div className="px-4 py-2.5 border-b border-border/50">
+                        <div className="px-4 py-2.5 border-b border-white/[0.06]">
                           <button
                             onClick={() => setReferralOpen(true)}
-                            className="flex items-center gap-2.5 text-sm text-primary hover:text-primary/80 transition-colors font-medium"
+                            className="flex items-center gap-2.5 text-sm text-[#3b82f6] hover:text-[#3b82f6]/80 transition-colors font-medium"
                           >
                             <Gift className="h-4 w-4" />
                             <span>Get free credits</span>
@@ -522,7 +522,7 @@ export function StudioSidebar({
                             <button
                               key={item.path}
                               onClick={() => navigate(item.path)}
-                              className="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+                              className="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm text-[#a1a1aa] hover:text-[#f4f4f5] hover:bg-white/[0.06] transition-colors"
                             >
                               <item.icon className="h-4 w-4" />
                               <span>{item.label}</span>
@@ -530,10 +530,10 @@ export function StudioSidebar({
                           ))}
                         </div>
 
-                        <div className="border-t border-border/50 py-1.5">
+                        <div className="border-t border-white/[0.06] py-1.5">
                           <button
                             onClick={() => signOut()}
-                            className="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm text-destructive hover:bg-destructive/5 transition-colors"
+                            className="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm text-red-400 hover:bg-red-500/5 transition-colors"
                           >
                             <LogOut className="h-4 w-4" />
                             <span>Sign Out</span>
