@@ -58,16 +58,8 @@ export function ToolActiveView({
 }: ToolActiveViewProps) {
   const [showIntro, setShowIntro] = useState(true);
   const [isReady, setIsReady] = useState(false);
-  const [showSignUpPromo, setShowSignUpPromo] = useState(false);
   const { isProTool, goToPricing } = useSubscription();
   const { moderationResult, validatePrompt, clearModeration } = useContentModeration();
-
-  // Listen for auth gate events from tool components
-  useEffect(() => {
-    const handler = () => setShowSignUpPromo(true);
-    window.addEventListener(AUTH_GATE_EVENT, handler);
-    return () => window.removeEventListener(AUTH_GATE_EVENT, handler);
-  }, []);
   
   const tool = getToolById(toolId);
   const registryEntry = toolsRegistry.find((t) => t.id === toolId);
