@@ -113,7 +113,7 @@ export default function NanoBanana() {
         <aside className={`min-h-0 overflow-hidden ${uiSurfaces.toolPanel}`}>
           <div className="flex h-full flex-col">
             {/* Header */}
-            <div className="border-b border-[#dbeaf3] px-5 pb-4 pt-5">
+            <div className="border-b border-[#cfe3ee] px-5 pb-4 pt-5">
               <div className="flex items-center gap-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#3ba6ff] text-white shadow-sm">
                   <ImageIcon className="h-5 w-5" />
