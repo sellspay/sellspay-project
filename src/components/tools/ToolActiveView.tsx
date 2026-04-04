@@ -442,7 +442,7 @@ function ToolIntroOverlay({ tool }: { tool: ToolData }) {
           initial={{ y: 20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ duration: 0.4, delay: 0.5 }}
-          className="text-muted-foreground"
+          className="text-[#71717a]"
         >
           Activating premium experience...
         </motion.p>
