@@ -258,7 +258,7 @@ export function StudioSidebar({
                             collapsed && "justify-center px-2"
                           )}
                         >
-                          <div className="h-6 w-6 rounded-full border-2 border-dashed border-border flex items-center justify-center shrink-0">
+                          <div className="h-6 w-6 rounded-full border-2 border-dashed border-white/[0.12] flex items-center justify-center shrink-0">
                             <Plus className="h-3 w-3 text-[#9ca3af]" />
                           </div>
                           {!collapsed && <span>Add Tools</span>}
