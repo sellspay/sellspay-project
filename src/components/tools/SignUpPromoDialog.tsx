@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { X, Loader2 } from "lucide-react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
@@ -12,9 +12,16 @@ interface SignUpPromoDialogProps {
 
 export function SignUpPromoDialog({ open, onOpenChange }: SignUpPromoDialogProps) {
   const navigate = useNavigate();
-  const { signInWithGoogle } = useAuth();
+  const { signInWithGoogle, user } = useAuth();
   const [email, setEmail] = useState("");
   const [googleLoading, setGoogleLoading] = useState(false);
+
+  // Auto-close when user becomes authenticated
+  useEffect(() => {
+    if (user && open) {
+      onOpenChange(false);
+    }
+  }, [user, open, onOpenChange]);
 
   const handleGoogleSignIn = async () => {
     setGoogleLoading(true);
