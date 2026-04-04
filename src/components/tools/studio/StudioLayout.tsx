@@ -196,7 +196,7 @@ export default function StudioLayout() {
         <div className="flex items-center gap-2">
           <button
             onClick={() => setSidebarCollapsed(v => !v)}
-            className="shrink-0 p-1.5 rounded-lg text-[#9ca3af] hover:text-[#f9fafb] hover:bg-[#1f2937] transition-colors"
+            className="shrink-0 p-1.5 rounded-lg text-[#a3a3a3] hover:text-[#f5f5f5] hover:bg-[#383838] transition-colors"
           >
             {sidebarCollapsed ? <PanelLeft className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
           </button>
@@ -205,7 +205,7 @@ export default function StudioLayout() {
             className="flex items-center gap-2 rounded-lg px-1 py-1 text-sm hover:opacity-80 transition-opacity"
           >
             <img src={sellspayLogo} alt="SellsPay" className="h-6 w-6 shrink-0" />
-            <span className="font-bold text-[#f9fafb] tracking-tight">SellsPay</span>
+            <span className="font-bold text-[#f5f5f5] tracking-tight">SellsPay</span>
           </button>
         </div>
 
@@ -216,7 +216,7 @@ export default function StudioLayout() {
             href="https://discord.gg/sellspay"
             target="_blank"
             rel="noopener noreferrer"
-            className="p-2 rounded-full text-[#9ca3af] hover:text-[#f9fafb] hover:bg-[#1f2937] transition-colors"
+            className="p-2 rounded-full text-[#a3a3a3] hover:text-[#f5f5f5] hover:bg-[#383838] transition-colors"
             title="Discord"
           >
             <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
@@ -228,7 +228,7 @@ export default function StudioLayout() {
             href="https://instagram.com/sellspay.io"
             target="_blank"
             rel="noopener noreferrer"
-            className="p-2 rounded-full text-[#9ca3af] hover:text-[#f9fafb] hover:bg-[#1f2937] transition-colors"
+            className="p-2 rounded-full text-[#a3a3a3] hover:text-[#f5f5f5] hover:bg-[#383838] transition-colors"
             title="Instagram"
           >
             <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -238,12 +238,12 @@ export default function StudioLayout() {
             </svg>
           </a>
 
-          <div className="w-px h-5 bg-[#374151] mx-1" />
+          <div className="w-px h-5 bg-[#474747] mx-1" />
 
           {/* Pricing */}
           <button
             onClick={() => navigate("/pricing")}
-            className="px-3 py-1.5 text-sm text-[#9ca3af] hover:text-[#f9fafb] transition-colors"
+            className="px-3 py-1.5 text-sm text-[#a3a3a3] hover:text-[#f5f5f5] transition-colors"
           >
             Pricing
           </button>
@@ -251,7 +251,7 @@ export default function StudioLayout() {
           {profile ? (
             <button
               onClick={() => navigate("/profile")}
-              className="px-3 py-1.5 text-sm font-medium text-[#f9fafb] hover:opacity-80 transition-opacity"
+              className="px-3 py-1.5 text-sm font-medium text-[#f5f5f5] hover:opacity-80 transition-opacity"
             >
               My Profile
             </button>
@@ -259,7 +259,7 @@ export default function StudioLayout() {
             <>
               <button
                 onClick={() => navigate("/auth")}
-                className="px-3 py-1.5 text-sm font-medium text-[#f9fafb] border border-[#374151] rounded-full hover:bg-[#1f2937] transition-colors"
+                className="px-3 py-1.5 text-sm font-medium text-[#f5f5f5] border border-[#474747] rounded-full hover:bg-[#383838] transition-colors"
               >
                 Login
               </button>
