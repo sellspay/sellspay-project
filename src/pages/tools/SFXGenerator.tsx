@@ -2,7 +2,6 @@ import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Slider } from "@/components/ui/slider";
-import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -18,6 +17,7 @@ import {
 import { SFXWaveform } from "@/components/tools/SFXWaveform";
 import { useSubscription } from "@/hooks/useSubscription";
 import { UpgradeModal } from "@/components/subscription/UpgradeModal";
+import { uiSurfaces } from "@/components/tools/uiSurfaces";
 
 export default function SFXGenerator() {
   const [prompt, setPrompt] = useState("");
@@ -28,7 +28,7 @@ export default function SFXGenerator() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [showOutOfCredits, setShowOutOfCredits] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const isGeneratingRef = useRef(false); // Guard against double-clicks
+  const isGeneratingRef = useRef(false);
   
   const { deductCredits, credits: creditBalance, canUseFeature } = useSubscription();
 
@@ -63,25 +63,21 @@ export default function SFXGenerator() {
       return;
     }
 
-    // CRITICAL: Guard against double-clicks using ref (state updates are async)
     if (isGeneratingRef.current) {
       console.log("Generation already in progress, ignoring duplicate click");
       return;
     }
 
-    // Check if user can use this pro tool - show dialog instead of toast
     if (!canUseFeature("sfx-generator")) {
       setShowOutOfCredits(true);
       return;
     }
 
-    // Lock immediately with ref before async operations
     isGeneratingRef.current = true;
     setIsGenerating(true);
     setResult(null);
 
     try {
-      // GENERATE FIRST - only deduct credit on SUCCESS
       const { data, error } = await supabase.functions.invoke("generate-sfx", {
         body: { prompt: prompt.trim(), duration },
       });
@@ -89,11 +85,9 @@ export default function SFXGenerator() {
       if (error) throw error;
       if (data.error) throw new Error(data.error);
 
-      // SUCCESS - now deduct the credit
       const deductResult = await deductCredits("sfx_gen");
       if (!deductResult.success) {
         console.warn("Credit deduction failed after successful generation:", deductResult.error);
-        // Still show the result since generation succeeded
       }
 
       setResult({
@@ -102,7 +96,6 @@ export default function SFXGenerator() {
       });
       toast.success("Sound effect generated!");
     } catch (err) {
-      // FAILED - no credit deducted
       console.error("Generation error:", err);
       toast.error(err instanceof Error ? err.message : "Failed to generate sound effect");
     } finally {
@@ -113,7 +106,6 @@ export default function SFXGenerator() {
 
   const handlePlayPause = () => {
     if (!audioRef.current) return;
-    
     if (isPlaying) {
       audioRef.current.pause();
     } else {
@@ -124,7 +116,6 @@ export default function SFXGenerator() {
 
   const handleDownload = async () => {
     if (!result) return;
-
     try {
       const response = await fetch(result.audio_url);
       const blob = await response.blob();
@@ -175,7 +166,7 @@ export default function SFXGenerator() {
       {/* Header */}
       <div>
         <div className="flex items-center gap-2 mb-2">
-          <h2 className="text-2xl font-bold">SFX Generator</h2>
+          <h2 className="text-2xl font-bold text-foreground">SFX Generator</h2>
           <Badge variant="secondary" className="bg-accent/20 text-accent-foreground">
             AI
           </Badge>
@@ -187,15 +178,15 @@ export default function SFXGenerator() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Input Section */}
-        <Card className="p-6 space-y-6 bg-card/50">
+        <div className={`${uiSurfaces.section} p-6 space-y-6`}>
           <div>
-            <label className="text-sm font-medium mb-2 block">Prompt</label>
+            <label className="text-sm font-medium mb-2 block text-foreground">Prompt</label>
             <div className="relative">
               <Textarea
                 placeholder="Describe the sound effect you want to generate..."
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
-                className="min-h-[120px] resize-none pr-4 pb-14"
+                className={`min-h-[120px] resize-none pr-4 pb-14 ${uiSurfaces.input} focus:border-primary/40`}
                 disabled={isGenerating}
               />
               
@@ -205,12 +196,8 @@ export default function SFXGenerator() {
                 disabled={isEnhancing || !prompt.trim() || isGenerating}
                 className="absolute bottom-3 right-3 group flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-violet-500 via-purple-500 to-fuchsia-500 text-white text-xs font-medium shadow-lg shadow-purple-500/25 hover:shadow-purple-500/40 hover:scale-105 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none disabled:hover:scale-100 overflow-hidden"
               >
-                {/* Animated background shimmer */}
                 <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-in-out" />
-                
-                {/* Pulsing glow effect */}
                 <span className="absolute inset-0 rounded-full bg-gradient-to-r from-violet-400 via-purple-400 to-fuchsia-400 opacity-0 group-hover:opacity-40 blur-sm transition-opacity duration-300" />
-                
                 {isEnhancing ? (
                   <>
                     <Loader2 className="w-3.5 h-3.5 animate-spin relative z-10" />
@@ -220,8 +207,6 @@ export default function SFXGenerator() {
                   <>
                     <Wand2 className="w-3.5 h-3.5 relative z-10 group-hover:rotate-12 transition-transform duration-300" />
                     <span className="relative z-10">AI Enhance</span>
-                    
-                    {/* Sparkle particle animation */}
                     <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-yellow-300 rounded-full animate-ping opacity-75" />
                     <span className="absolute top-0 right-0 w-1.5 h-1.5 bg-yellow-200 rounded-full" />
                   </>
@@ -236,7 +221,7 @@ export default function SFXGenerator() {
                   key={i}
                   onClick={() => setPrompt((prev) => prev ? `${prev}, ${suggestion.toLowerCase()}` : suggestion)}
                   disabled={isGenerating}
-                  className="text-[10px] px-2 py-0.5 rounded-full bg-primary/10 hover:bg-primary/20 text-primary transition-colors disabled:opacity-50 flex items-center gap-1"
+                  className={`text-[10px] px-2.5 py-1 ${uiSurfaces.chip} text-foreground/70 hover:text-foreground hover:bg-[#dcedf7] transition-colors disabled:opacity-50 flex items-center gap-1`}
                 >
                   <Lightbulb className="w-2.5 h-2.5" />
                   {suggestion}
@@ -247,7 +232,7 @@ export default function SFXGenerator() {
 
           <div>
             <div className="flex items-center justify-between mb-2">
-              <label className="text-sm font-medium">Duration</label>
+              <label className="text-sm font-medium text-foreground">Duration</label>
               <span className="text-sm text-muted-foreground">{duration}s</span>
             </div>
             <Slider
@@ -269,7 +254,6 @@ export default function SFXGenerator() {
             >
               {isGenerating ? (
                 <>
-                  {/* Animated gradient background */}
                   <span className="absolute inset-0 bg-gradient-to-r from-primary via-accent to-primary bg-[length:200%_100%] animate-[shimmer_2s_infinite]" />
                   <span className="relative flex items-center justify-center gap-2">
                     <Loader2 className="w-4 h-4 animate-spin" />
@@ -301,19 +285,19 @@ export default function SFXGenerator() {
                   key={i}
                   onClick={() => setPrompt(example)}
                   disabled={isGenerating}
-                  className="text-xs px-2 py-1 rounded-full bg-secondary/50 hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
+                  className={`text-xs px-2.5 py-1 ${uiSurfaces.chip} text-muted-foreground hover:text-foreground hover:bg-[#dcedf7] transition-colors disabled:opacity-50`}
                 >
                   {example.slice(0, 40)}...
                 </button>
               ))}
             </div>
           </div>
-        </Card>
+        </div>
 
         {/* Result Section */}
-        <Card className="p-6 bg-card/50 flex flex-col">
+        <div className={`${uiSurfaces.sectionAlt} p-6 flex flex-col`}>
           <div className="flex items-center justify-between mb-4">
-            <h3 className="font-semibold">Result</h3>
+            <h3 className="font-semibold text-foreground">Result</h3>
             {result ? (
               <Badge variant="outline" className="text-primary border-primary/30">
                 Ready
@@ -328,7 +312,6 @@ export default function SFXGenerator() {
           <div className="flex-1 flex flex-col items-center justify-center min-h-[200px]">
             {isGenerating ? (
               <div className="text-center space-y-6">
-                {/* Pulsing rings animation */}
                 <div className="relative w-24 h-24 mx-auto">
                   <span className="absolute inset-0 rounded-full border-2 border-primary/30 animate-ping" />
                   <span className="absolute inset-2 rounded-full border-2 border-primary/40 animate-ping [animation-delay:0.2s]" />
@@ -339,16 +322,12 @@ export default function SFXGenerator() {
                     </div>
                   </div>
                 </div>
-                
-                {/* Animated text */}
                 <div className="space-y-2">
                   <p className="text-base font-semibold bg-gradient-to-r from-primary via-accent to-primary bg-[length:200%_100%] bg-clip-text text-transparent animate-[shimmer_2s_infinite]">
                     Generating sound effect...
                   </p>
                   <p className="text-sm text-muted-foreground">This may take 10-30 seconds</p>
-                  
-                  {/* Progress bar animation */}
-                  <div className="w-48 h-1.5 bg-secondary/50 rounded-full overflow-hidden mx-auto mt-4">
+                  <div className="w-48 h-1.5 bg-[#e0eef6] rounded-full overflow-hidden mx-auto mt-4">
                     <div className="h-full bg-gradient-to-r from-primary via-accent to-primary bg-[length:200%_100%] animate-[shimmer_1.5s_infinite] rounded-full" 
                          style={{ width: '60%' }} />
                   </div>
@@ -356,23 +335,18 @@ export default function SFXGenerator() {
               </div>
             ) : result ? (
               <div className="w-full space-y-6">
-                {/* Waveform Visualization */}
                 <SFXWaveform
                   audioUrl={result.audio_url}
                   isPlaying={isPlaying}
                   onPlayPause={handlePlayPause}
                   audioRef={audioRef}
                 />
-
-                {/* Download Button */}
                 <div className="flex justify-center">
                   <Button variant="outline" onClick={handleDownload}>
                     <Download className="w-4 h-4 mr-2" />
                     Download
                   </Button>
                 </div>
-
-                {/* Hidden Audio Element */}
                 <audio
                   ref={audioRef}
                   src={result.audio_url}
@@ -383,7 +357,7 @@ export default function SFXGenerator() {
               </div>
             ) : (
               <div className="text-center space-y-3">
-                <div className="w-16 h-16 rounded-full bg-secondary/50 flex items-center justify-center mx-auto">
+                <div className={`w-16 h-16 rounded-full bg-[#e4eff7] flex items-center justify-center mx-auto`}>
                   <Volume2 className="w-8 h-8 text-muted-foreground" />
                 </div>
                 <div>
@@ -396,16 +370,14 @@ export default function SFXGenerator() {
             )}
           </div>
 
-          {/* Cost info */}
-          <div className="mt-4 pt-4 border-t border-border">
+          <div className="mt-4 pt-4 border-t border-[#d7e7ef]">
             <p className="text-xs text-muted-foreground text-center">
               ~$0.10 per generation
             </p>
           </div>
-        </Card>
+        </div>
       </div>
 
-      {/* Out of Credits Dialog */}
       <UpgradeModal 
         open={showOutOfCredits} 
         onOpenChange={setShowOutOfCredits} 
