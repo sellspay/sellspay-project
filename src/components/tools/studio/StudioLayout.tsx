@@ -189,14 +189,14 @@ export default function StudioLayout() {
   const showRightPanel = !isHome && !campaignResult && !activeTool && activeSection === "campaign";
 
   return (
-    <div className={cn("h-screen flex flex-col overflow-hidden transition-colors duration-300", activeTool ? "bg-[#0f172a]" : "bg-background")}>
+    <div className="h-screen flex flex-col overflow-hidden bg-[#0f172a]">
       {/* Fixed top header - independent of sidebar */}
-      <header className={cn("h-12 shrink-0 flex items-center justify-between px-3 transition-colors duration-300", activeTool ? "bg-[#0f172a]" : "bg-background")}>
+      <header className="h-12 shrink-0 flex items-center justify-between px-3 bg-[#0f172a]">
         {/* Left: sidebar toggle + logo */}
         <div className="flex items-center gap-2">
           <button
             onClick={() => setSidebarCollapsed(v => !v)}
-            className="shrink-0 p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+            className="shrink-0 p-1.5 rounded-lg text-[#9ca3af] hover:text-[#f9fafb] hover:bg-[#1f2937] transition-colors"
           >
             {sidebarCollapsed ? <PanelLeft className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
           </button>
@@ -205,7 +205,7 @@ export default function StudioLayout() {
             className="flex items-center gap-2 rounded-lg px-1 py-1 text-sm hover:opacity-80 transition-opacity"
           >
             <img src={sellspayLogo} alt="SellsPay" className="h-6 w-6 shrink-0" />
-            <span className="font-bold text-foreground tracking-tight">SellsPay</span>
+            <span className="font-bold text-[#f9fafb] tracking-tight">SellsPay</span>
           </button>
         </div>
 
@@ -216,7 +216,7 @@ export default function StudioLayout() {
             href="https://discord.gg/sellspay"
             target="_blank"
             rel="noopener noreferrer"
-            className="p-2 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+            className="p-2 rounded-full text-[#9ca3af] hover:text-[#f9fafb] hover:bg-[#1f2937] transition-colors"
             title="Discord"
           >
             <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
@@ -228,7 +228,7 @@ export default function StudioLayout() {
             href="https://instagram.com/sellspay.io"
             target="_blank"
             rel="noopener noreferrer"
-            className="p-2 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+            className="p-2 rounded-full text-[#9ca3af] hover:text-[#f9fafb] hover:bg-[#1f2937] transition-colors"
             title="Instagram"
           >
             <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -238,12 +238,12 @@ export default function StudioLayout() {
             </svg>
           </a>
 
-          <div className="w-px h-5 bg-border mx-1" />
+          <div className="w-px h-5 bg-[#374151] mx-1" />
 
           {/* Pricing */}
           <button
             onClick={() => navigate("/pricing")}
-            className="px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+            className="px-3 py-1.5 text-sm text-[#9ca3af] hover:text-[#f9fafb] transition-colors"
           >
             Pricing
           </button>
@@ -251,7 +251,7 @@ export default function StudioLayout() {
           {profile ? (
             <button
               onClick={() => navigate("/profile")}
-              className="px-3 py-1.5 text-sm font-medium text-foreground hover:opacity-80 transition-opacity"
+              className="px-3 py-1.5 text-sm font-medium text-[#f9fafb] hover:opacity-80 transition-opacity"
             >
               My Profile
             </button>
@@ -259,13 +259,13 @@ export default function StudioLayout() {
             <>
               <button
                 onClick={() => navigate("/auth")}
-                className="px-3 py-1.5 text-sm font-medium text-foreground border border-border rounded-full hover:bg-muted/50 transition-colors"
+                className="px-3 py-1.5 text-sm font-medium text-[#f9fafb] border border-[#374151] rounded-full hover:bg-[#1f2937] transition-colors"
               >
                 Login
               </button>
               <button
                 onClick={() => navigate("/auth")}
-                className="px-4 py-1.5 text-sm font-semibold text-primary-foreground bg-primary rounded-full hover:bg-primary/90 transition-colors"
+                className="px-4 py-1.5 text-sm font-semibold text-white bg-[#2563eb] rounded-full hover:bg-[#3b82f6] transition-colors"
               >
                 Get Started →
               </button>
@@ -295,22 +295,9 @@ export default function StudioLayout() {
         </motion.div>
 
         {/* Workspace */}
-        <div className={cn(
-          "flex-1 flex min-w-0 p-2 gap-0 transition-colors duration-300",
-          activeTool ? "bg-[#0f172a]" : ""
-        )} style={!activeTool ? { backgroundColor: 'hsl(210 40% 97%)' } : undefined}>
-          <main className={cn(
-            "flex-1 min-w-0 overflow-hidden rounded-[22px] transition-all duration-300",
-            activeTool
-              ? "bg-[#0f172a] border border-[#1f2937] shadow-[0_20px_60px_rgba(0,0,0,0.4)]"
-              : "border border-[hsl(200_30%_88%)] bg-gradient-to-br from-[#e8f6fb] to-[#dff1f7] shadow-[0_12px_40px_rgba(15,23,42,0.08)] ring-1 ring-[hsl(200_35%_92%)]"
-          )}>
-            <div className={cn(
-              "h-full overflow-y-auto custom-scrollbar",
-              activeTool
-                ? "bg-gradient-to-br from-[#0f172a] to-[#020617]"
-                : "bg-gradient-to-br from-[#f4fbff] to-[#eaf6fb]"
-            )}>
+        <div className="flex-1 flex min-w-0 p-2 gap-0 bg-[#0f172a]">
+          <main className="flex-1 min-w-0 overflow-hidden rounded-[22px] bg-[#0f172a] border border-[#1f2937] shadow-[0_20px_60px_rgba(0,0,0,0.4)]">
+            <div className="h-full overflow-y-auto custom-scrollbar bg-gradient-to-br from-[#0f172a] to-[#020617]">
             {isHome ? (
               <StudioHomeBanner
                 creditBalance={creditBalance}
