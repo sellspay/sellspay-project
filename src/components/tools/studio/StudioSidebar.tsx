@@ -573,6 +573,7 @@ export function StudioSidebar({
       </TooltipProvider>
 
       <ReferralDialog open={referralOpen} onOpenChange={setReferralOpen} />
+      <SignUpPromoDialog open={showAuthPromo} onOpenChange={setShowAuthPromo} />
     </>
   );
 }
