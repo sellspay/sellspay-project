@@ -75,12 +75,12 @@ function SortableToolItem({ tool, isActive, collapsed, onToolSelect, thumbnail }
         collapsed && "justify-center rounded-xl"
       )}
     >
-      {/* Drag handle */}
+      {/* Drag handle - only this element is draggable */}
       {!collapsed && (
         <div
           {...attributes}
           {...listeners}
-          className="shrink-0 cursor-grab active:cursor-grabbing p-0.5 rounded hover:bg-foreground/10 transition-colors"
+          className="shrink-0 cursor-grab active:cursor-grabbing p-0.5 rounded hover:bg-foreground/10 transition-colors touch-none"
         >
           <GripVertical className="h-3.5 w-3.5 opacity-30 group-hover/tool:opacity-70 transition-opacity text-foreground" />
         </div>
@@ -88,11 +88,11 @@ function SortableToolItem({ tool, isActive, collapsed, onToolSelect, thumbnail }
 
       {/* Click area for selecting */}
       <button
-        onClick={() => onToolSelect(tool.id)}
-        className="flex items-center gap-2 flex-1 min-w-0"
+        onClick={(e) => { e.stopPropagation(); onToolSelect(tool.id); }}
+        className="flex items-center gap-2 flex-1 min-w-0 cursor-pointer"
       >
         <div className={cn(
-          "h-7 w-7 rounded-full overflow-hidden shrink-0 border",
+          "h-7 w-7 rounded-full overflow-hidden shrink-0 border pointer-events-none",
           isActive ? "border-primary-foreground/30 ring-2 ring-primary-foreground/10" : "border-border/60"
         )}>
           {thumbnail ? (
