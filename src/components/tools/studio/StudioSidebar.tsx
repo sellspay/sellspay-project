@@ -397,7 +397,7 @@ export function StudioSidebar({
                         <TooltipTrigger asChild>
                           <button
                             onClick={() => navigate("/signup")}
-                            className="flex items-center justify-center w-full px-2 py-1.5 rounded-lg bg-[#2563eb] text-white"
+                            className="flex items-center justify-center w-full px-2 py-1.5 rounded-lg btn-premium"
                           >
                             <Zap className="h-4 w-4" />
                           </button>
