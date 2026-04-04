@@ -179,7 +179,7 @@ export function ToolActiveView({
         initial={{ opacity: 0 }}
         animate={{ opacity: (embedded || isReady) ? 1 : 0 }}
         transition={{ duration: 0.5 }}
-        className="min-h-screen"
+        className="h-full"
       >
         {/* Hero Banner — only in standalone mode */}
         {embedded ? (
