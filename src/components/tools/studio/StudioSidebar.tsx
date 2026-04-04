@@ -218,7 +218,7 @@ export function StudioSidebar({
   return (
     <>
       <TooltipProvider delayDuration={0}>
-        <aside className="h-full w-full bg-background overflow-hidden flex flex-col border-r border-border/60">
+        <aside className="h-full w-full bg-[hsl(210_40%_98%)] overflow-hidden flex flex-col">
               {/* All Tools button */}
               <div className="shrink-0 px-2 pb-1">
                 <Tooltip>
