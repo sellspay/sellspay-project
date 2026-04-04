@@ -226,24 +226,11 @@ export function StudioSidebar({
                     <button
                       onClick={onGoHome}
                       className={cn(
-                        "flex items-center gap-2.5 w-full rounded-full px-3 py-2.5 text-sm transition-all duration-200",
-                        !activeTool && activeSection === "home"
-                          ? "bg-[#1e3a8a]/30 text-foreground font-semibold shadow-[0_0_0_1px_#3b82f6,0_0_12px_rgba(59,130,246,0.2)] border border-[#3b82f6]"
-                          : "text-muted-foreground hover:text-foreground hover:bg-accent border border-transparent",
+                        "flex items-center gap-2.5 w-full rounded-full px-3 py-2.5 text-sm font-semibold btn-premium text-white",
                         collapsed && "justify-center rounded-xl px-2"
                       )}
                     >
-                      <div className={cn(
-                        "h-6 w-6 rounded-md flex items-center justify-center shrink-0",
-                        !activeTool && activeSection === "home"
-                          ? "bg-[#3b82f6]/20"
-                          : "bg-accent"
-                      )}>
-                        <Home className={cn(
-                          "h-3.5 w-3.5",
-                          !activeTool && activeSection === "home" ? "text-[#3b82f6]" : "text-muted-foreground"
-                        )} />
-                      </div>
+                      <Home className="h-4 w-4 shrink-0" />
                       {!collapsed && <span>All Tools</span>}
                     </button>
                   </TooltipTrigger>
