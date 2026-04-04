@@ -245,7 +245,7 @@ export default function NanoBanana() {
               <button
                 onClick={handleGenerate}
                 disabled={isGenerating || !prompt.trim()}
-                className="btn-premium inline-flex items-center justify-center gap-2 rounded-[12px] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-40 transition"
+                className="btn-premium-cyan inline-flex items-center justify-center gap-2 rounded-[12px] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-40 transition"
               >
                 {isGenerating ? (
                   <><Loader2 className="h-4 w-4 animate-spin" /> Generating...</>
