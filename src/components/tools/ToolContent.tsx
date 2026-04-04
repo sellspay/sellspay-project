@@ -109,6 +109,7 @@ export function ToolContent({ toolId }: ToolContentProps) {
         return <WaveformGenerator />;
       case "sfx-generator":
         return <SFXGenerator />;
+      case "image-generator":
       case "nano-banana":
         return <NanoBanana />;
       default:
