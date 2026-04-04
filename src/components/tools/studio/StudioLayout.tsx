@@ -241,16 +241,15 @@ export default function StudioLayout() {
       </main>
 
       {showRightPanel && (
-        <AnimatePresence>
-          <CampaignControlPanel
-            creditBalance={creditBalance}
-            isLoadingCredits={isLoadingCredits}
-            onGenerate={handleGenerate}
-            campaignState={campaignState}
-            isGenerating={isGenerating}
-          />
-        </AnimatePresence>
+        <CampaignControlPanel
+          creditBalance={creditBalance}
+          isLoadingCredits={isLoadingCredits}
+          onGenerate={handleGenerate}
+          campaignState={campaignState}
+          isGenerating={isGenerating}
+        />
       )}
+      </div>
 
       <MyAssetsDrawer
         trigger={<span className="hidden" />}
