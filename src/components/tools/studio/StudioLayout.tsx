@@ -334,6 +334,7 @@ export default function StudioLayout() {
                 onCampaignStateChange={setCampaignState}
               />
             )}
+            </div>
           </main>
 
           {showRightPanel && (
