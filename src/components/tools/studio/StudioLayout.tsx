@@ -93,9 +93,6 @@ export default function StudioLayout() {
     const resolvedId = entry?.legacyRoute || toolId;
     setActiveTool(resolvedId);
     navigate(`/studio/${resolvedId}`, { replace: true });
-    if (activeSection === "home") {
-      setActiveSection("campaign");
-    }
   };
 
   const handleGoHome = () => {

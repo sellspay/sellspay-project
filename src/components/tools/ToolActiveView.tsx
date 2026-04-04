@@ -465,15 +465,7 @@ function ToolHeroBanner({
         <div className="absolute inset-0 bg-[linear-gradient(45deg,transparent_25%,rgba(255,255,255,0.05)_25%,rgba(255,255,255,0.05)_50%,transparent_50%,transparent_75%,rgba(255,255,255,0.05)_75%)] bg-[length:100px_100px] animate-[slide_20s_linear_infinite]" />
       </div>
       <div className="absolute inset-0 bg-gradient-to-t from-background via-background/20 to-transparent" />
-      <Button
-        onClick={onClose}
-        variant="ghost"
-        size="sm"
-        className="absolute top-4 left-4 z-10 text-white/80 hover:text-white hover:bg-white/10"
-      >
-        <ArrowLeft className="w-4 h-4 mr-2" />
-        Back to Tools
-      </Button>
+      
       <div className="absolute top-4 right-4 z-10 flex items-center gap-2 px-3 py-1.5 rounded-lg bg-black/20 backdrop-blur-sm text-white">
         <Sparkles className="w-4 h-4" />
         <span className="text-sm font-medium">
