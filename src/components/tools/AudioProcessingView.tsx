@@ -47,6 +47,7 @@ export function AudioProcessingView({
   const isProcessingRef = useRef(false);
 
   const { deductCredits, canUseFeature, credits } = useSubscription();
+  const { user } = useAuth();
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
