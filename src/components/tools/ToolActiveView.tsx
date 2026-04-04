@@ -539,7 +539,7 @@ function ToolLoadingState({ tool }: { tool: ToolData }) {
       )}>
         <Loader2 className="w-8 h-8 text-white animate-spin" />
       </div>
-      <p className="text-muted-foreground">Loading {tool.title}...</p>
+      <p className="text-[#71717a]">Loading {tool.title}...</p>
     </div>
   );
 }
