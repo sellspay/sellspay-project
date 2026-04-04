@@ -1,13 +1,13 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/lib/auth";
-import { Check, X, Zap, Crown, Sparkles, Plus, Minus } from "lucide-react";
+import { Check, Zap, Plus, Minus, Diamond, LinkIcon } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 
-/* ─────────────── Plan data ─────────────── */
-const PLANS = [
+/* ─────────────── Per-card feature lists ─────────────── */
+const PLAN_CARDS = [
   {
     id: "starter",
     name: "Starter",
@@ -15,9 +15,23 @@ const PLANS = [
     yearlyPrice: 0,
     tagline: "Start experimenting with digital selling.",
     badge: null,
+    badgeColor: "",
+    accentColor: "text-zinc-500",
+    borderColor: "border-zinc-200",
+    creditsBg: "bg-zinc-100",
+    creditsText: "text-zinc-700",
+    creditsBorder: "border-zinc-200",
     topBorder: "from-zinc-300 to-zinc-400",
-    credits: 0,
-    feeLabel: "10% Transaction Fee",
+    credits: "0 credits / month",
+    addOns: false,
+    isPopular: false,
+    features: [
+      "Create & Customize Storefront",
+      "Sell Digital Products & Subs",
+      "Buy from Marketplace",
+      "Community Access",
+      "10% Transaction Fee",
+    ],
   },
   {
     id: "basic",
@@ -26,9 +40,25 @@ const PLANS = [
     yearlyPrice: 15,
     tagline: "Unlock AI-powered building tools.",
     badge: null,
+    badgeColor: "",
+    accentColor: "text-blue-500",
+    borderColor: "border-blue-200",
+    creditsBg: "bg-blue-50",
+    creditsText: "text-blue-700",
+    creditsBorder: "border-blue-200",
     topBorder: "from-blue-400 to-cyan-400",
-    credits: 500,
-    feeLabel: "8% Transaction Fee",
+    credits: "500 credits / month",
+    addOns: false,
+    isPopular: false,
+    features: [
+      "Up to ~250 images",
+      "VibeCoder AI Builder",
+      "Flash Models (Gemini Flash)",
+      "All Audio Tools",
+      "AI Storefront Editor",
+      "4 parallel generations",
+      "8% Transaction Fee",
+    ],
   },
   {
     id: "creator",
@@ -38,10 +68,27 @@ const PLANS = [
     tagline: "Full AI suite for serious creators.",
     badge: "MOST POPULAR",
     badgeColor: "bg-gradient-to-r from-fuchsia-500 to-violet-500",
+    accentColor: "text-fuchsia-500",
+    borderColor: "border-fuchsia-300",
+    creditsBg: "bg-fuchsia-50",
+    creditsText: "text-fuchsia-700",
+    creditsBorder: "border-fuchsia-200",
     topBorder: "from-fuchsia-500 to-violet-500",
+    credits: "2,500 credits / month",
+    addOns: true,
     isPopular: true,
-    credits: 2500,
-    feeLabel: "5% Transaction Fee",
+    features: [
+      "Up to ~1,250 images",
+      "Up to ~125 videos",
+      "Pro Models (GPT-5, Gemini Pro)",
+      "AI Image Generation",
+      "Auto-Model Selection",
+      "Advanced Analytics",
+      "8 parallel generations",
+      "Verified Badge (Grey)",
+      "Commercial Use Rights",
+      "5% Transaction Fee",
+    ],
   },
   {
     id: "agency",
@@ -51,43 +98,28 @@ const PLANS = [
     tagline: "Unlimited power for studios & teams.",
     badge: "BEST VALUE",
     badgeColor: "bg-gradient-to-r from-amber-500 to-orange-500",
+    accentColor: "text-amber-500",
+    borderColor: "border-amber-300",
+    creditsBg: "bg-amber-50",
+    creditsText: "text-amber-700",
+    creditsBorder: "border-amber-200",
     topBorder: "from-amber-400 to-orange-500",
-    credits: 6000,
-    feeLabel: "0% Transaction Fee",
+    credits: "6,000 credits / month",
+    addOns: true,
+    isPopular: false,
+    features: [
+      "Up to ~3,000 images",
+      "Up to ~300 videos",
+      "Flagship Models (GPT-5.2)",
+      "AI Video Generation",
+      "16 parallel generations",
+      "Verified Badge (Gold)",
+      "Priority Processing",
+      "Priority Support",
+      "Commercial Use Rights",
+      "0% Transaction Fee",
+    ],
   },
-];
-
-/* ─────────────── Credits Usage rows ─────────────── */
-const CREDITS_USAGE = [
-  { label: "Credits", values: ["0", "500/mo", "2,500/mo", "6,000/mo"] },
-  { label: "Add-on Credit Packs", values: ["—", "—", true, true] },
-  { label: "Number of Images", values: ["0", "~250/mo", "~1,250/mo", "~3,000/mo"] },
-  { label: "Number of Videos", values: ["0", "0", "~125/mo", "~300/mo"] },
-  { label: "AI Code Iterations", values: ["0", "~166/mo", "~833/mo", "~2,000/mo"] },
-  { label: "Parallel Generations", values: ["1", "4", "8", "16"] },
-  { label: "Transaction Fee", values: ["10%", "8%", "5%", "0%"] },
-];
-
-/* ─────────────── Features rows ─────────────── */
-const FEATURES = [
-  { label: "Create & Customize Storefront", values: [true, true, true, true] },
-  { label: "Sell Digital Products & Subs", values: [true, true, true, true] },
-  { label: "Buy from Marketplace", values: [true, true, true, true] },
-  { label: "Community Access", values: [true, true, true, true] },
-  { label: "VibeCoder AI Builder", values: [false, true, true, true] },
-  { label: "Flash Models (Gemini Flash)", values: [false, true, true, true] },
-  { label: "Pro Models (GPT-5, Gemini Pro)", values: [false, false, true, true] },
-  { label: "Flagship Models (GPT-5.2)", values: [false, false, false, true] },
-  { label: "AI Image Generation", values: [false, false, true, true] },
-  { label: "AI Video Generation", values: [false, false, false, true] },
-  { label: "All Audio Tools", values: [false, true, true, true] },
-  { label: "Auto-Model Selection", values: [false, false, true, true] },
-  { label: "AI Storefront Editor", values: [false, true, true, true] },
-  { label: "Advanced Analytics", values: [false, false, true, true] },
-  { label: "Verified Badge", values: [false, false, "Grey", "Gold"] },
-  { label: "Priority Processing", values: [false, false, false, true] },
-  { label: "Priority Support", values: [false, false, false, true] },
-  { label: "Commercial Use Rights", values: [false, false, true, true] },
 ];
 
 /* ─────────────── FAQ data ─────────────── */
@@ -101,13 +133,6 @@ const FAQS = [
   { q: "What happens when I downgrade/cancel?", a: "Your current plan stays active until the end of the billing period. After that, you'll move to the lower plan. Your storefront remains live." },
   { q: "How does the 0% fee work?", a: "On the Agency plan, SellsPay takes $0 from your sales. You keep 100% of your revenue (minus standard Stripe processing fees of ~2.9% + 30¢)." },
 ];
-
-/* ─────────────── Cell renderer ─────────────── */
-function CellValue({ value, planIndex }: { value: string | boolean; planIndex: number }) {
-  if (value === true) return <Check className="h-4 w-4 text-emerald-500 mx-auto" />;
-  if (value === false) return <span className="text-muted-foreground/30">—</span>;
-  return <span className="text-sm text-foreground font-medium">{value}</span>;
-}
 
 /* ─────────────── Component ─────────────── */
 
@@ -179,9 +204,9 @@ export function PricingModal({ open, onOpenChange }: PricingModalProps) {
           </div>
 
           {/* ─── Plan Cards ─── */}
-          <div className="px-6 pb-6">
-            <div className="grid grid-cols-4 gap-4 max-w-[1100px] mx-auto">
-              {PLANS.map((plan) => {
+          <div className="px-6 pb-8">
+            <div className="grid grid-cols-4 gap-4 max-w-[1100px] mx-auto items-start">
+              {PLAN_CARDS.map((plan) => {
                 const price = billingPeriod === "annually" ? plan.yearlyPrice : plan.monthlyPrice;
                 const originalPrice = billingPeriod === "annually" && plan.monthlyPrice > 0 ? plan.monthlyPrice : null;
                 return (
@@ -190,29 +215,31 @@ export function PricingModal({ open, onOpenChange }: PricingModalProps) {
                     className={cn(
                       "relative rounded-2xl border overflow-hidden transition-all duration-300 flex flex-col",
                       plan.isPopular
-                        ? "border-fuchsia-400/60 shadow-[0_0_30px_-5px_rgba(192,38,211,0.25)] scale-[1.03] z-10"
-                        : "border-border hover:border-border/80 hover:shadow-lg"
+                        ? "border-fuchsia-300 shadow-[0_0_40px_-8px_rgba(192,38,211,0.2)]"
+                        : plan.id === "agency"
+                          ? "border-amber-300 shadow-[0_0_40px_-8px_rgba(245,158,11,0.15)]"
+                          : "border-border hover:shadow-lg"
                     )}
                   >
                     {/* Top gradient strip */}
                     <div className={cn("h-1.5 w-full bg-gradient-to-r", plan.topBorder)} />
 
-                    <div className="p-5 flex flex-col flex-1">
-                      {/* Badge */}
-                      {plan.badge && (
-                        <span className={cn(
-                          "self-start px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider text-white mb-3",
-                          plan.badgeColor || "bg-muted"
-                        )}>
-                          {plan.badge}
-                        </span>
-                      )}
-
-                      <h3 className="text-lg font-bold text-foreground">{plan.name}</h3>
-                      <p className="text-xs text-muted-foreground mt-1 min-h-[32px]">{plan.tagline}</p>
+                    {/* Card header */}
+                    <div className="p-5 pb-0">
+                      <div className="flex items-start justify-between">
+                        <h3 className="text-lg font-bold text-foreground">{plan.name}</h3>
+                        {plan.badge && (
+                          <span className={cn(
+                            "px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider text-white",
+                            plan.badgeColor
+                          )}>
+                            {plan.badge}
+                          </span>
+                        )}
+                      </div>
 
                       {/* Price */}
-                      <div className="flex items-baseline gap-1.5 mt-4">
+                      <div className="flex items-baseline gap-1.5 mt-3">
                         {originalPrice !== null && (
                           <span className="text-sm text-muted-foreground line-through">${originalPrice}</span>
                         )}
@@ -220,92 +247,59 @@ export function PricingModal({ open, onOpenChange }: PricingModalProps) {
                         <span className="text-xs text-muted-foreground">/mo</span>
                       </div>
 
-                      {/* Credits badge */}
-                      <div className="mt-3 flex items-center gap-1.5">
-                        <Zap className="h-3.5 w-3.5 text-primary" />
-                        <span className="text-xs font-semibold text-foreground">
-                          {plan.credits > 0 ? `${plan.credits.toLocaleString()} credits/mo` : "No credits"}
-                        </span>
-                      </div>
-                      <span className="text-[10px] text-muted-foreground mt-1">{plan.feeLabel}</span>
-
-                      {/* CTA */}
+                      {/* CTA Button */}
                       <button
                         onClick={() => handleGetStarted(plan.id)}
                         className={cn(
-                          "mt-auto pt-5 w-full py-2.5 rounded-full text-sm font-bold transition-all",
+                          "mt-4 w-full py-2.5 rounded-lg text-sm font-bold transition-all border",
                           plan.isPopular
-                            ? "bg-gradient-to-r from-fuchsia-500 to-violet-500 text-white hover:opacity-90 shadow-md"
+                            ? "bg-gradient-to-r from-fuchsia-500 to-violet-500 text-white border-transparent hover:opacity-90 shadow-md"
                             : plan.id === "agency"
-                              ? "bg-gradient-to-r from-amber-500 to-orange-500 text-white hover:opacity-90 shadow-md"
-                              : "bg-foreground text-background hover:opacity-90"
+                              ? "bg-gradient-to-r from-amber-500 to-orange-500 text-white border-transparent hover:opacity-90 shadow-md"
+                              : "bg-background text-foreground border-border hover:bg-muted"
                         )}
                       >
                         Get Started
                       </button>
+
+                      <p className="text-[11px] text-muted-foreground mt-3 leading-relaxed">{plan.tagline}</p>
+                    </div>
+
+                    {/* Credits banner */}
+                    <div className={cn(
+                      "mx-4 mt-4 px-3 py-2.5 rounded-xl border",
+                      plan.creditsBg, plan.creditsBorder
+                    )}>
+                      <div className="flex items-center gap-2">
+                        <Diamond className={cn("h-3.5 w-3.5", plan.accentColor)} />
+                        <span className={cn("text-xs font-bold", plan.creditsText)}>
+                          {plan.credits}
+                        </span>
+                      </div>
+                      {plan.addOns && (
+                        <div className="flex items-center gap-1.5 mt-1">
+                          <LinkIcon className={cn("h-3 w-3", plan.accentColor)} />
+                          <span className={cn("text-[10px] font-semibold", plan.creditsText)}>
+                            Add credits as needed
+                          </span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Feature checklist */}
+                    <div className="p-4 pt-3 flex-1">
+                      <ul className="space-y-2.5">
+                        {plan.features.map((feature, i) => (
+                          <li key={i} className="flex items-start gap-2.5">
+                            <Check className={cn("h-4 w-4 shrink-0 mt-0.5", plan.accentColor)} />
+                            <span className="text-xs text-muted-foreground leading-relaxed">{feature}</span>
+                          </li>
+                        ))}
+                      </ul>
                     </div>
                   </div>
                 );
               })}
-            </div>
-          </div>
-
-          {/* ─── Comparison Table ─── */}
-          <div className="px-6 pb-6">
-            <div className="overflow-x-auto">
-              <table className="w-full border-collapse min-w-[700px]">
-                <thead>
-                  <tr>
-                    <th className="w-[200px]" />
-                    {PLANS.map((plan) => (
-                      <th key={plan.id} className="text-center px-3 pb-3 min-w-[140px]">
-                        <span className="text-sm font-bold text-foreground">{plan.name}</span>
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {/* Credits Usage */}
-                  <tr>
-                    <td colSpan={5} className="pt-4 pb-3 px-1">
-                      <div className="flex items-center gap-2">
-                        <Zap className="h-4 w-4 text-primary" />
-                        <span className="text-sm font-bold text-foreground">Credits Usage</span>
-                      </div>
-                    </td>
-                  </tr>
-                  {CREDITS_USAGE.map((row, i) => (
-                    <tr key={`cu-${i}`} className="border-t border-border/30">
-                      <td className="py-3 px-1 text-sm text-muted-foreground">{row.label}</td>
-                      {row.values.map((val, j) => (
-                        <td key={j} className="py-3 px-3 text-center">
-                          <CellValue value={val} planIndex={j} />
-                        </td>
-                      ))}
-                    </tr>
-                  ))}
-
-                  {/* Features */}
-                  <tr>
-                    <td colSpan={5} className="pt-10 pb-3 px-1">
-                      <div className="flex items-center gap-2">
-                        <Sparkles className="h-4 w-4 text-primary" />
-                        <span className="text-sm font-bold text-foreground">Features</span>
-                      </div>
-                    </td>
-                  </tr>
-                  {FEATURES.map((row, i) => (
-                    <tr key={`ft-${i}`} className="border-t border-border/30">
-                      <td className="py-3 px-1 text-sm text-muted-foreground">{row.label}</td>
-                      {row.values.map((val, j) => (
-                        <td key={j} className="py-3 px-3 text-center">
-                          <CellValue value={val} planIndex={j} />
-                        </td>
-                      ))}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
             </div>
           </div>
 
