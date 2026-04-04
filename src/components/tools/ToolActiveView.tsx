@@ -179,7 +179,7 @@ export function ToolActiveView({
   }
 
   return (
-    <div className="h-full bg-background">
+    <div className="h-full bg-[#f8fafc]">
       {/* Intro Animation Overlay */}
       <AnimatePresence>
         {showIntro && !embedded && (
