@@ -357,7 +357,7 @@ export default function NanoBanana() {
                     <div className="flex justify-end gap-2">
                       <button
                         onClick={() => setGeneratedImage(null)}
-                        className="inline-flex items-center gap-2 rounded-xl bg-white border border-[#e3edf5] px-4 py-2 text-sm font-medium text-[#5b6b7c] transition hover:border-[#c4d8e6]"
+                        className="inline-flex items-center gap-2 rounded-xl bg-white border border-[#9fc2d4] px-4 py-2 text-sm font-medium text-[#5b6b7c] transition hover:border-[#6fa6bd]"
                       >
                         Generate another
                       </button>
