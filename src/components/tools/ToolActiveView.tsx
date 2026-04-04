@@ -369,7 +369,7 @@ export function ToolActiveView({
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: 0.2 }}
-                className="bg-white rounded-2xl border border-[#d1d5db] p-6 md:p-8"
+                className="bg-[#1f2937] rounded-2xl border border-[#374151] p-6 md:p-8"
               >
                 <ToolComponent toolId={toolId} />
               </motion.div>
