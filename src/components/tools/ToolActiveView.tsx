@@ -1,7 +1,5 @@
 import { Suspense, lazy, useEffect, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { SignUpPromoDialog } from "./SignUpPromoDialog";
-import { AUTH_GATE_EVENT } from "@/utils/authGateEvent";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -59,16 +57,8 @@ export function ToolActiveView({
 }: ToolActiveViewProps) {
   const [showIntro, setShowIntro] = useState(true);
   const [isReady, setIsReady] = useState(false);
-  const [showSignUpPromo, setShowSignUpPromo] = useState(false);
   const { isProTool, goToPricing } = useSubscription();
   const { moderationResult, validatePrompt, clearModeration } = useContentModeration();
-
-  // Listen for auth gate events from tool components
-  useEffect(() => {
-    const handler = () => setShowSignUpPromo(true);
-    window.addEventListener(AUTH_GATE_EVENT, handler);
-    return () => window.removeEventListener(AUTH_GATE_EVENT, handler);
-  }, []);
   
   const tool = getToolById(toolId);
   const registryEntry = toolsRegistry.find((t) => t.id === toolId);
@@ -173,7 +163,6 @@ export function ToolActiveView({
         <Suspense fallback={<div className="flex items-center justify-center h-full"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>}>
           <NanoBanana />
         </Suspense>
-        <SignUpPromoDialog open={showSignUpPromo} onOpenChange={setShowSignUpPromo} />
       </div>
     );
   }
@@ -394,8 +383,6 @@ export function ToolActiveView({
           )}
         </div>
       </motion.div>
-
-      <SignUpPromoDialog open={showSignUpPromo} onOpenChange={setShowSignUpPromo} />
     </div>
   );
 }

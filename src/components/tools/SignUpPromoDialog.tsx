@@ -102,7 +102,7 @@ export function SignUpPromoDialog({ open, onOpenChange }: SignUpPromoDialogProps
           {/* Continue button */}
           <button
             onClick={handleEmailContinue}
-            className="w-full h-11 rounded-lg bg-gradient-to-r from-pink-500 to-pink-600 hover:from-pink-600 hover:to-pink-700 text-white text-sm font-semibold transition-all shadow-sm"
+            className="w-full h-11 rounded-lg bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white text-sm font-semibold transition-all shadow-sm"
           >
             Continue
           </button>
