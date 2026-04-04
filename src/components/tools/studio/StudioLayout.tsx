@@ -296,7 +296,7 @@ export default function StudioLayout() {
 
         {/* Workspace */}
         <div className="flex-1 flex min-w-0 p-2 gap-0 bg-background">
-          <main className="flex-1 min-w-0 overflow-hidden rounded-[22px] bg-background border border-border shadow-[0_20px_60px_rgba(0,0,0,0.4)]">
+          <main className="flex-1 min-w-0 overflow-hidden bg-background">
             <div className="h-full overflow-y-auto custom-scrollbar bg-background">
             {isHome ? (
               <StudioHomeBanner
