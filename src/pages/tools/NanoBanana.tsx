@@ -81,7 +81,7 @@ export default function NanoBanana() {
   };
 
   return (
-    <div className="h-full overflow-hidden bg-[#f3f5f8] px-4 py-4">
+    <div className="h-full overflow-hidden bg-background px-4 py-4">
       <div className="grid h-full min-h-0 grid-cols-[390px_minmax(0,1fr)] gap-4">
         {/* ───── LEFT PANEL ───── */}
         <aside className="min-h-0 overflow-hidden rounded-[24px] bg-[#ffffff] border border-[#ffffff] shadow-sm">
@@ -125,7 +125,7 @@ export default function NanoBanana() {
                   </button>
 
                   {modelSelectorOpen && (
-                    <div className="mt-3 space-y-4 rounded-[14px] bg-[#f3f5f8] border border-[#e0e0e0] p-3">
+                    <div className="mt-3 space-y-4 rounded-[14px] bg-background border border-[#e0e0e0] p-3">
                       {(Object.keys(MODEL_CATEGORIES) as ModelCategory[]).map((cat) => {
                         const models = grouped[cat];
                         if (!models?.length) return null;
@@ -287,7 +287,7 @@ export default function NanoBanana() {
             </div>
 
             {/* Footer */}
-            <div className="border-t border-[#ffffff] bg-[#f3f5f8] px-4 py-3">
+            <div className="border-t border-[#ffffff] bg-background px-4 py-3">
               <p className="flex items-center justify-center gap-1.5 text-center text-xs text-[#9ca3af]">
                 <Sparkles className="h-3.5 w-3.5 text-[#3b82f6]" />
                 {currentModel.name} · {currentModel.creditCost} credit{currentModel.creditCost > 1 ? "s" : ""}/gen
@@ -297,7 +297,7 @@ export default function NanoBanana() {
         </aside>
 
         {/* ───── RIGHT CANVAS ───── */}
-        <main className="min-w-0 overflow-hidden rounded-[22px] bg-[#f3f5f8] border border-[#ffffff]">
+        <main className="min-w-0 overflow-hidden rounded-[22px] bg-background border border-[#ffffff]">
           <div className="flex h-full flex-col">
             {/* Canvas header */}
             <div className="border-b border-[#ffffff] px-5 py-4">
@@ -391,7 +391,7 @@ function TagBadge({ tag, small = false }: { tag: string; small?: boolean }) {
 
 function ModeTabs({ mode, setMode }: { mode: Mode; setMode: (m: Mode) => void }) {
   return (
-    <div className="grid grid-cols-2 gap-2 rounded-[16px] bg-[#f3f5f8] border border-[#e0e0e0] p-1.5">
+    <div className="grid grid-cols-2 gap-2 rounded-[16px] bg-background border border-[#e0e0e0] p-1.5">
       {(["create", "variations"] as const).map((entry) => (
         <button
           key={entry}
@@ -433,7 +433,7 @@ function ReferenceBox() {
 function PreviewCard({ featured = false }: { featured?: boolean }) {
   return (
     <div className={`h-[320px] overflow-hidden rounded-[18px] border transition hover:scale-[1.02] hover:border-[#3b82f6] ${
-      featured ? "bg-[#ffffff] border-[#e0e0e0]" : "bg-[#f3f5f8] border-[#ffffff] opacity-70"
+      featured ? "bg-[#ffffff] border-[#e0e0e0]" : "bg-background border-[#ffffff] opacity-70"
     }`}>
       <div className={`flex h-full w-full items-center justify-center ${
         featured
