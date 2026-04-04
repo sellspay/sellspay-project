@@ -3,13 +3,14 @@ import { cn } from "@/lib/utils";
 import {
   ArrowLeft, Home, Sparkles, FolderOpen,
   User, Settings, CreditCard, LogOut, Zap, Gift, ChevronRight as ChevRight,
-  PanelLeftClose, PanelLeft, GripVertical, Plus, X,
+  PanelLeftClose, PanelLeft, GripVertical, Plus, X, Pin, PinOff,
 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useNavigate } from "react-router-dom";
 import { useState, useEffect, useCallback } from "react";
 import { ReferralDialog } from "@/components/studio/ReferralDialog";
+import { SignUpPromoDialog } from "@/components/tools/SignUpPromoDialog";
 import {
   DndContext,
   closestCenter,
@@ -155,6 +156,7 @@ export function StudioSidebar({
   const navigate = useNavigate();
   const [referralOpen, setReferralOpen] = useState(false);
   const [addToolsOpen, setAddToolsOpen] = useState(false);
+  const [showAuthPromo, setShowAuthPromo] = useState(false);
 
   // DnD sensors
   const sensors = useSensors(
@@ -192,12 +194,26 @@ export function StudioSidebar({
   const unpinnedTools = allQuickTools.filter(t => !pinnedToolIds.includes(t.id));
 
   const togglePin = (toolId: string) => {
+    if (!user) {
+      setShowAuthPromo(true);
+      return;
+    }
     setPinnedToolIds(prev =>
       prev.includes(toolId)
         ? prev.filter(id => id !== toolId)
         : [...prev, toolId]
     );
   };
+
+  // Group tools by subcategory for the Add Tools popover
+  const toolsByCategory = allQuickTools.reduce((acc, tool) => {
+    const sub = tool.subcategory || "utility";
+    if (!acc[sub]) acc[sub] = [];
+    acc[sub].push(tool);
+    return acc;
+  }, {} as Record<string, typeof allQuickTools>);
+
+  const categoryOrder: ToolSubcategory[] = ["media_creation", "social_content", "store_growth", "utility"];
 
   return (
     <>
@@ -286,75 +302,54 @@ export function StudioSidebar({
                     </TooltipTrigger>
                     {collapsed && <TooltipContent side="right">Add Tools</TooltipContent>}
                   </Tooltip>
-                  <PopoverContent side="right" align="start" sideOffset={8} className="w-80 p-0 bg-background border-border rounded-2xl overflow-hidden shadow-xl max-h-[500px]">
+                  <PopoverContent side="right" align="start" sideOffset={8} className="w-[540px] p-0 bg-background border-border rounded-2xl overflow-hidden shadow-xl">
                     <div className="px-4 py-3 border-b border-border/50 flex items-center justify-between">
                       <span className="text-sm font-bold text-foreground">Add Tools</span>
-                      <button onClick={() => setAddToolsOpen(false)} className="text-muted-foreground hover:text-foreground">
+                      <button onClick={() => setAddToolsOpen(false)} className="text-muted-foreground hover:text-foreground transition-colors">
                         <X className="h-4 w-4" />
                       </button>
                     </div>
-                    <div className="overflow-y-auto max-h-[420px] custom-scrollbar">
-                      {pinnedTools.length > 0 && (
-                        <div className="px-3 py-2">
-                          <span className="text-[10px] font-bold text-muted-foreground/50 uppercase tracking-widest px-1">Pinned</span>
-                          <div className="mt-1.5 space-y-0.5">
-                            {pinnedTools.map(tool => {
-                              const Icon = tool.icon;
-                              const thumb = toolThumbnails[tool.id];
-                              return (
-                                <div key={tool.id} className="flex items-center gap-2.5 px-2 py-1.5 rounded-lg hover:bg-muted/50 group">
-                                  <div className="h-7 w-7 rounded-full overflow-hidden shrink-0 border border-border/60">
-                                    {thumb ? (
-                                      <img src={thumb} alt="" className="w-full h-full object-cover" />
-                                    ) : (
-                                      <div className="w-full h-full bg-primary/10 flex items-center justify-center">
-                                        <Icon className="h-3.5 w-3.5 text-primary/60" />
-                                      </div>
-                                    )}
-                                  </div>
-                                  <span className="text-sm text-foreground flex-1 truncate">{tool.name}</span>
-                                  <button
-                                    onClick={() => togglePin(tool.id)}
-                                    className="text-muted-foreground/40 hover:text-destructive shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                    <div className="grid grid-cols-2 gap-0 divide-x divide-border/30 max-h-[460px] overflow-y-auto custom-scrollbar">
+                      {categoryOrder.map(cat => {
+                        const tools = toolsByCategory[cat];
+                        if (!tools || tools.length === 0) return null;
+                        return (
+                          <div key={cat} className="p-3">
+                            <div className="flex items-center gap-2 px-1 mb-2">
+                              <span className="text-[10px] font-bold text-muted-foreground/60 uppercase tracking-widest">
+                                {SUBCATEGORY_LABELS[cat]}
+                              </span>
+                            </div>
+                            <div className="space-y-0.5">
+                              {tools.map(tool => {
+                                const Icon = tool.icon;
+                                const isPinned = pinnedToolIds.includes(tool.id);
+                                return (
+                                  <div
+                                    key={tool.id}
+                                    className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-muted/50 group"
                                   >
-                                    <X className="h-3.5 w-3.5" />
-                                  </button>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      )}
-                      {unpinnedTools.length > 0 && (
-                        <div className="px-3 py-2 border-t border-border/30">
-                          <span className="text-[10px] font-bold text-muted-foreground/50 uppercase tracking-widest px-1">Available</span>
-                          <div className="mt-1.5 space-y-0.5">
-                            {unpinnedTools.map(tool => {
-                              const Icon = tool.icon;
-                              const thumb = toolThumbnails[tool.id];
-                              return (
-                                <button
-                                  key={tool.id}
-                                  onClick={() => togglePin(tool.id)}
-                                  className="flex items-center gap-2.5 w-full px-2 py-1.5 rounded-lg hover:bg-muted/50 text-left group"
-                                >
-                                  <div className="h-7 w-7 rounded-full overflow-hidden shrink-0 border border-border/60">
-                                    {thumb ? (
-                                      <img src={thumb} alt="" className="w-full h-full object-cover" />
-                                    ) : (
-                                      <div className="w-full h-full bg-primary/10 flex items-center justify-center">
-                                        <Icon className="h-3.5 w-3.5 text-primary/60" />
-                                      </div>
-                                    )}
+                                    <Icon className="h-3.5 w-3.5 text-primary shrink-0" />
+                                    <span className="text-sm text-foreground flex-1 truncate">{tool.name}</span>
+                                    <button
+                                      onClick={() => togglePin(tool.id)}
+                                      className={cn(
+                                        "shrink-0 p-1 rounded-md transition-all",
+                                        isPinned
+                                          ? "text-primary opacity-100"
+                                          : "text-muted-foreground/40 opacity-0 group-hover:opacity-100 hover:text-primary"
+                                      )}
+                                      title={isPinned ? "Unpin from sidebar" : "Pin to sidebar"}
+                                    >
+                                      {isPinned ? <PinOff className="h-3.5 w-3.5" /> : <Pin className="h-3.5 w-3.5" />}
+                                    </button>
                                   </div>
-                                  <span className="text-sm text-foreground flex-1 truncate">{tool.name}</span>
-                                  <Plus className="h-3.5 w-3.5 text-primary/50 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
-                                </button>
-                              );
-                            })}
+                                );
+                              })}
+                            </div>
                           </div>
-                        </div>
-                      )}
+                        );
+                      })}
                     </div>
                   </PopoverContent>
                 </Popover>
@@ -579,6 +574,7 @@ export function StudioSidebar({
       </TooltipProvider>
 
       <ReferralDialog open={referralOpen} onOpenChange={setReferralOpen} />
+      <SignUpPromoDialog open={showAuthPromo} onOpenChange={setShowAuthPromo} />
     </>
   );
 }
