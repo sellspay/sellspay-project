@@ -152,7 +152,7 @@ export default function NanoBanana() {
                   </button>
 
                   {modelSelectorOpen && (
-                    <div className="mt-3 space-y-4 rounded-[16px] bg-[#f4f9fd] border border-[#e1eef6] p-3">
+                    <div className="mt-3 space-y-4 rounded-[16px] bg-[#f4f9fd] border border-[#9fc2d4] p-3">
                       {(Object.keys(MODEL_CATEGORIES) as ModelCategory[]).map((cat) => {
                         const models = grouped[cat];
                         if (!models?.length) return null;
