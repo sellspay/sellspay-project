@@ -100,7 +100,7 @@ function SortableToolItem({ tool, isActive, collapsed, onToolSelect, thumbnail }
           ) : (
             <div className={cn(
               "w-full h-full flex items-center justify-center",
-              isActive ? "bg-[#3b82f6]/20" : "bg-accent"
+              isActive ? "bg-[#3b82f6]/20" : "bg-white/[0.06]"
             )}>
               <Icon className={cn("h-3.5 w-3.5", isActive ? "text-[#3b82f6]" : "text-[#9ca3af]")} />
             </div>
