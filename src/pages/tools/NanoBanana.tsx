@@ -174,8 +174,8 @@ export default function NanoBanana() {
                                     }}
                                     className={`flex w-full items-center gap-3 rounded-[14px] px-3.5 py-3 text-left transition-all ${
                                       selected
-                                        ? "bg-[#e6f3ff] border border-[#3ba6ff] shadow-sm"
-                                        : "bg-white border border-[#e3edf5] hover:border-[#c4d8e6] hover:shadow-sm"
+                                        ? "bg-[#e6f3fb] border border-[#6fa6bd] shadow-sm"
+                                        : "bg-white border border-[#cfe3ee] hover:border-[#9fc2d4] hover:shadow-sm"
                                     }`}
                                   >
                                     <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${
