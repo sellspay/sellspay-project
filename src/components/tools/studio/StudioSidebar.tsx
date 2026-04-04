@@ -268,12 +268,12 @@ export function StudioSidebar({
                         <button
                           className={cn(
                             "flex items-center gap-2.5 w-full rounded-full px-3 py-2 text-sm transition-all duration-150",
-                            "text-muted-foreground hover:text-foreground hover:bg-muted/50",
+                            "text-[#9ca3af] hover:text-[#f9fafb] hover:bg-[#1f2937]",
                             collapsed && "justify-center px-2"
                           )}
                         >
-                          <div className="h-6 w-6 rounded-full border-2 border-dashed border-muted-foreground/30 flex items-center justify-center shrink-0">
-                            <Plus className="h-3 w-3" />
+                          <div className="h-6 w-6 rounded-full border-2 border-dashed border-[#374151] flex items-center justify-center shrink-0">
+                            <Plus className="h-3 w-3 text-[#6b7280]" />
                           </div>
                           {!collapsed && <span>Add Tools</span>}
                         </button>
