@@ -218,13 +218,7 @@ export function StudioSidebar({
   return (
     <>
       <TooltipProvider delayDuration={0}>
-        <aside className="h-full bg-background overflow-hidden flex flex-col">
-          <div className="flex flex-1 min-h-0">
-            <motion.div
-              className="h-full flex flex-col overflow-hidden border-r border-border/60"
-              animate={{ width: collapsed ? 56 : 220 }}
-              transition={{ duration: 0.2, ease: "easeInOut" }}
-            >
+        <aside className="h-full w-full bg-background overflow-hidden flex flex-col border-r border-border/60">
               {/* All Tools button */}
               <div className="shrink-0 px-2 pb-1">
                 <Tooltip>
