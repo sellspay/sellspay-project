@@ -111,7 +111,7 @@ function SortableToolItem({ tool, isActive, collapsed, onToolSelect, thumbnail }
           <span className="truncate flex-1 text-left">{tool.name}</span>
         )}
         {!collapsed && tool.comingSoon && (
-          <span className="text-[8px] text-muted-foreground/50 uppercase font-bold shrink-0">Soon</span>
+          <span className="text-[8px] text-[#6b7280] uppercase font-bold shrink-0">Soon</span>
         )}
       </button>
     </div>
