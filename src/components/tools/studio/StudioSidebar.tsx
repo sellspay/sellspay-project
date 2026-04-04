@@ -374,8 +374,8 @@ export function StudioSidebar({
                   </Tooltip>
                 </div>
 
-                <div className={cn(
-                  "px-3 py-3 border-t border-[#ffffff]",
+                 <div className={cn(
+                  "px-3 py-3 border-t border-white/[0.06]",
                   collapsed && "flex justify-center px-2"
                 )}>
                   {!user ? (
