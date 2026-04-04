@@ -334,7 +334,7 @@ export default function NanoBanana() {
             {/* Canvas header */}
             <div className="border-b border-[#cfe3ee] px-5 py-4">
               <div className="flex items-center gap-2">
-                <button className="rounded-full bg-[#e6f3ff] border border-[#3ba6ff]/30 px-4 py-2 text-sm font-medium text-[#3ba6ff]">
+                <button className="rounded-full bg-[#e6f3fb] border border-[#6fa6bd] px-4 py-2 text-sm font-medium text-[#3ba6ff]">
                   Creations
                 </button>
                 <button className="px-3 py-2 text-sm text-[#94a3b8] transition-colors hover:text-[#5b6b7c]">
