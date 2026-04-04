@@ -166,6 +166,18 @@ export function ToolActiveView({
   const Icon = tool.icon;
   const creditCost = registryEntry?.creditCost ?? 0;
 
+  // Image generator gets its own full-bleed layout — skip the hero/wrapper entirely
+  if (toolId === "image-generator") {
+    return (
+      <div className="h-full">
+        <Suspense fallback={<div className="flex items-center justify-center h-full"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>}>
+          <NanoBanana />
+        </Suspense>
+        <SignUpPromoDialog open={showSignUpPromo} onOpenChange={setShowSignUpPromo} />
+      </div>
+    );
+  }
+
   return (
     <div className="h-full bg-background">
       {/* Intro Animation Overlay */}
