@@ -229,20 +229,20 @@ export function StudioSidebar({
                       className={cn(
                         "flex items-center gap-2.5 w-full rounded-full px-3 py-2.5 text-sm transition-all duration-200",
                         !activeTool && activeSection === "home"
-                          ? "bg-primary text-primary-foreground font-semibold shadow-md shadow-primary/25"
-                          : "text-muted-foreground hover:text-foreground hover:bg-muted/60 border border-transparent hover:border-border/50",
+                          ? "bg-[#1e3a8a]/30 text-[#f9fafb] font-semibold shadow-[0_0_0_1px_#3b82f6,0_0_12px_rgba(59,130,246,0.2)] border border-[#3b82f6]"
+                          : "text-[#9ca3af] hover:text-[#f9fafb] hover:bg-[#1f2937] border border-transparent",
                         collapsed && "justify-center rounded-xl px-2"
                       )}
                     >
                       <div className={cn(
                         "h-6 w-6 rounded-md flex items-center justify-center shrink-0",
                         !activeTool && activeSection === "home"
-                          ? "bg-primary-foreground/20"
-                          : "bg-primary/10"
+                          ? "bg-[#3b82f6]/20"
+                          : "bg-[#1f2937]"
                       )}>
                         <Home className={cn(
                           "h-3.5 w-3.5",
-                          !activeTool && activeSection === "home" ? "text-primary-foreground" : "text-primary"
+                          !activeTool && activeSection === "home" ? "text-[#3b82f6]" : "text-[#9ca3af]"
                         )} />
                       </div>
                       {!collapsed && <span>All Tools</span>}
