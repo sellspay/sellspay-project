@@ -12,19 +12,11 @@ import { useState, useEffect, useCallback } from "react";
 import { ReferralDialog } from "@/components/studio/ReferralDialog";
 import { SignUpPromoDialog } from "@/components/tools/SignUpPromoDialog";
 import {
-  DndContext,
-  closestCenter,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  type DragEndEvent,
+  DndContext, closestCenter, KeyboardSensor, PointerSensor,
+  useSensor, useSensors, type DragEndEvent,
 } from "@dnd-kit/core";
 import {
-  arrayMove,
-  SortableContext,
-  useSortable,
-  verticalListSortingStrategy,
+  arrayMove, SortableContext, useSortable, verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { CreditSegmentBar } from "@/components/ui/CreditSegmentBar";
@@ -33,7 +25,6 @@ import { useSubscription } from "@/hooks/useSubscription";
 import { toolsRegistry, SUBCATEGORY_LABELS, type ToolSubcategory } from "@/components/tools/toolsRegistry";
 import { toolThumbnails } from "./toolThumbnails";
 import sellspayLogo from "@/assets/sellspay-s-logo-new.png";
-
 
 /* ── Sortable Tool Item ── */
 interface SortableToolItemProps {
@@ -46,12 +37,7 @@ interface SortableToolItemProps {
 
 function SortableToolItem({ tool, isActive, collapsed, onToolSelect, thumbnail }: SortableToolItemProps) {
   const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
+    attributes, listeners, setNodeRef, transform, transition, isDragging,
   } = useSortable({ id: tool.id });
 
   const style = {
@@ -70,39 +56,37 @@ function SortableToolItem({ tool, isActive, collapsed, onToolSelect, thumbnail }
       className={cn(
         "group/tool flex items-center gap-2 w-full rounded-full px-2 py-1.5 text-[13px] transition-colors duration-150 relative",
         isActive
-          ? "bg-[#1e3a8a]/30 text-[#f4f4f5] font-medium shadow-[0_0_0_1px_#3b82f6,0_0_12px_rgba(59,130,246,0.2)] border border-[#3b82f6]"
-          : "text-[#a1a1aa] hover:text-[#f4f4f5] hover:bg-white/[0.06]",
+          ? "bg-blue-50 text-slate-900 font-medium shadow-[0_0_0_1px_#3b82f6] border border-blue-300"
+          : "text-slate-500 hover:text-slate-800 hover:bg-slate-100",
         collapsed && "justify-center rounded-xl"
       )}
     >
-      {/* Drag handle - only this element is draggable */}
       {!collapsed && (
         <div
           {...attributes}
           {...listeners}
-          className="shrink-0 cursor-grab active:cursor-grabbing p-0.5 rounded hover:bg-white/[0.06] transition-colors touch-none"
+          className="shrink-0 cursor-grab active:cursor-grabbing p-0.5 rounded hover:bg-slate-200 transition-colors touch-none"
         >
-          <GripVertical className="h-3.5 w-3.5 opacity-30 group-hover/tool:opacity-70 transition-opacity text-[#71717a]" />
+          <GripVertical className="h-3.5 w-3.5 opacity-30 group-hover/tool:opacity-70 transition-opacity text-slate-400" />
         </div>
       )}
 
-      {/* Click area for selecting */}
       <button
         onClick={(e) => { e.stopPropagation(); onToolSelect(tool.id); }}
         className="flex items-center gap-2 flex-1 min-w-0 cursor-pointer"
       >
-          <div className={cn(
+        <div className={cn(
           "h-7 w-7 rounded-full overflow-hidden shrink-0 border pointer-events-none",
-          isActive ? "border-[#3b82f6]/50 ring-2 ring-[#3b82f6]/20" : "border-white/[0.08]"
+          isActive ? "border-blue-300 ring-2 ring-blue-200" : "border-[#e3edf5]"
         )}>
           {thumbnail ? (
             <img src={thumbnail} alt="" className="w-full h-full object-cover" />
           ) : (
             <div className={cn(
               "w-full h-full flex items-center justify-center",
-              isActive ? "bg-[#3b82f6]/20" : "bg-white/[0.06]"
+              isActive ? "bg-blue-50" : "bg-slate-50"
             )}>
-              <Icon className={cn("h-3.5 w-3.5", isActive ? "text-[#3b82f6]" : "text-[#9ca3af]")} />
+              <Icon className={cn("h-3.5 w-3.5", isActive ? "text-blue-500" : "text-slate-400")} />
             </div>
           )}
         </div>
@@ -110,7 +94,7 @@ function SortableToolItem({ tool, isActive, collapsed, onToolSelect, thumbnail }
           <span className="truncate flex-1 text-left">{tool.name}</span>
         )}
         {!collapsed && tool.comingSoon && (
-          <span className="text-[8px] text-[#9ca3af] uppercase font-bold shrink-0">Soon</span>
+          <span className="text-[8px] text-slate-400 uppercase font-bold shrink-0">Soon</span>
         )}
       </button>
     </div>
@@ -140,7 +124,6 @@ interface StudioSidebarProps {
   onGoHome: () => void;
 }
 
-// Default 10 most popular/useful tools shown pinned
 const DEFAULT_PINNED = [
   "sfx-generator", "voice-isolator", "music-splitter", "sfx-isolator",
   "thumbnail-generator", "social-posts-pack", "short-form-script",
@@ -158,7 +141,6 @@ export function StudioSidebar({
   const [addToolsOpen, setAddToolsOpen] = useState(false);
   const [showAuthPromo, setShowAuthPromo] = useState(false);
 
-  // DnD sensors
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
     useSensor(KeyboardSensor)
@@ -175,7 +157,6 @@ export function StudioSidebar({
     }
   }, []);
   
-  // Pinned tools state with localStorage persistence
   const [pinnedToolIds, setPinnedToolIds] = useState<string[]>(() => {
     try {
       const saved = localStorage.getItem("studio-pinned-tools");
@@ -205,7 +186,6 @@ export function StudioSidebar({
     );
   };
 
-  // Group tools by subcategory for the Add Tools popover
   const toolsByCategory = allQuickTools.reduce((acc, tool) => {
     const sub = tool.subcategory || "utility";
     if (!acc[sub]) acc[sub] = [];
@@ -218,7 +198,7 @@ export function StudioSidebar({
   return (
     <>
       <TooltipProvider delayDuration={0}>
-        <aside className="h-full w-full bg-[#0e0e10] overflow-hidden flex flex-col">
+        <aside className="h-full w-full bg-white border-r border-[#e3edf5] overflow-hidden flex flex-col">
               {/* All Tools button */}
               <div className="shrink-0 px-2 pb-1">
                 <Tooltip>
@@ -240,10 +220,10 @@ export function StudioSidebar({
 
               {!collapsed && (
                 <div className="shrink-0 px-4 pt-3 pb-1 flex items-center justify-between">
-                  <span className="text-[10px] font-semibold text-[#9ca3af] uppercase tracking-widest">Pinned</span>
+                  <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest">Pinned</span>
                 </div>
               )}
-              {collapsed && <div className="h-px bg-white/[0.06] mx-2 my-1" />}
+              {collapsed && <div className="h-px bg-[#e3edf5] mx-2 my-1" />}
 
               {/* Add Tools button */}
               <div className="shrink-0 px-2 pb-1">
@@ -254,12 +234,12 @@ export function StudioSidebar({
                         <button
                           className={cn(
                             "flex items-center gap-2.5 w-full rounded-full px-3 py-2 text-sm transition-all duration-150",
-                            "text-[#a1a1aa] hover:text-[#f4f4f5] hover:bg-white/[0.06]",
+                            "text-slate-500 hover:text-slate-800 hover:bg-slate-100",
                             collapsed && "justify-center px-2"
                           )}
                         >
-                          <div className="h-6 w-6 rounded-full border-2 border-dashed border-white/[0.12] flex items-center justify-center shrink-0">
-                            <Plus className="h-3 w-3 text-[#9ca3af]" />
+                          <div className="h-6 w-6 rounded-full border-2 border-dashed border-slate-300 flex items-center justify-center shrink-0">
+                            <Plus className="h-3 w-3 text-slate-400" />
                           </div>
                           {!collapsed && <span>Add Tools</span>}
                         </button>
@@ -267,21 +247,21 @@ export function StudioSidebar({
                     </TooltipTrigger>
                     {collapsed && <TooltipContent side="right">Add Tools</TooltipContent>}
                   </Tooltip>
-                  <PopoverContent side="right" align="start" sideOffset={8} className="w-[540px] p-0 bg-[#18181b] border-white/[0.06] rounded-2xl overflow-hidden shadow-xl">
-                    <div className="px-4 py-3 border-b border-white/[0.06] flex items-center justify-between">
-                      <span className="text-sm font-bold text-[#f4f4f5]">Add Tools</span>
-                      <button onClick={() => setAddToolsOpen(false)} className="text-[#9ca3af] hover:text-[#f4f4f5] transition-colors">
+                  <PopoverContent side="right" align="start" sideOffset={8} className="w-[540px] p-0 bg-white border-[#e3edf5] rounded-2xl overflow-hidden shadow-xl">
+                    <div className="px-4 py-3 border-b border-[#e3edf5] flex items-center justify-between">
+                      <span className="text-sm font-bold text-slate-900">Add Tools</span>
+                      <button onClick={() => setAddToolsOpen(false)} className="text-slate-400 hover:text-slate-700 transition-colors">
                         <X className="h-4 w-4" />
                       </button>
                     </div>
-                    <div className="grid grid-cols-2 gap-0 divide-x divide-white/[0.06] max-h-[460px] overflow-y-auto custom-scrollbar">
+                    <div className="grid grid-cols-2 gap-0 divide-x divide-[#e3edf5] max-h-[460px] overflow-y-auto custom-scrollbar">
                       {categoryOrder.map(cat => {
                         const tools = toolsByCategory[cat];
                         if (!tools || tools.length === 0) return null;
                         return (
                           <div key={cat} className="p-3">
                             <div className="flex items-center gap-2 px-1 mb-2">
-                              <span className="text-[10px] font-bold text-[#9ca3af] uppercase tracking-widest">
+                              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
                                 {SUBCATEGORY_LABELS[cat]}
                               </span>
                             </div>
@@ -292,7 +272,7 @@ export function StudioSidebar({
                                 return (
                                   <div
                                     key={tool.id}
-                                    className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-white/[0.06] group"
+                                    className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-slate-50 group"
                                   >
                                     <button
                                       type="button"
@@ -302,8 +282,8 @@ export function StudioSidebar({
                                       }}
                                       className="flex items-center gap-2 flex-1 min-w-0 text-left cursor-pointer"
                                     >
-                                      <Icon className="h-3.5 w-3.5 text-[#3b82f6] shrink-0" />
-                                      <span className="text-sm text-[#f4f4f5] flex-1 truncate">{tool.name}</span>
+                                      <Icon className="h-3.5 w-3.5 text-blue-500 shrink-0" />
+                                      <span className="text-sm text-slate-800 flex-1 truncate">{tool.name}</span>
                                     </button>
                                     <button
                                       type="button"
@@ -314,8 +294,8 @@ export function StudioSidebar({
                                       className={cn(
                                         "shrink-0 p-1 rounded-md transition-all",
                                         isPinned
-                                          ? "text-[#3b82f6] opacity-100"
-                                          : "text-[#9ca3af] opacity-0 group-hover:opacity-100 hover:text-[#3b82f6]"
+                                          ? "text-blue-500 opacity-100"
+                                          : "text-slate-400 opacity-0 group-hover:opacity-100 hover:text-blue-500"
                                       )}
                                       title={isPinned ? "Unpin from sidebar" : "Pin to sidebar"}
                                     >
@@ -354,7 +334,7 @@ export function StudioSidebar({
                 </DndContext>
               </nav>
 
-              <div className="shrink-0 border-t border-white/[0.06]">
+              <div className="shrink-0 border-t border-[#e3edf5]">
                 <div className="px-2 py-2">
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -362,7 +342,7 @@ export function StudioSidebar({
                         onClick={() => onSectionChange("assets")}
                          className={cn(
                           "flex items-center gap-2.5 w-full rounded-lg px-2.5 py-2 text-sm transition-colors",
-                          "text-[#a1a1aa] hover:text-[#f4f4f5] hover:bg-white/[0.06]",
+                          "text-slate-500 hover:text-slate-800 hover:bg-slate-100",
                           collapsed && "justify-center"
                         )}
                       >
@@ -375,7 +355,7 @@ export function StudioSidebar({
                 </div>
 
                  <div className={cn(
-                  "px-3 py-3 border-t border-white/[0.06]",
+                  "px-3 py-3 border-t border-[#e3edf5]",
                   collapsed && "flex justify-center px-2"
                 )}>
                   {!user ? (
@@ -406,12 +386,12 @@ export function StudioSidebar({
                         {collapsed ? (
                           <Tooltip>
                             <TooltipTrigger asChild>
-                               <button className="w-8 h-8 rounded-full overflow-hidden border border-white/[0.08] hover:ring-2 hover:ring-[#3b82f6]/40 transition-all mx-auto block">
+                               <button className="w-8 h-8 rounded-full overflow-hidden border border-[#e3edf5] hover:ring-2 hover:ring-blue-200 transition-all mx-auto block">
                                 {profile?.avatar_url ? (
                                   <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
                                 ) : (
-                                   <div className="w-full h-full bg-white/[0.06] flex items-center justify-center">
-                                    <span className="text-[10px] font-bold text-[#3b82f6]">
+                                   <div className="w-full h-full bg-slate-100 flex items-center justify-center">
+                                    <span className="text-[10px] font-bold text-blue-500">
                                       {(profile?.username || "U").slice(0, 2).toUpperCase()}
                                     </span>
                                   </div>
@@ -421,67 +401,67 @@ export function StudioSidebar({
                             <TooltipContent side="right">Profile</TooltipContent>
                           </Tooltip>
                         ) : (
-                          <button className="flex items-center gap-2.5 w-full rounded-lg px-2.5 py-2 text-sm text-[#a1a1aa] hover:text-[#f4f4f5] hover:bg-white/[0.06] transition-colors">
-                            <div className="w-7 h-7 rounded-full overflow-hidden border border-white/[0.08] shrink-0">
+                          <button className="flex items-center gap-2.5 w-full rounded-lg px-2.5 py-2 text-sm text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors">
+                            <div className="w-7 h-7 rounded-full overflow-hidden border border-[#e3edf5] shrink-0">
                               {profile?.avatar_url ? (
                                 <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
                               ) : (
-                                <div className="w-full h-full bg-white/[0.06] flex items-center justify-center">
-                                  <span className="text-[9px] font-bold text-[#3b82f6]">
+                                <div className="w-full h-full bg-slate-100 flex items-center justify-center">
+                                  <span className="text-[9px] font-bold text-blue-500">
                                     {(profile?.username || "U").slice(0, 2).toUpperCase()}
                                   </span>
                                 </div>
                               )}
                             </div>
-                            <span className="truncate flex-1 text-left font-medium text-[#f4f4f5]">{profile?.username || "Creator"}</span>
+                            <span className="truncate flex-1 text-left font-medium text-slate-800">{profile?.username || "Creator"}</span>
                           </button>
                         )}
                       </PopoverTrigger>
-                      <PopoverContent side="right" align="end" sideOffset={8} className="w-72 p-0 bg-[#18181b] border-white/[0.06] rounded-2xl overflow-hidden shadow-xl">
-                        <div className="px-4 py-3 border-b border-white/[0.06]">
+                      <PopoverContent side="right" align="end" sideOffset={8} className="w-72 p-0 bg-white border-[#e3edf5] rounded-2xl overflow-hidden shadow-xl">
+                        <div className="px-4 py-3 border-b border-[#e3edf5]">
                           <button
                             onClick={() => navigate("/")}
-                            className="flex items-center gap-2 text-sm text-[#a1a1aa] hover:text-[#f4f4f5] transition-colors"
+                            className="flex items-center gap-2 text-sm text-slate-500 hover:text-slate-800 transition-colors"
                           >
                             <ArrowLeft className="h-3.5 w-3.5" />
                             <span>Go to Dashboard</span>
                           </button>
                         </div>
 
-                        <div className="px-4 py-3 border-b border-white/[0.06]">
+                        <div className="px-4 py-3 border-b border-[#e3edf5]">
                           <div className="flex items-center gap-2.5">
-                            <div className="w-8 h-8 rounded-lg overflow-hidden border border-white/[0.08] shrink-0 bg-[#3b82f6]/10 flex items-center justify-center">
+                            <div className="w-8 h-8 rounded-lg overflow-hidden border border-[#e3edf5] shrink-0 bg-blue-50 flex items-center justify-center">
                               {profile?.avatar_url ? (
                                 <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
                               ) : (
-                                <span className="text-xs font-bold text-[#3b82f6]">
+                                <span className="text-xs font-bold text-blue-500">
                                   {(profile?.username || "U").slice(0, 1).toUpperCase()}
                                 </span>
                               )}
                             </div>
-                            <span className="text-sm font-semibold text-[#f4f4f5] truncate">{profile?.username || "Creator"}</span>
+                            <span className="text-sm font-semibold text-slate-900 truncate">{profile?.username || "Creator"}</span>
                             {(() => {
                               const tier = plan;
-                              if (tier === 'agency') return <span className="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20">Agency</span>;
-                              if (tier === 'creator') return <span className="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded bg-[#3b82f6]/10 text-[#3b82f6] border border-[#3b82f6]/20">Pro</span>;
-                              if (tier === 'basic') return <span className="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Basic</span>;
-                              return <span className="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded bg-white/[0.06] text-[#71717a] border border-white/[0.06]">Free</span>;
+                              if (tier === 'agency') return <span className="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded bg-amber-50 text-amber-600 border border-amber-200">Agency</span>;
+                              if (tier === 'creator') return <span className="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded bg-blue-50 text-blue-500 border border-blue-200">Pro</span>;
+                              if (tier === 'basic') return <span className="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-600 border border-emerald-200">Basic</span>;
+                              return <span className="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 border border-slate-200">Free</span>;
                             })()}
                           </div>
                         </div>
 
-                        <div className="px-4 py-3 border-b border-white/[0.06] space-y-2.5">
+                        <div className="px-4 py-3 border-b border-[#e3edf5] space-y-2.5">
                           <div className="flex items-center justify-between">
-                            <span className="text-sm font-medium text-[#f4f4f5]">Credits</span>
+                            <span className="text-sm font-medium text-slate-900">Credits</span>
                             <button
                               onClick={() => navigate("/pricing")}
-                              className="flex items-center gap-1 text-sm text-[#a1a1aa] hover:text-[#f4f4f5] transition-colors"
+                              className="flex items-center gap-1 text-sm text-slate-500 hover:text-slate-800 transition-colors"
                             >
-                              <span className="font-bold text-[#f4f4f5] tabular-nums">
+                              <span className="font-bold text-slate-900 tabular-nums">
                                 {isLoadingCredits ? "…" : creditBalance.toLocaleString()}
                               </span>
-                              <span className="text-[#71717a]">left</span>
-                              <ChevRight className="h-3.5 w-3.5 text-[#71717a]" />
+                              <span className="text-slate-400">left</span>
+                              <ChevRight className="h-3.5 w-3.5 text-slate-400" />
                             </button>
                           </div>
                           {!isLoadingCredits && (
@@ -503,10 +483,10 @@ export function StudioSidebar({
                           )}
                         </div>
 
-                        <div className="px-4 py-2.5 border-b border-white/[0.06]">
+                        <div className="px-4 py-2.5 border-b border-[#e3edf5]">
                           <button
                             onClick={() => setReferralOpen(true)}
-                            className="flex items-center gap-2.5 text-sm text-[#3b82f6] hover:text-[#3b82f6]/80 transition-colors font-medium"
+                            className="flex items-center gap-2.5 text-sm text-blue-500 hover:text-blue-600 transition-colors font-medium"
                           >
                             <Gift className="h-4 w-4" />
                             <span>Get free credits</span>
@@ -522,7 +502,7 @@ export function StudioSidebar({
                             <button
                               key={item.path}
                               onClick={() => navigate(item.path)}
-                              className="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm text-[#a1a1aa] hover:text-[#f4f4f5] hover:bg-white/[0.06] transition-colors"
+                              className="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm text-slate-500 hover:text-slate-800 hover:bg-slate-50 transition-colors"
                             >
                               <item.icon className="h-4 w-4" />
                               <span>{item.label}</span>
@@ -530,10 +510,10 @@ export function StudioSidebar({
                           ))}
                         </div>
 
-                        <div className="border-t border-white/[0.06] py-1.5">
+                        <div className="border-t border-[#e3edf5] py-1.5">
                           <button
                             onClick={() => signOut()}
-                            className="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm text-red-400 hover:bg-red-500/5 transition-colors"
+                            className="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 transition-colors"
                           >
                             <LogOut className="h-4 w-4" />
                             <span>Sign Out</span>
