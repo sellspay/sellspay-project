@@ -303,6 +303,90 @@ export function PricingModal({ open, onOpenChange }: PricingModalProps) {
             </div>
           </div>
 
+          {/* ─── Feature Comparison Table ─── */}
+          <div className="px-6 pb-8">
+            <div className="max-w-[1100px] mx-auto overflow-x-auto">
+              <table className="w-full border-collapse min-w-[700px]">
+                <thead>
+                  <tr>
+                    <th className="w-[200px]" />
+                    {PLAN_CARDS.map((p) => (
+                      <th key={p.id} className="text-center px-3 pb-3 min-w-[140px]">
+                        <span className="text-sm font-bold text-foreground">{p.name}</span>
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td colSpan={5} className="pt-4 pb-3 px-1">
+                      <div className="flex items-center gap-2">
+                        <Zap className="h-4 w-4 text-primary" />
+                        <span className="text-sm font-bold text-foreground">Credits Usage</span>
+                      </div>
+                    </td>
+                  </tr>
+                  {([
+                    { label: "Credits", values: ["0", "500/mo", "2,500/mo", "6,000/mo"] },
+                    { label: "Add-on Credit Packs", values: [false, false, true, true] },
+                    { label: "Number of Images", values: ["0", "~250/mo", "~1,250/mo", "~3,000/mo"] },
+                    { label: "Number of Videos", values: ["0", "0", "~125/mo", "~300/mo"] },
+                    { label: "AI Code Iterations", values: ["0", "~166/mo", "~833/mo", "~2,000/mo"] },
+                    { label: "Parallel Generations", values: ["1", "4", "8", "16"] },
+                    { label: "Transaction Fee", values: ["10%", "8%", "5%", "0%"] },
+                  ] as { label: string; values: (string | boolean)[] }[]).map((row, i) => (
+                    <tr key={`cu-${i}`} className="border-t border-border/30">
+                      <td className="py-3 px-1 text-sm text-muted-foreground">{row.label}</td>
+                      {row.values.map((val, j) => (
+                        <td key={j} className="py-3 px-3 text-center">
+                          {val === true ? <Check className="h-4 w-4 text-emerald-500 mx-auto" /> : val === false ? <span className="text-muted-foreground/30">—</span> : <span className="text-sm text-foreground font-medium">{val}</span>}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+
+                  <tr>
+                    <td colSpan={5} className="pt-10 pb-3 px-1">
+                      <div className="flex items-center gap-2">
+                        <Sparkles className="h-4 w-4 text-primary" />
+                        <span className="text-sm font-bold text-foreground">Features</span>
+                      </div>
+                    </td>
+                  </tr>
+                  {([
+                    { label: "Create & Customize Storefront", values: [true, true, true, true] },
+                    { label: "Sell Digital Products & Subs", values: [true, true, true, true] },
+                    { label: "Buy from Marketplace", values: [true, true, true, true] },
+                    { label: "Community Access", values: [true, true, true, true] },
+                    { label: "VibeCoder AI Builder", values: [false, true, true, true] },
+                    { label: "Flash Models (Gemini Flash)", values: [false, true, true, true] },
+                    { label: "Pro Models (GPT-5, Gemini Pro)", values: [false, false, true, true] },
+                    { label: "Flagship Models (GPT-5.2)", values: [false, false, false, true] },
+                    { label: "AI Image Generation", values: [false, false, true, true] },
+                    { label: "AI Video Generation", values: [false, false, false, true] },
+                    { label: "All Audio Tools", values: [false, true, true, true] },
+                    { label: "Auto-Model Selection", values: [false, false, true, true] },
+                    { label: "AI Storefront Editor", values: [false, true, true, true] },
+                    { label: "Advanced Analytics", values: [false, false, true, true] },
+                    { label: "Verified Badge", values: [false, false, "Grey", "Gold"] },
+                    { label: "Priority Processing", values: [false, false, false, true] },
+                    { label: "Priority Support", values: [false, false, false, true] },
+                    { label: "Commercial Use Rights", values: [false, false, true, true] },
+                  ] as { label: string; values: (string | boolean)[] }[]).map((row, i) => (
+                    <tr key={`ft-${i}`} className="border-t border-border/30">
+                      <td className="py-3 px-1 text-sm text-muted-foreground">{row.label}</td>
+                      {row.values.map((val, j) => (
+                        <td key={j} className="py-3 px-3 text-center">
+                          {val === true ? <Check className="h-4 w-4 text-emerald-500 mx-auto" /> : val === false ? <span className="text-muted-foreground/30">—</span> : <span className="text-sm text-foreground font-medium">{val}</span>}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
           {/* ─── FAQ Section ─── */}
           <div className="px-6 pb-10">
             <div className="max-w-[900px] mx-auto">
