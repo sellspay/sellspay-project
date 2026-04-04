@@ -104,9 +104,7 @@ function SortableToolItem({ tool, isActive, collapsed, onToolSelect, thumbnail }
             )}>
               <Icon className={cn("h-3.5 w-3.5", isActive ? "text-[#3b82f6]" : "text-[#6b7280]")} />
             </div>
-            </div>
           )}
-        </div>
         {!collapsed && (
           <span className="truncate flex-1 text-left">{tool.name}</span>
         )}
