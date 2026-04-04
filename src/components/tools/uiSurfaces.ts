@@ -2,30 +2,30 @@
  * Shared surface system for layered depth across all Studio tools.
  * 
  * Hierarchy (strongest → lightest):
- *   workspace shell → inner page → tool panel → section cards → inputs → chips
+ *   workspace shell → inner page → tool panel (anchor) → section cards → inputs (anchor) → chips
  */
 export const uiSurfaces = {
-  /** Main tool container — the large rounded panel holding the tool */
+  /** Main tool container — darker anchor layer */
   toolPanel:
-    "rounded-[24px] bg-gradient-to-br from-[#f2f8fc] to-[#e9f3f8] border border-[#d7e7ef] shadow-[0_4px_14px_rgba(15,23,42,0.04)]",
+    "rounded-[24px] bg-gradient-to-br from-[#e6f2f8] to-[#dbeaf3] border border-[#cde0eb] shadow-[0_4px_14px_rgba(15,23,42,0.05)]",
 
-  /** Primary section card (prompt, upload, etc.) */
+  /** Primary section card — lighter than tool panel */
   section:
-    "rounded-[20px] bg-gradient-to-br from-[#f8fcff] to-[#eef6fb] border border-[#dbeaf1]",
+    "rounded-[20px] bg-gradient-to-br from-[#f8fcff] to-[#eef7fb] border border-[#dbeaf1]",
 
-  /** Alternate section card (result, output, etc.) — slightly different tint */
+  /** Alternate section card (result, output) — slightly different tint */
   sectionAlt:
-    "rounded-[20px] bg-gradient-to-br from-[#f9fcff] to-[#eff7fb] border border-[#dceaf1]",
+    "rounded-[20px] bg-gradient-to-br from-[#f6fbff] to-[#edf6fb] border border-[#d7e7ef]",
 
-  /** Input areas — textarea, prompt boxes, text fields */
+  /** Input areas — darker anchor for contrast rhythm */
   input:
-    "rounded-[16px] bg-[#eef6fb] border border-[#d4e4ec]",
+    "rounded-[16px] bg-[#e3eef6] border border-[#cddfea] shadow-[inset_0_1px_2px_rgba(15,23,42,0.06)]",
 
-  /** Small chips and tags */
+  /** Small chips and tags — darker pop */
   chip:
-    "rounded-full bg-[#e7f2f9] border border-[#d6e6ef]",
+    "rounded-full bg-[#dcecf7] border border-[#c6ddea]",
 
   /** Upload / drop zones */
   dropzone:
-    "rounded-[18px] bg-[#edf6fb] border border-dashed border-[#cfe0ea]",
+    "rounded-[18px] bg-[#e3eef6] border border-dashed border-[#c4d8e6] shadow-[inset_0_1px_3px_rgba(15,23,42,0.05)]",
 } as const;
