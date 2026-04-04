@@ -158,7 +158,7 @@ export function ToolActiveView({
   if (!tool) {
     return (
       <div className="flex items-center justify-center py-20">
-        <p className="text-muted-foreground">Tool not found</p>
+        <p className="text-[#71717a]">Tool not found</p>
       </div>
     );
   }
@@ -409,7 +409,7 @@ function ToolIntroOverlay({ tool }: { tool: ToolData }) {
       initial={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.5 }}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-background"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-[#0e0e10]"
     >
       <motion.div
         initial={{ scale: 0.8, opacity: 0 }}
@@ -434,7 +434,7 @@ function ToolIntroOverlay({ tool }: { tool: ToolData }) {
           initial={{ y: 20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ duration: 0.4, delay: 0.4 }}
-          className="text-3xl font-bold mb-2"
+          className="text-3xl font-bold mb-2 text-[#f4f4f5]"
         >
           {tool.title}
         </motion.h1>
@@ -442,7 +442,7 @@ function ToolIntroOverlay({ tool }: { tool: ToolData }) {
           initial={{ y: 20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ duration: 0.4, delay: 0.5 }}
-          className="text-muted-foreground"
+          className="text-[#71717a]"
         >
           Activating premium experience...
         </motion.p>
@@ -539,7 +539,7 @@ function ToolLoadingState({ tool }: { tool: ToolData }) {
       )}>
         <Loader2 className="w-8 h-8 text-white animate-spin" />
       </div>
-      <p className="text-muted-foreground">Loading {tool.title}...</p>
+      <p className="text-[#71717a]">Loading {tool.title}...</p>
     </div>
   );
 }
