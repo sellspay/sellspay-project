@@ -166,7 +166,7 @@ export function ToolActiveView({
   const creditCost = registryEntry?.creditCost ?? 0;
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="h-full bg-background">
       {/* Intro Animation Overlay */}
       <AnimatePresence>
         {showIntro && !embedded && (
