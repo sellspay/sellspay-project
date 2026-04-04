@@ -119,7 +119,7 @@ export function ToolContent({ toolId }: ToolContentProps) {
 
   return (
     <Suspense fallback={<LoadingSpinner />}>
-      <div className={toolId === "image-generator" || toolId === "nano-banana" ? "h-full" : "p-6 md:p-8"}>
+      <div className={toolId === "image-generator" || toolId === "nano-banana" ? "h-full" : ""}>
         <ProToolsGate
           isProTool={isProTool(toolId)}
           creditBalance={creditBalance}
