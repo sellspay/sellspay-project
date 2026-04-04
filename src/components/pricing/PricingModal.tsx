@@ -178,56 +178,96 @@ export function PricingModal({ open, onOpenChange }: PricingModalProps) {
             </div>
           </div>
 
+          {/* ─── Plan Cards ─── */}
+          <div className="px-6 pb-6">
+            <div className="grid grid-cols-4 gap-4 max-w-[1100px] mx-auto">
+              {PLANS.map((plan) => {
+                const price = billingPeriod === "annually" ? plan.yearlyPrice : plan.monthlyPrice;
+                const originalPrice = billingPeriod === "annually" && plan.monthlyPrice > 0 ? plan.monthlyPrice : null;
+                return (
+                  <div
+                    key={plan.id}
+                    className={cn(
+                      "relative rounded-2xl border overflow-hidden transition-all duration-300 flex flex-col",
+                      plan.isPopular
+                        ? "border-fuchsia-400/60 shadow-[0_0_30px_-5px_rgba(192,38,211,0.25)] scale-[1.03] z-10"
+                        : "border-border hover:border-border/80 hover:shadow-lg"
+                    )}
+                  >
+                    {/* Top gradient strip */}
+                    <div className={cn("h-1.5 w-full bg-gradient-to-r", plan.topBorder)} />
+
+                    <div className="p-5 flex flex-col flex-1">
+                      {/* Badge */}
+                      {plan.badge && (
+                        <span className={cn(
+                          "self-start px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider text-white mb-3",
+                          plan.badgeColor || "bg-muted"
+                        )}>
+                          {plan.badge}
+                        </span>
+                      )}
+
+                      <h3 className="text-lg font-bold text-foreground">{plan.name}</h3>
+                      <p className="text-xs text-muted-foreground mt-1 min-h-[32px]">{plan.tagline}</p>
+
+                      {/* Price */}
+                      <div className="flex items-baseline gap-1.5 mt-4">
+                        {originalPrice !== null && (
+                          <span className="text-sm text-muted-foreground line-through">${originalPrice}</span>
+                        )}
+                        <span className="text-3xl font-extrabold text-foreground">${price}</span>
+                        <span className="text-xs text-muted-foreground">/mo</span>
+                      </div>
+
+                      {/* Credits badge */}
+                      <div className="mt-3 flex items-center gap-1.5">
+                        <Zap className="h-3.5 w-3.5 text-primary" />
+                        <span className="text-xs font-semibold text-foreground">
+                          {plan.credits > 0 ? `${plan.credits.toLocaleString()} credits/mo` : "No credits"}
+                        </span>
+                      </div>
+                      <span className="text-[10px] text-muted-foreground mt-1">{plan.feeLabel}</span>
+
+                      {/* CTA */}
+                      <button
+                        onClick={() => handleGetStarted(plan.id)}
+                        className={cn(
+                          "mt-auto pt-5 w-full py-2.5 rounded-full text-sm font-bold transition-all",
+                          plan.isPopular
+                            ? "bg-gradient-to-r from-fuchsia-500 to-violet-500 text-white hover:opacity-90 shadow-md"
+                            : plan.id === "agency"
+                              ? "bg-gradient-to-r from-amber-500 to-orange-500 text-white hover:opacity-90 shadow-md"
+                              : "bg-foreground text-background hover:opacity-90"
+                        )}
+                      >
+                        Get Started
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
           {/* ─── Comparison Table ─── */}
           <div className="px-6 pb-6">
             <div className="overflow-x-auto">
               <table className="w-full border-collapse min-w-[700px]">
-                {/* Plan headers */}
                 <thead>
                   <tr>
                     <th className="w-[200px]" />
-                    {PLANS.map((plan) => {
-                      const price = billingPeriod === "annually" ? plan.yearlyPrice : plan.monthlyPrice;
-                      const originalPrice = billingPeriod === "annually" && plan.monthlyPrice > 0 ? plan.monthlyPrice : null;
-                      return (
-                        <th key={plan.id} className="text-center px-3 pb-4 pt-2 align-bottom min-w-[160px]">
-                          {plan.badge && (
-                            <span className={cn(
-                              "inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider text-white mb-2",
-                              plan.badgeColor || "bg-muted"
-                            )}>
-                              {plan.badge}
-                            </span>
-                          )}
-                          <div className="text-lg font-bold text-foreground">{plan.name}</div>
-                          <div className="flex items-baseline justify-center gap-1 mt-1">
-                            {originalPrice !== null && (
-                              <span className="text-xs text-muted-foreground line-through">${originalPrice}</span>
-                            )}
-                            <span className="text-2xl font-extrabold text-foreground">${price}</span>
-                            <span className="text-xs text-muted-foreground">/mo</span>
-                          </div>
-                          <button
-                            onClick={() => handleGetStarted(plan.id)}
-                            className={cn(
-                              "mt-3 w-full py-2 rounded-full text-xs font-bold transition-all",
-                              plan.isPopular
-                                ? "bg-gradient-to-r from-fuchsia-500 to-violet-500 text-white hover:opacity-90"
-                                : "bg-foreground text-background hover:opacity-90"
-                            )}
-                          >
-                            Get Started
-                          </button>
-                        </th>
-                      );
-                    })}
+                    {PLANS.map((plan) => (
+                      <th key={plan.id} className="text-center px-3 pb-3 min-w-[140px]">
+                        <span className="text-sm font-bold text-foreground">{plan.name}</span>
+                      </th>
+                    ))}
                   </tr>
                 </thead>
-
                 <tbody>
-                  {/* Credits Usage section */}
+                  {/* Credits Usage */}
                   <tr>
-                    <td colSpan={5} className="pt-8 pb-3 px-1">
+                    <td colSpan={5} className="pt-4 pb-3 px-1">
                       <div className="flex items-center gap-2">
                         <Zap className="h-4 w-4 text-primary" />
                         <span className="text-sm font-bold text-foreground">Credits Usage</span>
@@ -245,7 +285,7 @@ export function PricingModal({ open, onOpenChange }: PricingModalProps) {
                     </tr>
                   ))}
 
-                  {/* Features section */}
+                  {/* Features */}
                   <tr>
                     <td colSpan={5} className="pt-10 pb-3 px-1">
                       <div className="flex items-center gap-2">
