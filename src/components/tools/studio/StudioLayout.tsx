@@ -64,7 +64,6 @@ export default function StudioLayout() {
   useEffect(() => {
     if (routeToolId) {
       setActiveTool(routeToolId);
-      if (activeSection === "home") setActiveSection("campaign");
     }
   }, [routeToolId]);
 
@@ -94,9 +93,6 @@ export default function StudioLayout() {
     const resolvedId = entry?.legacyRoute || toolId;
     setActiveTool(resolvedId);
     navigate(`/studio/${resolvedId}`, { replace: true });
-    if (activeSection === "home") {
-      setActiveSection("campaign");
-    }
   };
 
   const handleGoHome = () => {
