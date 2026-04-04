@@ -206,10 +206,7 @@ export function ToolActiveView({
                 </>
               )}
               
-              {/* Back button */}
-              <Button onClick={onClose} variant="ghost" size="sm" className="absolute top-3 left-3 z-10 gap-2 text-foreground/80 hover:text-foreground bg-background/60 backdrop-blur-md hover:bg-background/80 border border-border/30">
-                <ArrowLeft className="w-4 h-4" /> Back
-              </Button>
+              
               
               {/* Credits badge */}
               <div className="absolute top-3 right-3 z-10 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-background/60 backdrop-blur-md border border-border/30">
