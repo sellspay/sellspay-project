@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/lib/auth";
-import { Check, X, Zap, Crown, Sparkles, ArrowRight } from "lucide-react";
-import { motion } from "framer-motion";
+import { Check, X, Zap, Crown, Sparkles, Plus, Minus } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 
+/* ─────────────── Plan data ─────────────── */
 const PLANS = [
   {
     id: "starter",
@@ -15,18 +16,6 @@ const PLANS = [
     tagline: "Start experimenting with digital selling.",
     badge: null,
     topBorder: "from-zinc-300 to-zinc-400",
-    features: [
-      { text: "Create & Customize Storefront", included: true },
-      { text: "Sell Digital Products & Subs", included: true },
-      { text: "Buy from Marketplace", included: true },
-      { text: "Community Access", included: true },
-      { text: "Basic Analytics", included: true },
-      { text: "VibeCoder AI Builder", included: false },
-      { text: "AI Image Generation", included: false },
-      { text: "AI Video Generation", included: false },
-      { text: "Pro Models (GPT-5, Gemini)", included: false },
-      { text: "Priority Support", included: false },
-    ],
     credits: 0,
     feeLabel: "10% Transaction Fee",
   },
@@ -38,18 +27,6 @@ const PLANS = [
     tagline: "Unlock AI-powered building tools.",
     badge: null,
     topBorder: "from-blue-400 to-cyan-400",
-    features: [
-      { text: "Everything in Starter", included: true },
-      { text: "VibeCoder (Flash Models)", included: true, highlight: true },
-      { text: "500 Monthly AI Credits", included: true, highlight: true },
-      { text: "Manual Model Selection", included: true },
-      { text: "AI Storefront Editor", included: true },
-      { text: "Audio Tools (Free Tier)", included: true },
-      { text: "Pro Models (GPT-5, Gemini Pro)", included: false },
-      { text: "AI Image Generation", included: false },
-      { text: "AI Video Generation", included: false },
-      { text: "Priority Support", included: false },
-    ],
     credits: 500,
     feeLabel: "8% Transaction Fee",
   },
@@ -63,18 +40,6 @@ const PLANS = [
     badgeColor: "bg-gradient-to-r from-fuchsia-500 to-violet-500",
     topBorder: "from-fuchsia-500 to-violet-500",
     isPopular: true,
-    features: [
-      { text: "Everything in Basic", included: true },
-      { text: "Pro Models (GPT-5, Gemini 3 Pro)", included: true, highlight: true },
-      { text: "AI Image Generation", included: true, highlight: true },
-      { text: "2,500 Monthly AI Credits", included: true, highlight: true },
-      { text: "Auto-Model Selection", included: true },
-      { text: "All Audio Tools (Pro Tier)", included: true },
-      { text: "Grey Verified Badge", included: true },
-      { text: "Advanced Analytics", included: true },
-      { text: "Commercial Use Rights", included: true },
-      { text: "AI Video Generation", included: false },
-    ],
     credits: 2500,
     feeLabel: "5% Transaction Fee",
   },
@@ -87,22 +52,64 @@ const PLANS = [
     badge: "BEST VALUE",
     badgeColor: "bg-gradient-to-r from-amber-500 to-orange-500",
     topBorder: "from-amber-400 to-orange-500",
-    features: [
-      { text: "Everything in Creator", included: true },
-      { text: "Flagship Models (GPT-5.2)", included: true, highlight: true },
-      { text: "AI Video Generation", included: true, highlight: true },
-      { text: "6,000 Monthly AI Credits", included: true, highlight: true },
-      { text: "Full Auto-Model Access", included: true },
-      { text: "Priority Processing Queue", included: true },
-      { text: "Gold Verified Badge", included: true },
-      { text: "Unlimited AI Storefronts", included: true },
-      { text: "Priority Support", included: true },
-      { text: "0% Transaction Fees", included: true, highlight: true },
-    ],
     credits: 6000,
     feeLabel: "0% Transaction Fee",
   },
 ];
+
+/* ─────────────── Credits Usage rows ─────────────── */
+const CREDITS_USAGE = [
+  { label: "Credits", values: ["0", "500/mo", "2,500/mo", "6,000/mo"] },
+  { label: "Add-on Credit Packs", values: ["—", "—", true, true] },
+  { label: "Number of Images", values: ["0", "~250/mo", "~1,250/mo", "~3,000/mo"] },
+  { label: "Number of Videos", values: ["0", "0", "~125/mo", "~300/mo"] },
+  { label: "AI Code Iterations", values: ["0", "~166/mo", "~833/mo", "~2,000/mo"] },
+  { label: "Parallel Generations", values: ["1", "4", "8", "16"] },
+  { label: "Transaction Fee", values: ["10%", "8%", "5%", "0%"] },
+];
+
+/* ─────────────── Features rows ─────────────── */
+const FEATURES = [
+  { label: "Create & Customize Storefront", values: [true, true, true, true] },
+  { label: "Sell Digital Products & Subs", values: [true, true, true, true] },
+  { label: "Buy from Marketplace", values: [true, true, true, true] },
+  { label: "Community Access", values: [true, true, true, true] },
+  { label: "VibeCoder AI Builder", values: [false, true, true, true] },
+  { label: "Flash Models (Gemini Flash)", values: [false, true, true, true] },
+  { label: "Pro Models (GPT-5, Gemini Pro)", values: [false, false, true, true] },
+  { label: "Flagship Models (GPT-5.2)", values: [false, false, false, true] },
+  { label: "AI Image Generation", values: [false, false, true, true] },
+  { label: "AI Video Generation", values: [false, false, false, true] },
+  { label: "All Audio Tools", values: [false, true, true, true] },
+  { label: "Auto-Model Selection", values: [false, false, true, true] },
+  { label: "AI Storefront Editor", values: [false, true, true, true] },
+  { label: "Advanced Analytics", values: [false, false, true, true] },
+  { label: "Verified Badge", values: [false, false, "Grey", "Gold"] },
+  { label: "Priority Processing", values: [false, false, false, true] },
+  { label: "Priority Support", values: [false, false, false, true] },
+  { label: "Commercial Use Rights", values: [false, false, true, true] },
+];
+
+/* ─────────────── FAQ data ─────────────── */
+const FAQS = [
+  { q: "Can I cancel my subscription any time?", a: "Yes. You can cancel anytime from your billing settings. Your credits remain active until the end of your billing cycle." },
+  { q: "How do I cancel my subscription?", a: "Go to Settings → Billing → Manage Subscription. Click 'Cancel Subscription'. Your plan will remain active until the end of the current period." },
+  { q: "Do my monthly credits roll over?", a: "Unused credits roll over for one billing cycle. After that, unspent credits expire. This encourages active usage while giving you flexibility." },
+  { q: "What's the difference between monthly and annual plans?", a: "Annual plans save up to 50% compared to monthly billing. You pay once per year and get all the same features. Credits are still distributed monthly." },
+  { q: "What are add-ons?", a: "Add-on Credit Packs let you purchase extra credits on top of your plan's monthly allocation. Available on Creator and Agency plans." },
+  { q: "What happens when I upgrade?", a: "You'll immediately get access to the new plan's features and a pro-rated credit allocation. Any existing credits carry over." },
+  { q: "What happens when I downgrade/cancel?", a: "Your current plan stays active until the end of the billing period. After that, you'll move to the lower plan. Your storefront remains live." },
+  { q: "How does the 0% fee work?", a: "On the Agency plan, SellsPay takes $0 from your sales. You keep 100% of your revenue (minus standard Stripe processing fees of ~2.9% + 30¢)." },
+];
+
+/* ─────────────── Cell renderer ─────────────── */
+function CellValue({ value, planIndex }: { value: string | boolean; planIndex: number }) {
+  if (value === true) return <Check className="h-4 w-4 text-emerald-500 mx-auto" />;
+  if (value === false) return <span className="text-muted-foreground/30">—</span>;
+  return <span className="text-sm text-foreground font-medium">{value}</span>;
+}
+
+/* ─────────────── Component ─────────────── */
 
 interface PricingModalProps {
   open: boolean;
@@ -111,6 +118,7 @@ interface PricingModalProps {
 
 export function PricingModal({ open, onOpenChange }: PricingModalProps) {
   const [billingPeriod, setBillingPeriod] = useState<"monthly" | "annually">("annually");
+  const [openFaq, setOpenFaq] = useState<number | null>(null);
   const navigate = useNavigate();
   const { user } = useAuth();
 
@@ -125,165 +133,191 @@ export function PricingModal({ open, onOpenChange }: PricingModalProps) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[1200px] w-[96vw] p-0 bg-background border-border rounded-2xl overflow-hidden max-h-[92vh] overflow-y-auto shadow-2xl">
+      <DialogContent className="max-w-[1200px] w-[96vw] p-0 bg-background border-border rounded-2xl overflow-hidden max-h-[92vh] shadow-2xl flex flex-col">
         
-        {/* Header */}
-        <div className="text-center pt-10 pb-4 px-6">
-          <h2 className="text-3xl font-extrabold tracking-tight text-foreground">
-            Choose Your Plan
-          </h2>
-          <p className="text-muted-foreground mt-2 text-base max-w-lg mx-auto">
-            Scale your creative business with AI-powered tools, from free to enterprise.
-          </p>
-        </div>
+        {/* Scrollable content */}
+        <div className="overflow-y-auto flex-1 custom-scrollbar">
+          {/* Header */}
+          <div className="text-center pt-10 pb-4 px-6 sticky top-0 bg-background/95 backdrop-blur-sm z-20">
+            <h2 className="text-3xl font-extrabold tracking-tight text-foreground">
+              Choose Your Plan
+            </h2>
+            <p className="text-muted-foreground mt-2 text-base max-w-lg mx-auto">
+              Scale your creative business with AI-powered tools.
+            </p>
 
-        {/* Billing Toggle */}
-        <div className="flex justify-center pb-6">
-          <div className="inline-flex items-center bg-muted rounded-full p-1 border border-border">
-            <button
-              onClick={() => setBillingPeriod("monthly")}
-              className={cn(
-                "px-6 py-2.5 rounded-full text-sm font-semibold transition-all duration-200",
-                billingPeriod === "monthly"
-                  ? "bg-background text-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground"
-              )}
-            >
-              Monthly
-            </button>
-            <button
-              onClick={() => setBillingPeriod("annually")}
-              className={cn(
-                "px-6 py-2.5 rounded-full text-sm font-semibold transition-all duration-200 flex items-center gap-2",
-                billingPeriod === "annually"
-                  ? "bg-background text-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground"
-              )}
-            >
-              Annually
-              <span className="text-[11px] font-bold text-green-600 bg-green-100 px-2 py-0.5 rounded-full">
-                UP TO 50% OFF
-              </span>
-            </button>
-          </div>
-        </div>
-
-        {/* Plans Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5 px-6 pb-10">
-          {PLANS.map((plan, index) => {
-            const price = billingPeriod === "annually" ? plan.yearlyPrice : plan.monthlyPrice;
-            const originalPrice = billingPeriod === "annually" && plan.monthlyPrice > 0 ? plan.monthlyPrice : null;
-
-            return (
-              <motion.div
-                key={plan.id}
-                initial={{ opacity: 0, y: 24 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.35, delay: index * 0.06 }}
-                className={cn(
-                  "relative flex flex-col rounded-xl border overflow-hidden",
-                  "bg-card",
-                  plan.isPopular
-                    ? "border-fuchsia-500 shadow-lg shadow-fuchsia-500/10 scale-[1.02]"
-                    : "border-border"
-                )}
-              >
-                {/* Top accent bar */}
-                <div className={cn("h-1 w-full bg-gradient-to-r", plan.topBorder)} />
-
-                <div className="p-6 flex flex-col flex-1">
-                  {/* Badge */}
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-xl font-bold text-foreground">{plan.name}</h3>
-                    {plan.badge && (
-                      <span className={cn(
-                        "px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider text-white",
-                        plan.badgeColor
-                      )}>
-                        {plan.badge}
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Price */}
-                  <div className="mb-1">
-                    <div className="flex items-baseline gap-1.5">
-                      {originalPrice !== null && (
-                        <span className="text-base text-muted-foreground line-through font-medium">${originalPrice}</span>
-                      )}
-                      <span className="text-5xl font-extrabold tracking-tight text-foreground">${price}</span>
-                      <span className="text-sm text-muted-foreground font-medium">/mo</span>
-                    </div>
-                  </div>
-
-                  {/* Tagline */}
-                  <p className="text-sm text-muted-foreground mb-5">{plan.tagline}</p>
-
-                  {/* CTA */}
-                  <button
-                    onClick={() => handleGetStarted(plan.id)}
-                    className={cn(
-                      "w-full py-3 rounded-xl text-sm font-bold transition-all duration-200",
-                      plan.isPopular
-                        ? "bg-gradient-to-r from-fuchsia-500 to-violet-500 text-white hover:opacity-90 shadow-md shadow-fuchsia-500/20"
-                        : "bg-foreground text-background hover:opacity-90"
-                    )}
-                  >
-                    Get Started
-                  </button>
-
-                  {/* Credits */}
-                  {plan.credits > 0 && (
-                    <div className="mt-5 flex items-center gap-2 px-3 py-2.5 rounded-lg bg-primary/5 border border-primary/10">
-                      <Zap className="h-4 w-4 text-primary shrink-0" />
-                      <span className="text-sm font-bold text-primary">
-                        {plan.credits.toLocaleString()} credits / month
-                      </span>
-                    </div>
+            {/* Billing Toggle */}
+            <div className="flex justify-center mt-5">
+              <div className="inline-flex items-center bg-muted rounded-full p-1 border border-border">
+                <button
+                  onClick={() => setBillingPeriod("monthly")}
+                  className={cn(
+                    "px-5 py-2 rounded-full text-sm font-semibold transition-all duration-200",
+                    billingPeriod === "monthly"
+                      ? "bg-background text-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground"
                   )}
+                >
+                  Monthly
+                </button>
+                <button
+                  onClick={() => setBillingPeriod("annually")}
+                  className={cn(
+                    "px-5 py-2 rounded-full text-sm font-semibold transition-all duration-200 flex items-center gap-2",
+                    billingPeriod === "annually"
+                      ? "bg-background text-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  Annually
+                  <span className="text-[10px] font-bold text-green-600 bg-green-100 px-2 py-0.5 rounded-full">
+                    UP TO 50% OFF
+                  </span>
+                </button>
+              </div>
+            </div>
+          </div>
 
-                  {/* Fee */}
-                  <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
-                    <span className={cn(
-                      "font-semibold",
-                      plan.feeLabel.includes("0%") && "text-green-600"
-                    )}>
-                      {plan.feeLabel}
-                    </span>
-                  </div>
+          {/* ─── Comparison Table ─── */}
+          <div className="px-6 pb-6">
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse min-w-[700px]">
+                {/* Plan headers */}
+                <thead>
+                  <tr>
+                    <th className="w-[200px]" />
+                    {PLANS.map((plan) => {
+                      const price = billingPeriod === "annually" ? plan.yearlyPrice : plan.monthlyPrice;
+                      const originalPrice = billingPeriod === "annually" && plan.monthlyPrice > 0 ? plan.monthlyPrice : null;
+                      return (
+                        <th key={plan.id} className="text-center px-3 pb-4 pt-2 align-bottom min-w-[160px]">
+                          {plan.badge && (
+                            <span className={cn(
+                              "inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider text-white mb-2",
+                              plan.badgeColor || "bg-muted"
+                            )}>
+                              {plan.badge}
+                            </span>
+                          )}
+                          <div className="text-lg font-bold text-foreground">{plan.name}</div>
+                          <div className="flex items-baseline justify-center gap-1 mt-1">
+                            {originalPrice !== null && (
+                              <span className="text-xs text-muted-foreground line-through">${originalPrice}</span>
+                            )}
+                            <span className="text-2xl font-extrabold text-foreground">${price}</span>
+                            <span className="text-xs text-muted-foreground">/mo</span>
+                          </div>
+                          <button
+                            onClick={() => handleGetStarted(plan.id)}
+                            className={cn(
+                              "mt-3 w-full py-2 rounded-full text-xs font-bold transition-all",
+                              plan.isPopular
+                                ? "bg-gradient-to-r from-fuchsia-500 to-violet-500 text-white hover:opacity-90"
+                                : "bg-foreground text-background hover:opacity-90"
+                            )}
+                          >
+                            Get Started
+                          </button>
+                        </th>
+                      );
+                    })}
+                  </tr>
+                </thead>
 
-                  {/* Divider */}
-                  <div className="h-px bg-border my-5" />
+                <tbody>
+                  {/* Credits Usage section */}
+                  <tr>
+                    <td colSpan={5} className="pt-8 pb-3 px-1">
+                      <div className="flex items-center gap-2">
+                        <Zap className="h-4 w-4 text-primary" />
+                        <span className="text-sm font-bold text-foreground">Credits Usage</span>
+                      </div>
+                    </td>
+                  </tr>
+                  {CREDITS_USAGE.map((row, i) => (
+                    <tr key={`cu-${i}`} className="border-t border-border/30">
+                      <td className="py-3 px-1 text-sm text-muted-foreground">{row.label}</td>
+                      {row.values.map((val, j) => (
+                        <td key={j} className="py-3 px-3 text-center">
+                          <CellValue value={val} planIndex={j} />
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
 
-                  {/* Features */}
-                  <ul className="space-y-3 flex-1">
-                    {plan.features.map((feature, i) => (
-                      <li key={i} className="flex items-start gap-2.5">
-                        {feature.included ? (
-                          <Check className={cn(
-                            "h-4 w-4 shrink-0 mt-0.5",
-                            feature.highlight ? "text-primary" : "text-green-500"
-                          )} />
-                        ) : (
-                          <X className="h-4 w-4 text-muted-foreground/30 shrink-0 mt-0.5" />
-                        )}
-                        <span className={cn(
-                          "text-[13px] leading-snug",
-                          feature.included
-                            ? feature.highlight
-                              ? "text-foreground font-semibold"
-                              : "text-foreground/80"
-                            : "text-muted-foreground/50"
-                        )}>
-                          {feature.text}
+                  {/* Features section */}
+                  <tr>
+                    <td colSpan={5} className="pt-10 pb-3 px-1">
+                      <div className="flex items-center gap-2">
+                        <Sparkles className="h-4 w-4 text-primary" />
+                        <span className="text-sm font-bold text-foreground">Features</span>
+                      </div>
+                    </td>
+                  </tr>
+                  {FEATURES.map((row, i) => (
+                    <tr key={`ft-${i}`} className="border-t border-border/30">
+                      <td className="py-3 px-1 text-sm text-muted-foreground">{row.label}</td>
+                      {row.values.map((val, j) => (
+                        <td key={j} className="py-3 px-3 text-center">
+                          <CellValue value={val} planIndex={j} />
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* ─── FAQ Section ─── */}
+          <div className="px-6 pb-10">
+            <div className="max-w-[900px] mx-auto">
+              <div className="flex items-start gap-8">
+                <h3 className="text-xl font-bold text-foreground shrink-0 pt-3">FAQs</h3>
+                <div className="flex-1 divide-y divide-border/50">
+                  {FAQS.map((faq, idx) => (
+                    <div key={idx}>
+                      <button
+                        onClick={() => setOpenFaq(openFaq === idx ? null : idx)}
+                        className="w-full flex items-center justify-between py-4 text-left group"
+                      >
+                        <span className="text-sm font-medium text-foreground group-hover:text-primary transition-colors">
+                          {faq.q}
                         </span>
-                      </li>
-                    ))}
-                  </ul>
+                        <div className={cn(
+                          "w-6 h-6 rounded-full flex items-center justify-center shrink-0 ml-4 transition-colors",
+                          openFaq === idx
+                            ? "bg-primary text-primary-foreground"
+                            : "bg-primary/10 text-primary"
+                        )}>
+                          {openFaq === idx ? (
+                            <Minus className="h-3.5 w-3.5" />
+                          ) : (
+                            <Plus className="h-3.5 w-3.5" />
+                          )}
+                        </div>
+                      </button>
+                      <AnimatePresence>
+                        {openFaq === idx && (
+                          <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: "auto", opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            transition={{ duration: 0.2 }}
+                            className="overflow-hidden"
+                          >
+                            <p className="pb-4 text-sm text-muted-foreground leading-relaxed pr-10">
+                              {faq.a}
+                            </p>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+                  ))}
                 </div>
-              </motion.div>
-            );
-          })}
+              </div>
+            </div>
+          </div>
         </div>
       </DialogContent>
     </Dialog>
