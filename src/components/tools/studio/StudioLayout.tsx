@@ -295,22 +295,9 @@ export default function StudioLayout() {
         </motion.div>
 
         {/* Workspace */}
-        <div className={cn(
-          "flex-1 flex min-w-0 p-2 gap-0 transition-colors duration-300",
-          activeTool ? "bg-[#0f172a]" : ""
-        )} style={!activeTool ? { backgroundColor: 'hsl(210 40% 97%)' } : undefined}>
-          <main className={cn(
-            "flex-1 min-w-0 overflow-hidden rounded-[22px] transition-all duration-300",
-            activeTool
-              ? "bg-[#0f172a] border border-[#1f2937] shadow-[0_20px_60px_rgba(0,0,0,0.4)]"
-              : "border border-[hsl(200_30%_88%)] bg-gradient-to-br from-[#e8f6fb] to-[#dff1f7] shadow-[0_12px_40px_rgba(15,23,42,0.08)] ring-1 ring-[hsl(200_35%_92%)]"
-          )}>
-            <div className={cn(
-              "h-full overflow-y-auto custom-scrollbar",
-              activeTool
-                ? "bg-gradient-to-br from-[#0f172a] to-[#020617]"
-                : "bg-gradient-to-br from-[#f4fbff] to-[#eaf6fb]"
-            )}>
+        <div className="flex-1 flex min-w-0 p-2 gap-0 bg-[#0f172a]">
+          <main className="flex-1 min-w-0 overflow-hidden rounded-[22px] bg-[#0f172a] border border-[#1f2937] shadow-[0_20px_60px_rgba(0,0,0,0.4)]">
+            <div className="h-full overflow-y-auto custom-scrollbar bg-gradient-to-br from-[#0f172a] to-[#020617]">
             {isHome ? (
               <StudioHomeBanner
                 creditBalance={creditBalance}
