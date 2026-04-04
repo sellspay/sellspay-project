@@ -8,19 +8,33 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+const MODEL_MAP: Record<string, string> = {
+  "nano-banana": "gemini-2.5-flash-image",
+  "nano-banana-2": "gemini-3.1-flash-image-preview",
+  "nano-banana-pro": "gemini-3-pro-image-preview",
+  "flux-pro": "gemini-3.1-flash-image-preview",
+  "recraft-v3": "gemini-3.1-flash-image-preview",
+  "sdxl-turbo": "gemini-2.5-flash-image",
+  "juggernaut-flux": "gemini-3.1-flash-image-preview",
+  "photo-real-v2": "gemini-3-pro-image-preview",
+  "anime-xl": "gemini-2.5-flash-image",
+  "product-shot-pro": "gemini-3-pro-image-preview",
+  "editorial-fashion": "gemini-3.1-flash-image-preview",
+  "cinematic-scene": "gemini-3-pro-image-preview",
+};
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { status: 200, headers: corsHeaders });
   }
 
   try {
-    // Authentication check
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
-      return new Response(
-        JSON.stringify({ error: "Authentication required" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ error: "Authentication required" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     const supabaseClient = createClient(
@@ -29,24 +43,29 @@ serve(async (req) => {
       { global: { headers: { Authorization: authHeader } } }
     );
 
-    const { data: { user }, error: authError } = await supabaseClient.auth.getUser();
+    const {
+      data: { user },
+      error: authError,
+    } = await supabaseClient.auth.getUser();
+
     if (authError || !user) {
-      return new Response(
-        JSON.stringify({ error: "Invalid authentication" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ error: "Invalid authentication" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
-    const { prompt } = await req.json();
+    const { prompt, model } = await req.json();
+    const requestedModel = typeof model === "string" ? model : "nano-banana-2";
+    const resolvedModel = MODEL_MAP[requestedModel] ?? MODEL_MAP["nano-banana-2"];
 
     if (!prompt || typeof prompt !== "string" || prompt.trim().length === 0) {
-      return new Response(
-        JSON.stringify({ error: "Prompt is required" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ error: "Prompt is required" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
-    // ====== CONTENT MODERATION ======
     const BLOCKED_PATTERNS = [
       /\b(kill|murder|slaughter|massacre)\b.*\b(people|children|humans)\b/i,
       /\b(bomb|shoot|stab)\b.*\b(school|church|mosque|synagogue)\b/i,
@@ -62,83 +81,96 @@ serve(async (req) => {
 
     for (const pattern of BLOCKED_PATTERNS) {
       if (pattern.test(prompt)) {
-        console.warn(`Blocked prompt from user ${user.id}: policy violation`);
         return new Response(
-          JSON.stringify({ error: "Content policy violation: your prompt contains prohibited content. Please modify and try again." }),
-          { status: 422, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          JSON.stringify({
+            error: "Content policy violation: your prompt contains prohibited content. Please modify and try again.",
+          }),
+          {
+            status: 422,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          }
         );
       }
     }
 
     const GOOGLE_GEMINI_API_KEY = Deno.env.get("GOOGLE_GEMINI_API_KEY");
     if (!GOOGLE_GEMINI_API_KEY) {
-      console.error("GOOGLE_GEMINI_API_KEY not configured");
-      return new Response(
-        JSON.stringify({ error: "AI service not configured" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ error: "AI service not configured" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
-    console.log(`Generating image for user ${user.id}: "${prompt.substring(0, 50)}..."`);
+    console.log(`Generating image for user ${user.id} with ${resolvedModel}`);
 
-    const response = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${GOOGLE_GEMINI_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "gemini-2.0-flash-exp",
-        messages: [
-          {
-            role: "user",
-            content: prompt.trim(),
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${resolvedModel}:generateContent?key=${GOOGLE_GEMINI_API_KEY}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt.trim() }] }],
+          generationConfig: {
+            responseModalities: ["TEXT", "IMAGE"],
           },
-        ],
-        modalities: ["image", "text"],
-      }),
-    });
+        }),
+      }
+    );
 
     if (!response.ok) {
       if (response.status === 429) {
-        return new Response(
-          JSON.stringify({ error: "Rate limit exceeded. Please try again later." }),
-          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+        return new Response(JSON.stringify({ error: "Rate limit exceeded. Please try again later." }), {
+          status: 429,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
       }
-      if (response.status === 402) {
-        return new Response(
-          JSON.stringify({ error: "AI credits exhausted. Please add credits." }),
-          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
+
       const errorText = await response.text();
-      console.error("AI gateway error:", response.status, errorText);
+      console.error("Image generation error:", response.status, errorText);
       throw new Error("Failed to generate image");
     }
 
     const data = await response.json();
-    const imageUrl = data.choices?.[0]?.message?.images?.[0]?.image_url?.url;
+    const parts = data.candidates?.[0]?.content?.parts || [];
 
-    if (!imageUrl) {
+    let imageBase64 = "";
+    let mimeType = "image/png";
+
+    for (const part of parts) {
+      if (part.inlineData) {
+        imageBase64 = part.inlineData.data;
+        mimeType = part.inlineData.mimeType || "image/png";
+        break;
+      }
+
+      if (part.inline_data) {
+        imageBase64 = part.inline_data.data;
+        mimeType = part.inline_data.mime_type || "image/png";
+        break;
+      }
+    }
+
+    if (!imageBase64) {
       console.error("No image in response:", JSON.stringify(data).substring(0, 500));
       throw new Error("No image generated");
     }
 
-    // Track usage
+    const imageUrl = `data:${mimeType};base64,${imageBase64}`;
+
     await supabaseClient.from("tool_usage").insert({
       user_id: user.id,
-      tool_id: "nano_banana",
+      tool_id: "image_generator",
     });
 
     return new Response(
       JSON.stringify({
         success: true,
         image_url: imageUrl,
+        requested_model: requestedModel,
+        resolved_model: resolvedModel,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
-
   } catch (error) {
     console.error("Error generating image:", error);
     return new Response(
