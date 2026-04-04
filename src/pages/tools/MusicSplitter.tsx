@@ -50,6 +50,7 @@ export default function MusicSplitter() {
 
   const processWithCreditCheck = useCallback(async (audioFile: File) => {
     if (isProcessingRef.current) return;
+    if (!user) { dispatchAuthGate(); return; }
     if (!canUseFeature("music-splitter")) {
       setShowOutOfCredits(true);
       return;
