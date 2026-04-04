@@ -238,12 +238,12 @@ export default function StudioLayout() {
             </svg>
           </a>
 
-          <div className="w-px h-5 bg-border mx-1" />
+          <div className="w-px h-5 bg-white/[0.08] mx-1" />
 
           {/* Pricing */}
           <button
             onClick={() => navigate("/pricing")}
-            className="px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+            className="px-3 py-1.5 text-sm text-[#a1a1aa] hover:text-[#f4f4f5] transition-colors"
           >
             Pricing
           </button>
@@ -251,7 +251,7 @@ export default function StudioLayout() {
           {profile ? (
             <button
               onClick={() => navigate("/profile")}
-              className="px-3 py-1.5 text-sm font-medium text-foreground hover:opacity-80 transition-opacity"
+              className="px-3 py-1.5 text-sm font-medium text-[#f4f4f5] hover:opacity-80 transition-opacity"
             >
               My Profile
             </button>
@@ -259,7 +259,7 @@ export default function StudioLayout() {
             <>
               <button
                 onClick={() => navigate("/auth")}
-                className="px-3 py-1.5 text-sm font-medium text-foreground border border-border rounded-full hover:bg-accent transition-colors"
+                className="px-3 py-1.5 text-sm font-medium text-[#f4f4f5] border border-white/[0.12] rounded-full hover:bg-white/[0.06] transition-colors"
               >
                 Login
               </button>
