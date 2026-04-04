@@ -3,7 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { useSubscription } from "@/hooks/useSubscription";
 import { useAuth } from "@/lib/auth";
-import { PanelLeftClose, PanelLeft } from "lucide-react";
+import { PanelLeftClose, PanelLeft, MessageCircle } from "lucide-react";
 import sellspayLogo from "@/assets/sellspay-s-logo-new.png";
 import { supabase } from "@/integrations/supabase/client";
 import { dispatchAuthGate, AUTH_GATE_EVENT } from "@/utils/authGateEvent";
