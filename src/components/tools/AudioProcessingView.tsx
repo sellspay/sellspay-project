@@ -7,6 +7,7 @@ import { AudioWaveformPlayer } from "./AudioWaveformPlayer";
 import { useSubscription } from "@/hooks/useSubscription";
 import { UpgradeModal } from "@/components/subscription/UpgradeModal";
 import { dispatchAuthGate } from "@/utils/authGateEvent";
+import { useAuth } from "@/lib/auth";
 
 interface StemResult {
   url: string;
