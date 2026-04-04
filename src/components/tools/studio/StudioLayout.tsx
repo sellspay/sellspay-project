@@ -181,7 +181,7 @@ export default function StudioLayout() {
 
   const handleBackFromResults = () => setCampaignResult(null);
 
-  const sidebarWidth = 220;
+  
   const isHome = activeSection === "home" && !activeTool && !campaignResult;
   const showRightPanel = !isHome && !campaignResult && !activeTool && activeSection === "campaign";
 
