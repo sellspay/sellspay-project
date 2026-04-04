@@ -216,7 +216,7 @@ export default function StudioLayout() {
             href="https://discord.gg/sellspay"
             target="_blank"
             rel="noopener noreferrer"
-            className="p-2 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+            className="p-2 rounded-full text-[#9ca3af] hover:text-[#f9fafb] hover:bg-[#1f2937] transition-colors"
             title="Discord"
           >
             <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
@@ -228,7 +228,7 @@ export default function StudioLayout() {
             href="https://instagram.com/sellspay.io"
             target="_blank"
             rel="noopener noreferrer"
-            className="p-2 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+            className="p-2 rounded-full text-[#9ca3af] hover:text-[#f9fafb] hover:bg-[#1f2937] transition-colors"
             title="Instagram"
           >
             <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -238,12 +238,12 @@ export default function StudioLayout() {
             </svg>
           </a>
 
-          <div className="w-px h-5 bg-border mx-1" />
+          <div className="w-px h-5 bg-[#374151] mx-1" />
 
           {/* Pricing */}
           <button
             onClick={() => navigate("/pricing")}
-            className="px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+            className="px-3 py-1.5 text-sm text-[#9ca3af] hover:text-[#f9fafb] transition-colors"
           >
             Pricing
           </button>
@@ -251,7 +251,7 @@ export default function StudioLayout() {
           {profile ? (
             <button
               onClick={() => navigate("/profile")}
-              className="px-3 py-1.5 text-sm font-medium text-foreground hover:opacity-80 transition-opacity"
+              className="px-3 py-1.5 text-sm font-medium text-[#f9fafb] hover:opacity-80 transition-opacity"
             >
               My Profile
             </button>
@@ -259,13 +259,13 @@ export default function StudioLayout() {
             <>
               <button
                 onClick={() => navigate("/auth")}
-                className="px-3 py-1.5 text-sm font-medium text-foreground border border-border rounded-full hover:bg-muted/50 transition-colors"
+                className="px-3 py-1.5 text-sm font-medium text-[#f9fafb] border border-[#374151] rounded-full hover:bg-[#1f2937] transition-colors"
               >
                 Login
               </button>
               <button
                 onClick={() => navigate("/auth")}
-                className="px-4 py-1.5 text-sm font-semibold text-primary-foreground bg-primary rounded-full hover:bg-primary/90 transition-colors"
+                className="px-4 py-1.5 text-sm font-semibold text-white bg-[#2563eb] rounded-full hover:bg-[#3b82f6] transition-colors"
               >
                 Get Started →
               </button>
