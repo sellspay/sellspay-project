@@ -49,6 +49,7 @@ export default function SFXIsolator() {
 
   const processWithCreditCheck = useCallback(async (audioFile: File) => {
     if (isProcessingRef.current) return;
+    if (!user) { dispatchAuthGate(); return; }
     if (!canUseFeature("sfx-isolator")) {
       setShowOutOfCredits(true);
       return;

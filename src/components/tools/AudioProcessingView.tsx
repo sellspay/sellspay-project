@@ -64,6 +64,7 @@ export function AudioProcessingView({
       console.log("Processing already in progress, ignoring duplicate request");
       return;
     }
+    if (!user) { dispatchAuthGate(); return; }
     if (!canUseFeature(toolId)) {
       setShowOutOfCredits(true);
       return;
