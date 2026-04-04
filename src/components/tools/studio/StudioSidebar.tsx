@@ -306,7 +306,7 @@ export function StudioSidebar({
                                 return (
                                   <div
                                     key={tool.id}
-                                    className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-muted/50 group"
+                                    className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-[#1f2937] group"
                                   >
                                     <button
                                       type="button"
@@ -316,8 +316,8 @@ export function StudioSidebar({
                                       }}
                                       className="flex items-center gap-2 flex-1 min-w-0 text-left cursor-pointer"
                                     >
-                                      <Icon className="h-3.5 w-3.5 text-primary shrink-0" />
-                                      <span className="text-sm text-foreground flex-1 truncate">{tool.name}</span>
+                                      <Icon className="h-3.5 w-3.5 text-[#3b82f6] shrink-0" />
+                                      <span className="text-sm text-[#f9fafb] flex-1 truncate">{tool.name}</span>
                                     </button>
                                     <button
                                       type="button"
