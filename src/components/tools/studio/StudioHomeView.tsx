@@ -131,16 +131,18 @@ export function StudioHomeView({
                 else onSectionChange?.(q.id as StudioSection);
               }}
               className={cn(
-                "group relative p-4 rounded-xl border border-border/20 bg-card/20 backdrop-blur-sm text-left",
-                "hover:-translate-y-1 hover:shadow-xl hover:shadow-primary/10 hover:border-primary/20",
-                "transition-all duration-200"
+                "group relative p-4 rounded-2xl text-left overflow-hidden",
+                "bg-[#111827] border border-[#1f2937]",
+                "shadow-[0_2px_12px_rgba(0,0,0,0.3)]",
+                "hover:border-emerald-500/60 hover:shadow-[0_4px_20px_rgba(16,185,129,0.15)] hover:-translate-y-1",
+                "transition-all duration-250"
               )}
             >
-              <div className={cn("absolute inset-0 rounded-xl bg-gradient-to-br opacity-0 group-hover:opacity-100 transition-opacity", q.gradient)} />
-              <div className="relative z-10">
-                <q.icon className="h-5 w-5 text-primary mb-2" />
-                <p className="text-sm font-semibold text-foreground">{q.label}</p>
-                <p className="text-[11px] text-muted-foreground mt-0.5">{q.desc}</p>
+              <div className="w-[3px] h-full absolute left-0 top-0 bg-emerald-500/60 group-hover:bg-emerald-400 transition-colors" />
+              <div className="relative z-10 pl-2">
+                <q.icon className="h-5 w-5 text-emerald-400 mb-2" />
+                <p className="text-sm font-bold text-[#f9fafb]">{q.label}</p>
+                <p className="text-[11px] text-[#9ca3af] mt-0.5">{q.desc}</p>
               </div>
             </button>
           ))}
