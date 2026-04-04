@@ -193,12 +193,26 @@ export function StudioSidebar({
   const unpinnedTools = allQuickTools.filter(t => !pinnedToolIds.includes(t.id));
 
   const togglePin = (toolId: string) => {
+    if (!user) {
+      setShowAuthPromo(true);
+      return;
+    }
     setPinnedToolIds(prev =>
       prev.includes(toolId)
         ? prev.filter(id => id !== toolId)
         : [...prev, toolId]
     );
   };
+
+  // Group tools by subcategory for the Add Tools popover
+  const toolsByCategory = allQuickTools.reduce((acc, tool) => {
+    const sub = tool.subcategory || "utility";
+    if (!acc[sub]) acc[sub] = [];
+    acc[sub].push(tool);
+    return acc;
+  }, {} as Record<string, typeof allQuickTools>);
+
+  const categoryOrder: ToolSubcategory[] = ["media_creation", "social_content", "store_growth", "utility"];
 
   return (
     <>
