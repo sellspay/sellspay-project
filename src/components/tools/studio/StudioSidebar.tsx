@@ -33,6 +33,100 @@ import { toolsRegistry, SUBCATEGORY_LABELS, type ToolSubcategory } from "@/compo
 import { toolThumbnails } from "./toolThumbnails";
 import sellspayLogo from "@/assets/sellspay-s-logo-new.png";
 
+
+/* ── Sortable Tool Item ── */
+interface SortableToolItemProps {
+  tool: typeof toolsRegistry[number];
+  isActive: boolean;
+  collapsed: boolean;
+  onToolSelect: (id: string) => void;
+  thumbnail?: string;
+}
+
+function SortableToolItem({ tool, isActive, collapsed, onToolSelect, thumbnail }: SortableToolItemProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: tool.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+    zIndex: isDragging ? 50 : undefined,
+  };
+
+  const Icon = tool.icon;
+
+  const content = (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={cn(
+        "group/tool flex items-center gap-2 w-full rounded-full px-2 py-1.5 text-[13px] transition-colors duration-150 relative",
+        isActive
+          ? "bg-primary text-primary-foreground font-medium shadow-md shadow-primary/20"
+          : "text-muted-foreground hover:text-foreground hover:bg-muted/50",
+        collapsed && "justify-center rounded-xl"
+      )}
+    >
+      {/* Drag handle */}
+      {!collapsed && (
+        <div
+          {...attributes}
+          {...listeners}
+          className="shrink-0 cursor-grab active:cursor-grabbing p-0.5 rounded hover:bg-foreground/10 transition-colors"
+        >
+          <GripVertical className="h-3.5 w-3.5 opacity-30 group-hover/tool:opacity-70 transition-opacity text-foreground" />
+        </div>
+      )}
+
+      {/* Click area for selecting */}
+      <button
+        onClick={() => onToolSelect(tool.id)}
+        className="flex items-center gap-2 flex-1 min-w-0"
+      >
+        <div className={cn(
+          "h-7 w-7 rounded-full overflow-hidden shrink-0 border",
+          isActive ? "border-primary-foreground/30 ring-2 ring-primary-foreground/10" : "border-border/60"
+        )}>
+          {thumbnail ? (
+            <img src={thumbnail} alt="" className="w-full h-full object-cover" />
+          ) : (
+            <div className={cn(
+              "w-full h-full flex items-center justify-center",
+              isActive ? "bg-primary-foreground/20" : "bg-primary/10"
+            )}>
+              <Icon className={cn("h-3.5 w-3.5", isActive ? "text-primary-foreground" : "text-primary/60")} />
+            </div>
+          )}
+        </div>
+        {!collapsed && (
+          <span className="truncate flex-1 text-left">{tool.name}</span>
+        )}
+        {!collapsed && tool.comingSoon && (
+          <span className="text-[8px] text-muted-foreground/50 uppercase font-bold shrink-0">Soon</span>
+        )}
+      </button>
+    </div>
+  );
+
+  if (collapsed) {
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>{content}</TooltipTrigger>
+        <TooltipContent side="right">{tool.name}</TooltipContent>
+      </Tooltip>
+    );
+  }
+
+  return content;
+}
+
 interface StudioSidebarProps {
   collapsed: boolean;
   onToggleCollapse: () => void;
