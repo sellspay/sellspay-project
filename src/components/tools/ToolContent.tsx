@@ -118,7 +118,7 @@ export function ToolContent({ toolId }: ToolContentProps) {
 
   return (
     <Suspense fallback={<LoadingSpinner />}>
-      <div className="p-6 md:p-8">
+      <div className={toolId === "image-generator" ? "h-full" : "p-6 md:p-8"}>
         <ProToolsGate
           isProTool={isProTool(toolId)}
           creditBalance={creditBalance}
