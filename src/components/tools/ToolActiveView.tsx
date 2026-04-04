@@ -274,7 +274,7 @@ export function ToolActiveView({
         )}
 
         {/* Tool Content */}
-        <div className={cn("mx-auto py-8 space-y-4 rounded-[24px] bg-card border border-border shadow-sm m-4", embedded ? "px-6" : "container px-6")}>
+        <div className={cn("mx-auto py-6 space-y-4", embedded ? "px-6" : "container px-6")}>
           {/* Context Controls — hidden in embedded mode (moved to right panel) */}
           {!embedded && (
             <motion.div
