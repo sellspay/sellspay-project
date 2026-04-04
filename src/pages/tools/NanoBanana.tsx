@@ -60,6 +60,7 @@ export default function NanoBanana() {
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
   const [modelSelectorOpen, setModelSelectorOpen] = useState(false);
   const { deductCredits, credits: creditBalance } = useSubscription();
+  const { user } = useAuth();
 
   const currentModel = useMemo(() => getModelById(model) ?? IMAGE_MODELS[0], [model]);
   const grouped = useMemo(() => getModelsByCategory(), []);
