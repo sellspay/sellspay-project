@@ -196,7 +196,7 @@ export default function StudioLayout() {
         <div className="flex items-center gap-2">
           <button
             onClick={() => setSidebarCollapsed(v => !v)}
-            className="shrink-0 p-1.5 rounded-lg text-[#6b7280] hover:text-[#111827] hover:bg-[#ffffff] transition-colors"
+            className="shrink-0 p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
           >
             {sidebarCollapsed ? <PanelLeft className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
           </button>
@@ -205,7 +205,7 @@ export default function StudioLayout() {
             className="flex items-center gap-2 rounded-lg px-1 py-1 text-sm hover:opacity-80 transition-opacity"
           >
             <img src={sellspayLogo} alt="SellsPay" className="h-6 w-6 shrink-0" />
-            <span className="font-bold text-[#111827] tracking-tight">SellsPay</span>
+            <span className="font-bold text-foreground tracking-tight">SellsPay</span>
           </button>
         </div>
 
@@ -216,7 +216,7 @@ export default function StudioLayout() {
             href="https://discord.gg/sellspay"
             target="_blank"
             rel="noopener noreferrer"
-            className="p-2 rounded-full text-[#6b7280] hover:text-[#111827] hover:bg-[#ffffff] transition-colors"
+            className="p-2 rounded-full text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
             title="Discord"
           >
             <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
@@ -228,7 +228,7 @@ export default function StudioLayout() {
             href="https://instagram.com/sellspay.io"
             target="_blank"
             rel="noopener noreferrer"
-            className="p-2 rounded-full text-[#6b7280] hover:text-[#111827] hover:bg-[#ffffff] transition-colors"
+            className="p-2 rounded-full text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
             title="Instagram"
           >
             <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -238,12 +238,12 @@ export default function StudioLayout() {
             </svg>
           </a>
 
-          <div className="w-px h-5 bg-[#e0e0e0] mx-1" />
+          <div className="w-px h-5 bg-border mx-1" />
 
           {/* Pricing */}
           <button
             onClick={() => navigate("/pricing")}
-            className="px-3 py-1.5 text-sm text-[#6b7280] hover:text-[#111827] transition-colors"
+            className="px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
           >
             Pricing
           </button>
@@ -251,7 +251,7 @@ export default function StudioLayout() {
           {profile ? (
             <button
               onClick={() => navigate("/profile")}
-              className="px-3 py-1.5 text-sm font-medium text-[#111827] hover:opacity-80 transition-opacity"
+              className="px-3 py-1.5 text-sm font-medium text-foreground hover:opacity-80 transition-opacity"
             >
               My Profile
             </button>
@@ -259,7 +259,7 @@ export default function StudioLayout() {
             <>
               <button
                 onClick={() => navigate("/auth")}
-                className="px-3 py-1.5 text-sm font-medium text-[#111827] border border-[#e0e0e0] rounded-full hover:bg-[#ffffff] transition-colors"
+                className="px-3 py-1.5 text-sm font-medium text-foreground border border-border rounded-full hover:bg-accent transition-colors"
               >
                 Login
               </button>
@@ -296,7 +296,7 @@ export default function StudioLayout() {
 
         {/* Workspace */}
         <div className="flex-1 flex min-w-0 p-2 gap-0 bg-background">
-          <main className="flex-1 min-w-0 overflow-hidden rounded-[22px] bg-background border border-border shadow-[0_20px_60px_rgba(0,0,0,0.4)]">
+          <main className="flex-1 min-w-0 overflow-hidden bg-background">
             <div className="h-full overflow-y-auto custom-scrollbar bg-background">
             {isHome ? (
               <StudioHomeBanner

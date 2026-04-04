@@ -80,7 +80,7 @@
 
 /* ── Studio Dark Workspace Override ── */
 .studio-dark {
-  --background: 210 20% 96%;
+  --background: 0 0% 100%;
   --foreground: 0 0% 9%;
   --card: 0 0% 100%;
   --card-foreground: 0 0% 9%;
@@ -88,24 +88,24 @@
   --popover-foreground: 0 0% 9%;
   --primary: 217 91% 60%;
   --primary-foreground: 0 0% 100%;
-  --secondary: 210 20% 96%;
+  --secondary: 210 20% 97%;
   --secondary-foreground: 0 0% 9%;
-  --muted: 210 15% 93%;
-  --muted-foreground: 0 0% 40%;
-  --accent: 210 15% 93%;
+  --muted: 210 15% 96%;
+  --muted-foreground: 0 0% 45%;
+  --accent: 210 15% 96%;
   --accent-foreground: 0 0% 9%;
   --destructive: 0 72% 51%;
   --destructive-foreground: 0 0% 98%;
-  --border: 0 0% 88%;
-  --input: 0 0% 88%;
+  --border: 0 0% 90%;
+  --input: 0 0% 93%;
   --ring: 217 91% 60%;
   --sidebar-background: 0 0% 100%;
   --sidebar-foreground: 0 0% 9%;
   --sidebar-primary: 217 91% 60%;
   --sidebar-primary-foreground: 0 0% 100%;
-  --sidebar-accent: 210 15% 93%;
+  --sidebar-accent: 210 15% 96%;
   --sidebar-accent-foreground: 0 0% 9%;
-  --sidebar-border: 0 0% 88%;
+  --sidebar-border: 0 0% 92%;
   --sidebar-ring: 217 91% 60%;
 }
 
