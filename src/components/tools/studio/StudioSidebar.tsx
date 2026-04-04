@@ -80,9 +80,9 @@ function SortableToolItem({ tool, isActive, collapsed, onToolSelect, thumbnail }
         <div
           {...attributes}
           {...listeners}
-          className="shrink-0 cursor-grab active:cursor-grabbing p-0.5 rounded hover:bg-foreground/10 transition-colors touch-none"
+          className="shrink-0 cursor-grab active:cursor-grabbing p-0.5 rounded hover:bg-[#374151] transition-colors touch-none"
         >
-          <GripVertical className="h-3.5 w-3.5 opacity-30 group-hover/tool:opacity-70 transition-opacity text-foreground" />
+          <GripVertical className="h-3.5 w-3.5 opacity-30 group-hover/tool:opacity-70 transition-opacity text-[#9ca3af]" />
         </div>
       )}
 
