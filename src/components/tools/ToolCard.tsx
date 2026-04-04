@@ -15,7 +15,7 @@ export function ToolCard({ tool, onLaunch }: ToolCardProps) {
     <button
       onClick={() => !tool.comingSoon && onLaunch(tool.id)}
       disabled={tool.comingSoon}
-      className="group relative flex flex-col items-start gap-3 rounded-2xl p-5 text-left transition-all duration-250 overflow-hidden bg-[#ffffff] border border-[#ffffff] shadow-[0_2px_12px_rgba(0,0,0,0.06)] hover:border-emerald-500/60 hover:shadow-[0_4px_20px_rgba(16,185,129,0.1)] hover:-translate-y-1 disabled:opacity-50 disabled:cursor-default"
+      className="group relative flex flex-col items-start gap-3 rounded-2xl p-5 text-left transition-all duration-250 overflow-hidden bg-[#ffffff] border border-[#ffffff] shadow-sm hover:border-emerald-500/60 hover:shadow-md hover:-translate-y-1 disabled:opacity-50 disabled:cursor-default"
     >
       {/* Left accent bar */}
       <div className="w-[3px] h-full absolute left-0 top-0 bg-emerald-500/60 group-hover:bg-emerald-400 transition-colors" />

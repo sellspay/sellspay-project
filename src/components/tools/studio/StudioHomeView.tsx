@@ -133,8 +133,8 @@ export function StudioHomeView({
               className={cn(
                 "group relative p-4 rounded-2xl text-left overflow-hidden",
                 "bg-[#ffffff] border border-[#ffffff]",
-                "shadow-[0_2px_12px_rgba(0,0,0,0.06)]",
-                "hover:border-emerald-500/60 hover:shadow-[0_4px_20px_rgba(16,185,129,0.1)] hover:-translate-y-1",
+                "shadow-sm",
+                "hover:border-emerald-500/60 hover:shadow-md hover:-translate-y-1",
                 "transition-all duration-250"
               )}
             >
@@ -161,8 +161,8 @@ export function StudioHomeView({
                 className={cn(
                   "group relative p-4 rounded-2xl text-left overflow-hidden",
                   "bg-[#ffffff] border border-[#ffffff]",
-                  "shadow-[0_2px_12px_rgba(0,0,0,0.06)]",
-                  "hover:border-emerald-500/60 hover:shadow-[0_4px_20px_rgba(16,185,129,0.1)] hover:-translate-y-1",
+                  "shadow-sm",
+                  "hover:border-emerald-500/60 hover:shadow-md hover:-translate-y-1",
                   "transition-all duration-250"
                 )}
               >

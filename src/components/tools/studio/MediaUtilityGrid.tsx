@@ -36,7 +36,7 @@ export function MediaUtilityGrid({ tools, onLaunch }: MediaUtilityGridProps) {
             variants={item}
             onClick={() => onLaunch(tool.id)}
             whileHover={{ y: -2 }}
-            className="group relative flex items-center gap-3 p-4 rounded-2xl text-left overflow-hidden bg-[#ffffff] border border-[#ffffff] shadow-[0_2px_12px_rgba(0,0,0,0.06)] hover:border-emerald-500/60 hover:shadow-[0_4px_20px_rgba(16,185,129,0.1)] transition-all duration-250"
+            className="group relative flex items-center gap-3 p-4 rounded-2xl text-left overflow-hidden bg-[#ffffff] border border-[#ffffff] shadow-sm hover:border-emerald-500/60 hover:shadow-md transition-all duration-250"
           >
             <div className="w-[3px] h-full absolute left-0 top-0 bg-emerald-500/60 group-hover:bg-emerald-400 transition-colors" />
             <tool.icon className="h-5 w-5 text-[#9ca3af] group-hover:text-emerald-400 transition-colors shrink-0 ml-1" />
