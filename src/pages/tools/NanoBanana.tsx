@@ -351,7 +351,7 @@ export default function NanoBanana() {
               <div className="px-6 py-6">
                 {generatedImage ? (
                   <div className="space-y-4">
-                    <div className="overflow-hidden rounded-[20px] bg-white border border-[#e3edf5] p-1">
+                    <div className="overflow-hidden rounded-[20px] bg-white border border-[#9fc2d4] shadow-[0_8px_24px_rgba(111,166,189,0.12)] p-1">
                       <img src={generatedImage} alt="Generated result" className="h-auto w-full rounded-[16px]" />
                     </div>
                     <div className="flex justify-end gap-2">
