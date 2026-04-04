@@ -70,8 +70,8 @@ function SortableToolItem({ tool, isActive, collapsed, onToolSelect, thumbnail }
       className={cn(
         "group/tool flex items-center gap-2 w-full rounded-full px-2 py-1.5 text-[13px] transition-colors duration-150 relative",
         isActive
-          ? "bg-primary text-primary-foreground font-medium shadow-md shadow-primary/20"
-          : "text-muted-foreground hover:text-foreground hover:bg-muted/50",
+          ? "bg-[#1e3a8a]/30 text-[#f9fafb] font-medium shadow-[0_0_0_1px_#3b82f6,0_0_12px_rgba(59,130,246,0.2)] border border-[#3b82f6]"
+          : "text-[#9ca3af] hover:text-[#f9fafb] hover:bg-[#1f2937]",
         collapsed && "justify-center rounded-xl"
       )}
     >
@@ -80,9 +80,9 @@ function SortableToolItem({ tool, isActive, collapsed, onToolSelect, thumbnail }
         <div
           {...attributes}
           {...listeners}
-          className="shrink-0 cursor-grab active:cursor-grabbing p-0.5 rounded hover:bg-foreground/10 transition-colors touch-none"
+          className="shrink-0 cursor-grab active:cursor-grabbing p-0.5 rounded hover:bg-[#374151] transition-colors touch-none"
         >
-          <GripVertical className="h-3.5 w-3.5 opacity-30 group-hover/tool:opacity-70 transition-opacity text-foreground" />
+          <GripVertical className="h-3.5 w-3.5 opacity-30 group-hover/tool:opacity-70 transition-opacity text-[#9ca3af]" />
         </div>
       )}
 
@@ -93,16 +93,16 @@ function SortableToolItem({ tool, isActive, collapsed, onToolSelect, thumbnail }
       >
         <div className={cn(
           "h-7 w-7 rounded-full overflow-hidden shrink-0 border pointer-events-none",
-          isActive ? "border-primary-foreground/30 ring-2 ring-primary-foreground/10" : "border-border/60"
+          isActive ? "border-[#3b82f6]/50 ring-2 ring-[#3b82f6]/20" : "border-[#374151]"
         )}>
           {thumbnail ? (
             <img src={thumbnail} alt="" className="w-full h-full object-cover" />
           ) : (
             <div className={cn(
               "w-full h-full flex items-center justify-center",
-              isActive ? "bg-primary-foreground/20" : "bg-primary/10"
+              isActive ? "bg-[#3b82f6]/20" : "bg-[#1f2937]"
             )}>
-              <Icon className={cn("h-3.5 w-3.5", isActive ? "text-primary-foreground" : "text-primary/60")} />
+              <Icon className={cn("h-3.5 w-3.5", isActive ? "text-[#3b82f6]" : "text-[#6b7280]")} />
             </div>
           )}
         </div>
@@ -110,7 +110,7 @@ function SortableToolItem({ tool, isActive, collapsed, onToolSelect, thumbnail }
           <span className="truncate flex-1 text-left">{tool.name}</span>
         )}
         {!collapsed && tool.comingSoon && (
-          <span className="text-[8px] text-muted-foreground/50 uppercase font-bold shrink-0">Soon</span>
+          <span className="text-[8px] text-[#6b7280] uppercase font-bold shrink-0">Soon</span>
         )}
       </button>
     </div>
@@ -218,7 +218,7 @@ export function StudioSidebar({
   return (
     <>
       <TooltipProvider delayDuration={0}>
-        <aside className="h-full w-full bg-[hsl(210_40%_98%)] overflow-hidden flex flex-col">
+        <aside className="h-full w-full bg-[#0f172a] overflow-hidden flex flex-col border-r border-[#1f2937]">
               {/* All Tools button */}
               <div className="shrink-0 px-2 pb-1">
                 <Tooltip>
@@ -228,20 +228,20 @@ export function StudioSidebar({
                       className={cn(
                         "flex items-center gap-2.5 w-full rounded-full px-3 py-2.5 text-sm transition-all duration-200",
                         !activeTool && activeSection === "home"
-                          ? "bg-primary text-primary-foreground font-semibold shadow-md shadow-primary/25"
-                          : "text-muted-foreground hover:text-foreground hover:bg-muted/60 border border-transparent hover:border-border/50",
+                          ? "bg-[#1e3a8a]/30 text-[#f9fafb] font-semibold shadow-[0_0_0_1px_#3b82f6,0_0_12px_rgba(59,130,246,0.2)] border border-[#3b82f6]"
+                          : "text-[#9ca3af] hover:text-[#f9fafb] hover:bg-[#1f2937] border border-transparent",
                         collapsed && "justify-center rounded-xl px-2"
                       )}
                     >
                       <div className={cn(
                         "h-6 w-6 rounded-md flex items-center justify-center shrink-0",
                         !activeTool && activeSection === "home"
-                          ? "bg-primary-foreground/20"
-                          : "bg-primary/10"
+                          ? "bg-[#3b82f6]/20"
+                          : "bg-[#1f2937]"
                       )}>
                         <Home className={cn(
                           "h-3.5 w-3.5",
-                          !activeTool && activeSection === "home" ? "text-primary-foreground" : "text-primary"
+                          !activeTool && activeSection === "home" ? "text-[#3b82f6]" : "text-[#9ca3af]"
                         )} />
                       </div>
                       {!collapsed && <span>All Tools</span>}
@@ -253,10 +253,10 @@ export function StudioSidebar({
 
               {!collapsed && (
                 <div className="shrink-0 px-4 pt-3 pb-1 flex items-center justify-between">
-                  <span className="text-[10px] font-semibold text-muted-foreground/50 uppercase tracking-widest">Pinned</span>
+                  <span className="text-[10px] font-semibold text-[#6b7280] uppercase tracking-widest">Pinned</span>
                 </div>
               )}
-              {collapsed && <div className="h-px bg-border/40 mx-2 my-1" />}
+              {collapsed && <div className="h-px bg-[#1f2937] mx-2 my-1" />}
 
               {/* Add Tools button */}
               <div className="shrink-0 px-2 pb-1">
@@ -267,12 +267,12 @@ export function StudioSidebar({
                         <button
                           className={cn(
                             "flex items-center gap-2.5 w-full rounded-full px-3 py-2 text-sm transition-all duration-150",
-                            "text-muted-foreground hover:text-foreground hover:bg-muted/50",
+                            "text-[#9ca3af] hover:text-[#f9fafb] hover:bg-[#1f2937]",
                             collapsed && "justify-center px-2"
                           )}
                         >
-                          <div className="h-6 w-6 rounded-full border-2 border-dashed border-muted-foreground/30 flex items-center justify-center shrink-0">
-                            <Plus className="h-3 w-3" />
+                          <div className="h-6 w-6 rounded-full border-2 border-dashed border-[#374151] flex items-center justify-center shrink-0">
+                            <Plus className="h-3 w-3 text-[#6b7280]" />
                           </div>
                           {!collapsed && <span>Add Tools</span>}
                         </button>
@@ -280,21 +280,21 @@ export function StudioSidebar({
                     </TooltipTrigger>
                     {collapsed && <TooltipContent side="right">Add Tools</TooltipContent>}
                   </Tooltip>
-                  <PopoverContent side="right" align="start" sideOffset={8} className="w-[540px] p-0 bg-background border-border rounded-2xl overflow-hidden shadow-xl">
-                    <div className="px-4 py-3 border-b border-border/50 flex items-center justify-between">
-                      <span className="text-sm font-bold text-foreground">Add Tools</span>
-                      <button onClick={() => setAddToolsOpen(false)} className="text-muted-foreground hover:text-foreground transition-colors">
+                  <PopoverContent side="right" align="start" sideOffset={8} className="w-[540px] p-0 bg-[#111827] border-[#374151] rounded-2xl overflow-hidden shadow-xl">
+                    <div className="px-4 py-3 border-b border-[#1f2937] flex items-center justify-between">
+                      <span className="text-sm font-bold text-[#f9fafb]">Add Tools</span>
+                      <button onClick={() => setAddToolsOpen(false)} className="text-[#6b7280] hover:text-[#f9fafb] transition-colors">
                         <X className="h-4 w-4" />
                       </button>
                     </div>
-                    <div className="grid grid-cols-2 gap-0 divide-x divide-border/30 max-h-[460px] overflow-y-auto custom-scrollbar">
+                    <div className="grid grid-cols-2 gap-0 divide-x divide-[#1f2937] max-h-[460px] overflow-y-auto custom-scrollbar">
                       {categoryOrder.map(cat => {
                         const tools = toolsByCategory[cat];
                         if (!tools || tools.length === 0) return null;
                         return (
                           <div key={cat} className="p-3">
                             <div className="flex items-center gap-2 px-1 mb-2">
-                              <span className="text-[10px] font-bold text-muted-foreground/60 uppercase tracking-widest">
+                              <span className="text-[10px] font-bold text-[#6b7280] uppercase tracking-widest">
                                 {SUBCATEGORY_LABELS[cat]}
                               </span>
                             </div>
@@ -305,7 +305,7 @@ export function StudioSidebar({
                                 return (
                                   <div
                                     key={tool.id}
-                                    className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-muted/50 group"
+                                    className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-[#1f2937] group"
                                   >
                                     <button
                                       type="button"
@@ -315,8 +315,8 @@ export function StudioSidebar({
                                       }}
                                       className="flex items-center gap-2 flex-1 min-w-0 text-left cursor-pointer"
                                     >
-                                      <Icon className="h-3.5 w-3.5 text-primary shrink-0" />
-                                      <span className="text-sm text-foreground flex-1 truncate">{tool.name}</span>
+                                      <Icon className="h-3.5 w-3.5 text-[#3b82f6] shrink-0" />
+                                      <span className="text-sm text-[#f9fafb] flex-1 truncate">{tool.name}</span>
                                     </button>
                                     <button
                                       type="button"
@@ -327,8 +327,8 @@ export function StudioSidebar({
                                       className={cn(
                                         "shrink-0 p-1 rounded-md transition-all",
                                         isPinned
-                                          ? "text-primary opacity-100"
-                                          : "text-muted-foreground/40 opacity-0 group-hover:opacity-100 hover:text-primary"
+                                          ? "text-[#3b82f6] opacity-100"
+                                          : "text-[#6b7280] opacity-0 group-hover:opacity-100 hover:text-[#3b82f6]"
                                       )}
                                       title={isPinned ? "Unpin from sidebar" : "Pin to sidebar"}
                                     >
@@ -367,7 +367,7 @@ export function StudioSidebar({
                 </DndContext>
               </nav>
 
-              <div className="shrink-0 border-t border-border/50">
+              <div className="shrink-0 border-t border-[#1f2937]">
                 <div className="px-2 py-2">
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -375,7 +375,7 @@ export function StudioSidebar({
                         onClick={() => onSectionChange("assets")}
                         className={cn(
                           "flex items-center gap-2.5 w-full rounded-lg px-2.5 py-2 text-sm transition-colors",
-                          "text-muted-foreground hover:text-foreground hover:bg-muted/50",
+                          "text-[#9ca3af] hover:text-[#f9fafb] hover:bg-[#1f2937]",
                           collapsed && "justify-center"
                         )}
                       >
@@ -388,7 +388,7 @@ export function StudioSidebar({
                 </div>
 
                 <div className={cn(
-                  "px-3 py-3 border-t border-border/50",
+                  "px-3 py-3 border-t border-[#1f2937]",
                   collapsed && "flex justify-center px-2"
                 )}>
                   {!user ? (
@@ -397,7 +397,7 @@ export function StudioSidebar({
                         <TooltipTrigger asChild>
                           <button
                             onClick={() => navigate("/signup")}
-                            className="flex items-center justify-center w-full px-2 py-1.5 rounded-lg bg-primary text-primary-foreground"
+                            className="flex items-center justify-center w-full px-2 py-1.5 rounded-lg bg-[#2563eb] text-white"
                           >
                             <Zap className="h-4 w-4" />
                           </button>
@@ -407,7 +407,7 @@ export function StudioSidebar({
                     ) : (
                       <button
                         onClick={() => navigate("/signup")}
-                        className="flex items-center justify-center gap-2 w-full px-3 py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors"
+                        className="flex items-center justify-center gap-2 w-full px-3 py-2.5 rounded-lg bg-[#2563eb] text-white text-sm font-semibold hover:bg-[#3b82f6] transition-colors shadow-[0_10px_30px_rgba(37,99,235,0.4)]"
                       >
                         <Zap className="h-4 w-4" />
                         Start Now for Free
@@ -419,12 +419,12 @@ export function StudioSidebar({
                         {collapsed ? (
                           <Tooltip>
                             <TooltipTrigger asChild>
-                              <button className="w-8 h-8 rounded-full overflow-hidden border border-border hover:ring-2 hover:ring-primary/40 transition-all mx-auto block">
+                               <button className="w-8 h-8 rounded-full overflow-hidden border border-[#374151] hover:ring-2 hover:ring-[#3b82f6]/40 transition-all mx-auto block">
                                 {profile?.avatar_url ? (
                                   <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
                                 ) : (
-                                  <div className="w-full h-full bg-primary/10 flex items-center justify-center">
-                                    <span className="text-[10px] font-bold text-primary">
+                                  <div className="w-full h-full bg-[#1f2937] flex items-center justify-center">
+                                    <span className="text-[10px] font-bold text-[#3b82f6]">
                                       {(profile?.username || "U").slice(0, 2).toUpperCase()}
                                     </span>
                                   </div>
@@ -434,19 +434,19 @@ export function StudioSidebar({
                             <TooltipContent side="right">Profile</TooltipContent>
                           </Tooltip>
                         ) : (
-                          <button className="flex items-center gap-2.5 w-full rounded-lg px-2.5 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors">
-                            <div className="w-7 h-7 rounded-full overflow-hidden border border-border shrink-0">
+                          <button className="flex items-center gap-2.5 w-full rounded-lg px-2.5 py-2 text-sm text-[#9ca3af] hover:text-[#f9fafb] hover:bg-[#1f2937] transition-colors">
+                            <div className="w-7 h-7 rounded-full overflow-hidden border border-[#374151] shrink-0">
                               {profile?.avatar_url ? (
                                 <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
                               ) : (
-                                <div className="w-full h-full bg-primary/10 flex items-center justify-center">
-                                  <span className="text-[9px] font-bold text-primary">
+                                <div className="w-full h-full bg-[#1f2937] flex items-center justify-center">
+                                  <span className="text-[9px] font-bold text-[#3b82f6]">
                                     {(profile?.username || "U").slice(0, 2).toUpperCase()}
                                   </span>
                                 </div>
                               )}
                             </div>
-                            <span className="truncate flex-1 text-left font-medium text-foreground">{profile?.username || "Creator"}</span>
+                            <span className="truncate flex-1 text-left font-medium text-[#f9fafb]">{profile?.username || "Creator"}</span>
                           </button>
                         )}
                       </PopoverTrigger>
