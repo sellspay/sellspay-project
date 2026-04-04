@@ -372,7 +372,7 @@ export default function NanoBanana() {
                 ) : (
                   <>
                     {/* Hero card */}
-                    <div className="rounded-[24px] bg-[#eef6fb] border border-[#dbeaf3] p-6">
+                    <div className="rounded-[24px] bg-[#eef6fb] border border-[#9fc2d4] p-6">
                       <h2 className="text-4xl font-semibold tracking-tight text-[#0f172a] sm:text-5xl">
                         AI Image Generator
                       </h2>
