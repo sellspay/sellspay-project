@@ -443,7 +443,7 @@ function ModeTabs({ mode, setMode }: { mode: Mode; setMode: (m: Mode) => void })
 
 function ReferenceBox() {
   return (
-    <div className="mt-3 rounded-[16px] bg-[#f4f9fd] border border-[#e1eef6] p-3">
+    <div className="mt-3 rounded-[16px] bg-[#f4f9fd] border border-[#9fc2d4] p-3">
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <div className="flex -space-x-2">
