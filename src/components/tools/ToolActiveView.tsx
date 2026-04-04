@@ -156,7 +156,7 @@ export function ToolActiveView({
 
   if (!tool) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="flex items-center justify-center py-20">
         <p className="text-muted-foreground">Tool not found</p>
       </div>
     );
@@ -166,7 +166,7 @@ export function ToolActiveView({
   const creditCost = registryEntry?.creditCost ?? 0;
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="h-full bg-background">
       {/* Intro Animation Overlay */}
       <AnimatePresence>
         {showIntro && !embedded && (
@@ -179,7 +179,7 @@ export function ToolActiveView({
         initial={{ opacity: 0 }}
         animate={{ opacity: (embedded || isReady) ? 1 : 0 }}
         transition={{ duration: 0.5 }}
-        className="min-h-screen"
+        className="h-full"
       >
         {/* Hero Banner — only in standalone mode */}
         {embedded ? (
