@@ -389,7 +389,7 @@ export function StudioSidebar({
                 </div>
 
                 <div className={cn(
-                  "px-3 py-3 border-t border-border/50",
+                  "px-3 py-3 border-t border-[#1f2937]",
                   collapsed && "flex justify-center px-2"
                 )}>
                   {!user ? (
@@ -398,7 +398,7 @@ export function StudioSidebar({
                         <TooltipTrigger asChild>
                           <button
                             onClick={() => navigate("/signup")}
-                            className="flex items-center justify-center w-full px-2 py-1.5 rounded-lg bg-primary text-primary-foreground"
+                            className="flex items-center justify-center w-full px-2 py-1.5 rounded-lg bg-[#2563eb] text-white"
                           >
                             <Zap className="h-4 w-4" />
                           </button>
@@ -408,7 +408,7 @@ export function StudioSidebar({
                     ) : (
                       <button
                         onClick={() => navigate("/signup")}
-                        className="flex items-center justify-center gap-2 w-full px-3 py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors"
+                        className="flex items-center justify-center gap-2 w-full px-3 py-2.5 rounded-lg bg-[#2563eb] text-white text-sm font-semibold hover:bg-[#3b82f6] transition-colors shadow-[0_10px_30px_rgba(37,99,235,0.4)]"
                       >
                         <Zap className="h-4 w-4" />
                         Start Now for Free
