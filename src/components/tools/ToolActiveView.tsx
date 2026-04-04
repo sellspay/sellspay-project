@@ -274,7 +274,7 @@ export function ToolActiveView({
         )}
 
         {/* Tool Content */}
-        <div className={cn("mx-auto py-8 space-y-4 rounded-[24px] bg-[#f9fafb] border border-[#e5e7eb] shadow-[0_10px_30px_rgba(0,0,0,0.05)] m-4", embedded ? "px-6" : "container px-6")}>
+        <div className={cn("mx-auto py-8 space-y-4 rounded-[24px] bg-[#111827] border border-[#1f2937] shadow-[0_20px_60px_rgba(0,0,0,0.6)] m-4", embedded ? "px-6" : "container px-6")}>
           {/* Context Controls — hidden in embedded mode (moved to right panel) */}
           {!embedded && (
             <motion.div
@@ -369,7 +369,7 @@ export function ToolActiveView({
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: 0.2 }}
-                className="bg-white rounded-2xl border border-[#d1d5db] p-6 md:p-8"
+                className="bg-[#1f2937] rounded-2xl border border-[#374151] p-6 md:p-8"
               >
                 <ToolComponent toolId={toolId} />
               </motion.div>
