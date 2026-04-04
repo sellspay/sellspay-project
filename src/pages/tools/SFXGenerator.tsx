@@ -69,6 +69,7 @@ export default function SFXGenerator() {
   const handleGenerate = async () => {
     if (!prompt.trim()) { toast.error("Please enter a prompt"); return; }
     if (isGeneratingRef.current) return;
+    if (!user) { dispatchAuthGate(); return; }
     if (!canUseFeature("sfx-generator")) { setShowOutOfCredits(true); return; }
     isGeneratingRef.current = true;
     setIsGenerating(true);
