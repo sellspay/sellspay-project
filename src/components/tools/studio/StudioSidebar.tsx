@@ -257,7 +257,7 @@ export function StudioSidebar({
                   <span className="text-[10px] font-semibold text-[#6b7280] uppercase tracking-widest">Pinned</span>
                 </div>
               )}
-              {collapsed && <div className="h-px bg-border/40 mx-2 my-1" />}
+              {collapsed && <div className="h-px bg-[#1f2937] mx-2 my-1" />}
 
               {/* Add Tools button */}
               <div className="shrink-0 px-2 pb-1">
