@@ -307,10 +307,23 @@ export function StudioSidebar({
                                     key={tool.id}
                                     className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-muted/50 group"
                                   >
-                                    <Icon className="h-3.5 w-3.5 text-primary shrink-0" />
-                                    <span className="text-sm text-foreground flex-1 truncate">{tool.name}</span>
                                     <button
-                                      onClick={() => togglePin(tool.id)}
+                                      type="button"
+                                      onClick={() => {
+                                        onToolSelect(tool.id);
+                                        setAddToolsOpen(false);
+                                      }}
+                                      className="flex items-center gap-2 flex-1 min-w-0 text-left cursor-pointer"
+                                    >
+                                      <Icon className="h-3.5 w-3.5 text-primary shrink-0" />
+                                      <span className="text-sm text-foreground flex-1 truncate">{tool.name}</span>
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={(event) => {
+                                        event.stopPropagation();
+                                        togglePin(tool.id);
+                                      }}
                                       className={cn(
                                         "shrink-0 p-1 rounded-md transition-all",
                                         isPinned
