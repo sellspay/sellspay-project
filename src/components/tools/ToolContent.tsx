@@ -109,6 +109,7 @@ export function ToolContent({ toolId }: ToolContentProps) {
         return <WaveformGenerator />;
       case "sfx-generator":
         return <SFXGenerator />;
+      case "image-generator":
       case "nano-banana":
         return <NanoBanana />;
       default:
@@ -118,7 +119,7 @@ export function ToolContent({ toolId }: ToolContentProps) {
 
   return (
     <Suspense fallback={<LoadingSpinner />}>
-      <div className="p-6 md:p-8">
+      <div className={toolId === "image-generator" || toolId === "nano-banana" ? "h-full" : "p-6 md:p-8"}>
         <ProToolsGate
           isProTool={isProTool(toolId)}
           creditBalance={creditBalance}

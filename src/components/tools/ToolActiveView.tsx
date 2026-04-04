@@ -39,6 +39,7 @@ const VoiceIsolator = lazy(() => import("@/pages/tools/VoiceIsolator"));
 const SFXIsolator = lazy(() => import("@/pages/tools/SFXIsolator"));
 const MusicSplitter = lazy(() => import("@/pages/tools/MusicSplitter"));
 const SFXGenerator = lazy(() => import("@/pages/tools/SFXGenerator"));
+const NanoBanana = lazy(() => import("@/pages/tools/NanoBanana"));
 
 interface ToolActiveViewProps {
   toolId: string;
@@ -164,6 +165,18 @@ export function ToolActiveView({
 
   const Icon = tool.icon;
   const creditCost = registryEntry?.creditCost ?? 0;
+
+  // Image generator gets its own full-bleed layout — skip the hero/wrapper entirely
+  if (toolId === "image-generator") {
+    return (
+      <div className="h-full">
+        <Suspense fallback={<div className="flex items-center justify-center h-full"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>}>
+          <NanoBanana />
+        </Suspense>
+        <SignUpPromoDialog open={showSignUpPromo} onOpenChange={setShowSignUpPromo} />
+      </div>
+    );
+  }
 
   return (
     <div className="h-full bg-background">
