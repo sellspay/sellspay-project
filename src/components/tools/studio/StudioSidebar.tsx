@@ -281,14 +281,14 @@ export function StudioSidebar({
                     </TooltipTrigger>
                     {collapsed && <TooltipContent side="right">Add Tools</TooltipContent>}
                   </Tooltip>
-                  <PopoverContent side="right" align="start" sideOffset={8} className="w-[540px] p-0 bg-background border-border rounded-2xl overflow-hidden shadow-xl">
-                    <div className="px-4 py-3 border-b border-border/50 flex items-center justify-between">
-                      <span className="text-sm font-bold text-foreground">Add Tools</span>
-                      <button onClick={() => setAddToolsOpen(false)} className="text-muted-foreground hover:text-foreground transition-colors">
+                  <PopoverContent side="right" align="start" sideOffset={8} className="w-[540px] p-0 bg-[#111827] border-[#374151] rounded-2xl overflow-hidden shadow-xl">
+                    <div className="px-4 py-3 border-b border-[#1f2937] flex items-center justify-between">
+                      <span className="text-sm font-bold text-[#f9fafb]">Add Tools</span>
+                      <button onClick={() => setAddToolsOpen(false)} className="text-[#6b7280] hover:text-[#f9fafb] transition-colors">
                         <X className="h-4 w-4" />
                       </button>
                     </div>
-                    <div className="grid grid-cols-2 gap-0 divide-x divide-border/30 max-h-[460px] overflow-y-auto custom-scrollbar">
+                    <div className="grid grid-cols-2 gap-0 divide-x divide-[#1f2937] max-h-[460px] overflow-y-auto custom-scrollbar">
                       {categoryOrder.map(cat => {
                         const tools = toolsByCategory[cat];
                         if (!tools || tools.length === 0) return null;
