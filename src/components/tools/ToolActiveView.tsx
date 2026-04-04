@@ -384,8 +384,6 @@ export function ToolActiveView({
           )}
         </div>
       </motion.div>
-
-      <SignUpPromoDialog open={showSignUpPromo} onOpenChange={setShowSignUpPromo} />
     </div>
   );
 }
