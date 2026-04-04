@@ -421,19 +421,19 @@ export function StudioSidebar({
                             <TooltipContent side="right">Profile</TooltipContent>
                           </Tooltip>
                         ) : (
-                          <button className="flex items-center gap-2.5 w-full rounded-lg px-2.5 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-accent transition-colors">
-                            <div className="w-7 h-7 rounded-full overflow-hidden border border-border shrink-0">
+                          <button className="flex items-center gap-2.5 w-full rounded-lg px-2.5 py-2 text-sm text-[#a1a1aa] hover:text-[#f4f4f5] hover:bg-white/[0.06] transition-colors">
+                            <div className="w-7 h-7 rounded-full overflow-hidden border border-white/[0.08] shrink-0">
                               {profile?.avatar_url ? (
                                 <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
                               ) : (
-                                <div className="w-full h-full bg-accent flex items-center justify-center">
+                                <div className="w-full h-full bg-white/[0.06] flex items-center justify-center">
                                   <span className="text-[9px] font-bold text-[#3b82f6]">
                                     {(profile?.username || "U").slice(0, 2).toUpperCase()}
                                   </span>
                                 </div>
                               )}
                             </div>
-                            <span className="truncate flex-1 text-left font-medium text-foreground">{profile?.username || "Creator"}</span>
+                            <span className="truncate flex-1 text-left font-medium text-[#f4f4f5]">{profile?.username || "Creator"}</span>
                           </button>
                         )}
                       </PopoverTrigger>
