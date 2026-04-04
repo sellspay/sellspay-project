@@ -14,6 +14,8 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useSubscription } from "@/hooks/useSubscription";
+import { useAuth } from "@/lib/auth";
+import { dispatchAuthGate } from "@/utils/authGateEvent";
 import {
   IMAGE_MODELS,
   MODEL_CATEGORIES,
