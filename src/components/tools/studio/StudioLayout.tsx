@@ -188,69 +188,96 @@ export default function StudioLayout() {
   const showRightPanel = !isHome && !campaignResult && !activeTool && activeSection === "campaign";
 
   return (
-    <div className="studio-layout h-screen flex overflow-hidden bg-background">
-      <StudioSidebar
-        collapsed={sidebarCollapsed}
-        onToggleCollapse={() => setSidebarCollapsed(v => !v)}
-        activeSection={activeSection}
-        onSectionChange={handleSectionChange}
-        creditBalance={creditBalance}
-        isLoadingCredits={isLoadingCredits}
-        activeTool={activeTool}
-        onToolSelect={handleLaunch}
-        onGoHome={handleGoHome}
-      />
+    <div className="h-screen flex flex-col overflow-hidden bg-background">
+      {/* Fixed top header - independent of sidebar */}
+      <header className="h-12 shrink-0 flex items-center px-3 gap-2 bg-background border-b border-border/40">
+        <button
+          onClick={() => setSidebarCollapsed(v => !v)}
+          className="shrink-0 p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+        >
+          {sidebarCollapsed ? <PanelLeft className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
+        </button>
+        <button
+          onClick={() => navigate("/")}
+          className="flex items-center gap-2 rounded-lg px-1 py-1 text-sm hover:opacity-80 transition-opacity"
+        >
+          <img src={sellspayLogo} alt="SellsPay" className="h-6 w-6 shrink-0" />
+          <span className="font-bold text-foreground tracking-tight">SellsPay</span>
+        </button>
+      </header>
 
-      <div className="flex-1 flex min-w-0 p-2.5 gap-0" style={{ backgroundColor: 'hsl(210 40% 97%)' }}>
-        <main className="flex-1 min-w-0 overflow-y-auto custom-scrollbar rounded-[22px] border border-border/40 bg-background shadow-[0_8px_30px_rgba(15,23,42,0.06)]">
-        {isHome ? (
-          <StudioHomeBanner
-            creditBalance={creditBalance}
-            isLoadingCredits={isLoadingCredits}
-            onToolSelect={handleLaunch}
-          />
-        ) : campaignResult ? (
-          <CampaignResultsDashboard
-            result={campaignResult}
-            creditsUsed={creditsUsed}
-            onBack={handleBackFromResults}
-          />
-        ) : promoOpen ? (
-          <PromoVideoBuilder open={promoOpen} onOpenChange={setPromoOpen} inline initialProduct={campaignState?.selectedProduct || null} />
-        ) : activeTool ? (
-          <ToolActiveView
-            toolId={activeTool}
-            onClose={() => setActiveTool(null)}
-            creditBalance={creditBalance}
-            isLoadingCredits={isLoadingCredits}
-            embedded
-          />
-        ) : (
-          <StudioCanvas
+      {/* Sidebar + Workspace below header */}
+      <div className="flex flex-1 min-h-0 overflow-hidden">
+        <motion.div
+          className="shrink-0 overflow-hidden"
+          animate={{ width: sidebarCollapsed ? 56 : 220 }}
+          transition={{ duration: 0.2, ease: "easeInOut" }}
+        >
+          <StudioSidebar
+            collapsed={sidebarCollapsed}
+            onToggleCollapse={() => setSidebarCollapsed(v => !v)}
             activeSection={activeSection}
-            productCount={productCount}
-            assetCount={assetCount}
-            generationCount={generationCount}
+            onSectionChange={handleSectionChange}
             creditBalance={creditBalance}
             isLoadingCredits={isLoadingCredits}
-            recentAssets={recentAssets}
-            onLaunchPromo={() => setPromoOpen(true)}
-            onLaunchTool={handleLaunch}
-            onSectionChange={handleSectionChange}
-            onCampaignStateChange={setCampaignState}
+            activeTool={activeTool}
+            onToolSelect={handleLaunch}
+            onGoHome={handleGoHome}
           />
-        )}
-      </main>
+        </motion.div>
 
-      {showRightPanel && (
-        <CampaignControlPanel
-          creditBalance={creditBalance}
-          isLoadingCredits={isLoadingCredits}
-          onGenerate={handleGenerate}
-          campaignState={campaignState}
-          isGenerating={isGenerating}
-        />
-      )}
+        {/* Workspace */}
+        <div className="flex-1 flex min-w-0 p-2 gap-0" style={{ backgroundColor: 'hsl(210 40% 97%)' }}>
+          <main className="flex-1 min-w-0 overflow-y-auto custom-scrollbar rounded-[22px] border border-[hsl(200_30%_88%)] bg-gradient-to-br from-[hsl(200_50%_97%)] to-[hsl(200_40%_95%)] shadow-[0_12px_40px_rgba(15,23,42,0.08)] ring-1 ring-[hsl(200_35%_92%)]">
+            {isHome ? (
+              <StudioHomeBanner
+                creditBalance={creditBalance}
+                isLoadingCredits={isLoadingCredits}
+                onToolSelect={handleLaunch}
+              />
+            ) : campaignResult ? (
+              <CampaignResultsDashboard
+                result={campaignResult}
+                creditsUsed={creditsUsed}
+                onBack={handleBackFromResults}
+              />
+            ) : promoOpen ? (
+              <PromoVideoBuilder open={promoOpen} onOpenChange={setPromoOpen} inline initialProduct={campaignState?.selectedProduct || null} />
+            ) : activeTool ? (
+              <ToolActiveView
+                toolId={activeTool}
+                onClose={() => setActiveTool(null)}
+                creditBalance={creditBalance}
+                isLoadingCredits={isLoadingCredits}
+                embedded
+              />
+            ) : (
+              <StudioCanvas
+                activeSection={activeSection}
+                productCount={productCount}
+                assetCount={assetCount}
+                generationCount={generationCount}
+                creditBalance={creditBalance}
+                isLoadingCredits={isLoadingCredits}
+                recentAssets={recentAssets}
+                onLaunchPromo={() => setPromoOpen(true)}
+                onLaunchTool={handleLaunch}
+                onSectionChange={handleSectionChange}
+                onCampaignStateChange={setCampaignState}
+              />
+            )}
+          </main>
+
+          {showRightPanel && (
+            <CampaignControlPanel
+              creditBalance={creditBalance}
+              isLoadingCredits={isLoadingCredits}
+              onGenerate={handleGenerate}
+              campaignState={campaignState}
+              isGenerating={isGenerating}
+            />
+          )}
+        </div>
       </div>
 
       <MyAssetsDrawer
