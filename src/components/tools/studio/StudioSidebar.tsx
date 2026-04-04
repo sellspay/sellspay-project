@@ -267,9 +267,9 @@ export function StudioSidebar({
               {/* Add Tools button */}
               <div className="shrink-0 px-2 pb-1">
                 <Popover open={addToolsOpen} onOpenChange={setAddToolsOpen}>
-                  <PopoverTrigger asChild>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <PopoverTrigger asChild>
                         <button
                           className={cn(
                             "flex items-center gap-2.5 w-full rounded-full px-3 py-2 text-sm transition-all duration-150",
@@ -282,10 +282,10 @@ export function StudioSidebar({
                           </div>
                           {!collapsed && <span>Add Tools</span>}
                         </button>
-                      </TooltipTrigger>
-                      {collapsed && <TooltipContent side="right">Add Tools</TooltipContent>}
-                    </Tooltip>
-                  </PopoverTrigger>
+                      </PopoverTrigger>
+                    </TooltipTrigger>
+                    {collapsed && <TooltipContent side="right">Add Tools</TooltipContent>}
+                  </Tooltip>
                   <PopoverContent side="right" align="start" sideOffset={8} className="w-80 p-0 bg-background border-border rounded-2xl overflow-hidden shadow-xl max-h-[500px]">
                     <div className="px-4 py-3 border-b border-border/50 flex items-center justify-between">
                       <span className="text-sm font-bold text-foreground">Add Tools</span>
