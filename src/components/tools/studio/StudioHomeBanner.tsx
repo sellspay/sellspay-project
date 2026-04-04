@@ -61,8 +61,8 @@ export function StudioHomeBanner({ creditBalance, isLoadingCredits, onToolSelect
                     className={cn(
                       "group relative flex flex-row items-stretch rounded-2xl text-left overflow-hidden",
                       "bg-[#ffffff] border border-[#ffffff]",
-                      "shadow-[0_2px_12px_rgba(0,0,0,0.06)]",
-                      "hover:border-emerald-500/60 hover:shadow-[0_4px_20px_rgba(16,185,129,0.1)] hover:-translate-y-1",
+                      "shadow-sm",
+                      "hover:border-emerald-500/60 hover:shadow-md hover:-translate-y-1",
                       "transition-all duration-250",
                       tool.comingSoon && "opacity-50 cursor-default"
                     )}
