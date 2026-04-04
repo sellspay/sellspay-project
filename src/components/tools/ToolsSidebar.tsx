@@ -130,8 +130,8 @@ export const tools: Tool[] = [
   // Generators
   {
     id: "nano-banana",
-    title: "Nano Banana",
-    description: "Generate anything with AI - images, art & more",
+    title: "Image Generator",
+    description: "Generate images and variations with multiple AI models",
     icon: Wand2,
     category: "generators",
     badge: "New",

@@ -56,6 +56,50 @@ export const toolsData: ToolData[] = [
     accentColor: "orange",
   },
   {
+    id: "image-generator",
+    title: "Image Generator",
+    tagline: "Create Images & Variations with AI",
+    description: "Generate original images from prompts or create variations from references using a single dedicated image tool with multiple models.",
+    icon: Sparkles,
+    category: "generators",
+    badge: "New",
+    available: true,
+    features: [
+      "Prompt-to-image creation",
+      "Image variation workflow",
+      "Multiple model selection",
+      "Instant download"
+    ],
+    previewExamples: [
+      { label: "Product Shot", before: "🧴", after: "Studio ecommerce render" },
+      { label: "Poster Art", before: "🎨", after: "Cinematic visual concept" },
+    ],
+    gradient: "from-sky-500 via-cyan-500 to-blue-500",
+    accentColor: "sky",
+  },
+  {
+    id: "nano-banana",
+    title: "Image Generator",
+    tagline: "Create Images & Variations with AI",
+    description: "Generate original images from prompts or create variations from references using a single dedicated image tool with multiple models.",
+    icon: Sparkles,
+    category: "generators",
+    badge: "New",
+    available: true,
+    features: [
+      "Prompt-to-image creation",
+      "Image variation workflow",
+      "Multiple model selection",
+      "Instant download"
+    ],
+    previewExamples: [
+      { label: "Product Shot", before: "🧴", after: "Studio ecommerce render" },
+      { label: "Poster Art", before: "🎨", after: "Cinematic visual concept" },
+    ],
+    gradient: "from-sky-500 via-cyan-500 to-blue-500",
+    accentColor: "sky",
+  },
+  {
     id: "voice-isolator",
     title: "Voice Isolator",
     tagline: "Extract Pure Vocals Instantly",

@@ -60,6 +60,7 @@ export const toolsRegistry: ToolRegistryEntry[] = [
 
   // ── Media Creation ──
   { id: "sfx-generator", name: "SFX Generator", category: "quick_tool", subcategory: "media_creation", icon: AudioLines, description: "Generate custom sound effects with AI", creditCost: 1, isPro: false, isActive: true, sortOrder: 90, legacyRoute: "sfx-generator" },
+  { id: "image-generator", name: "Image Generator", category: "quick_tool", subcategory: "media_creation", icon: Image, description: "Generate images and variations with multiple AI models", creditCost: 1, isPro: false, isActive: true, sortOrder: 95 },
   { id: "voice-isolator", name: "Voice Isolator", category: "quick_tool", subcategory: "media_creation", icon: Mic, description: "Separate vocals from background audio", creditCost: 1, isPro: false, isActive: true, sortOrder: 100, legacyRoute: "voice-isolator" },
   { id: "sfx-isolator", name: "SFX Isolator", category: "quick_tool", subcategory: "media_creation", icon: AudioWaveform, description: "Isolate sound effects from mixed audio", creditCost: 1, isPro: false, isActive: true, sortOrder: 110, legacyRoute: "sfx-isolator" },
   { id: "music-splitter", name: "Music Splitter", category: "quick_tool", subcategory: "media_creation", icon: Split, description: "Split audio into stems (vocals, drums, bass, etc.)", creditCost: 1, isPro: false, isActive: true, sortOrder: 120, legacyRoute: "music-splitter" },
