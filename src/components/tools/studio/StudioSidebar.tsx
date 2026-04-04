@@ -440,14 +440,14 @@ export function StudioSidebar({
                               {profile?.avatar_url ? (
                                 <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
                               ) : (
-                                <div className="w-full h-full bg-primary/10 flex items-center justify-center">
-                                  <span className="text-[9px] font-bold text-primary">
+                                <div className="w-full h-full bg-[#1f2937] flex items-center justify-center">
+                                  <span className="text-[9px] font-bold text-[#3b82f6]">
                                     {(profile?.username || "U").slice(0, 2).toUpperCase()}
                                   </span>
                                 </div>
                               )}
                             </div>
-                            <span className="truncate flex-1 text-left font-medium text-foreground">{profile?.username || "Creator"}</span>
+                            <span className="truncate flex-1 text-left font-medium text-[#f9fafb]">{profile?.username || "Creator"}</span>
                           </button>
                         )}
                       </PopoverTrigger>
