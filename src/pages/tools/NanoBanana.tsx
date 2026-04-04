@@ -67,6 +67,7 @@ export default function NanoBanana() {
 
   const handleGenerate = async () => {
     if (!prompt.trim()) { toast.error("Please enter a prompt"); return; }
+    if (!user) { dispatchAuthGate(); return; }
     if (creditBalance < (currentModel.creditCost || 1)) { toast.error("Insufficient credits."); return; }
     setIsGenerating(true);
     setGeneratedImage(null);

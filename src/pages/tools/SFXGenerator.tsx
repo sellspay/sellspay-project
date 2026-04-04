@@ -17,6 +17,8 @@ import {
 import { SFXWaveform } from "@/components/tools/SFXWaveform";
 import { useSubscription } from "@/hooks/useSubscription";
 import { UpgradeModal } from "@/components/subscription/UpgradeModal";
+import { useAuth } from "@/lib/auth";
+import { dispatchAuthGate } from "@/utils/authGateEvent";
 
 const C = {
   bg: "#0e0e10",
