@@ -59,56 +59,54 @@ export function StudioHomeBanner({ creditBalance, isLoadingCredits, onToolSelect
                     key={tool.id}
                     onClick={() => !tool.comingSoon && onToolSelect(tool.id)}
                     className={cn(
-                      "group relative flex flex-row items-center gap-3 p-3 rounded-xl border border-border/80 bg-background text-left",
-                      "hover:border-primary/40 hover:shadow-lg hover:shadow-primary/5 hover:-translate-y-0.5",
-                      "transition-all duration-200",
-                      tool.comingSoon && "opacity-60 cursor-default"
+                      "group relative flex flex-row items-stretch rounded-2xl text-left overflow-hidden",
+                      "bg-[#111827] border border-[#1f2937]",
+                      "shadow-[0_2px_12px_rgba(0,0,0,0.3)]",
+                      "hover:border-emerald-500/60 hover:shadow-[0_4px_20px_rgba(16,185,129,0.15)] hover:-translate-y-1",
+                      "transition-all duration-250",
+                      tool.comingSoon && "opacity-50 cursor-default"
                     )}
                   >
+                    {/* Left accent bar */}
+                    <div className="w-[3px] shrink-0 bg-emerald-500/60 group-hover:bg-emerald-400 transition-colors" />
+
                     {/* Text content */}
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-primary leading-tight truncate">
-                        {tool.name.split(" ").map((word, i) => {
-                          // Make key action words primary colored, rest foreground
-                          const actionWords = ["Generator", "Isolator", "Splitter", "Remover", "Upscaler", "Cleanup", "Converter", "Recorder", "Cutter", "Joiner", "Voiceover", "Script", "Carousel", "Suggestions", "Sections"];
-                          if (actionWords.some(aw => word.includes(aw))) {
-                            return <span key={i} className="text-primary">{word} </span>;
-                          }
-                          return <span key={i} className="text-foreground">{word} </span>;
-                        })}
+                    <div className="flex-1 min-w-0 p-3 flex flex-col justify-center">
+                      <p className="text-[13px] font-bold text-emerald-400 leading-tight truncate">
+                        {tool.name}
                       </p>
-                      <p className="text-[11px] text-muted-foreground mt-1 line-clamp-2 leading-relaxed">
+                      <p className="text-[11px] text-[#9ca3af] mt-1 line-clamp-2 leading-relaxed">
                         {tool.description}
                       </p>
                       {tool.comingSoon && (
-                        <span className="inline-block mt-1.5 text-[9px] font-bold text-muted-foreground/50 uppercase tracking-wider">
+                        <span className="inline-block mt-1.5 text-[9px] font-bold text-[#6b7280] uppercase tracking-wider">
                           Coming Soon
                         </span>
                       )}
                     </div>
 
-                    {/* Thumbnail image */}
-                    <div className="w-16 h-16 rounded-lg overflow-hidden shrink-0 bg-muted/30 border border-border/50">
+                    {/* Thumbnail */}
+                    <div className="w-20 h-20 shrink-0 overflow-hidden self-center mr-2 rounded-xl bg-[#1f2937]">
                       {thumb ? (
                         <img
                           src={thumb}
                           alt={tool.name}
                           loading="lazy"
-                          width={64}
-                          height={64}
+                          width={80}
+                          height={80}
                           className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
                         />
                       ) : (
-                        <div className="w-full h-full flex items-center justify-center bg-primary/5">
-                          <Icon className="h-6 w-6 text-primary/40" />
+                        <div className="w-full h-full flex items-center justify-center">
+                          <Icon className="h-7 w-7 text-[#374151]" />
                         </div>
                       )}
                     </div>
 
                     {/* Pro badge */}
                     {tool.isPro && (
-                      <div className="absolute top-1.5 right-1.5">
-                        <Sparkles className="h-3 w-3 text-primary/50" />
+                      <div className="absolute top-2 left-5">
+                        <Sparkles className="h-3 w-3 text-emerald-400/60" />
                       </div>
                     )}
                   </button>

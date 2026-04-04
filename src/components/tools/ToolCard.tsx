@@ -1,5 +1,4 @@
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Crown, Coins, ArrowRight, Clock } from "lucide-react";
 import type { ToolRegistryEntry } from "./toolsRegistry";
 
@@ -16,11 +15,14 @@ export function ToolCard({ tool, onLaunch }: ToolCardProps) {
     <button
       onClick={() => !tool.comingSoon && onLaunch(tool.id)}
       disabled={tool.comingSoon}
-      className="group relative flex flex-col items-start gap-3 rounded-xl border border-border/50 bg-card p-5 text-left transition-all hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5 disabled:opacity-70 disabled:cursor-default"
+      className="group relative flex flex-col items-start gap-3 rounded-2xl p-5 text-left transition-all duration-250 overflow-hidden bg-[#111827] border border-[#1f2937] shadow-[0_2px_12px_rgba(0,0,0,0.3)] hover:border-emerald-500/60 hover:shadow-[0_4px_20px_rgba(16,185,129,0.15)] hover:-translate-y-1 disabled:opacity-50 disabled:cursor-default"
     >
+      {/* Left accent bar */}
+      <div className="w-[3px] h-full absolute left-0 top-0 bg-emerald-500/60 group-hover:bg-emerald-400 transition-colors" />
+
       {/* Icon + badges row */}
-      <div className="flex w-full items-center justify-between">
-        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary transition-colors group-hover:bg-primary/20">
+      <div className="flex w-full items-center justify-between pl-1">
+        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-400 transition-colors group-hover:bg-emerald-500/20">
           <Icon className="h-5 w-5" />
         </div>
         <div className="flex items-center gap-1.5">
@@ -34,7 +36,7 @@ export function ToolCard({ tool, onLaunch }: ToolCardProps) {
               Free
             </Badge>
           ) : (
-            <Badge variant="outline" className="gap-1 border-border bg-muted/50 text-muted-foreground text-[10px] px-1.5 py-0">
+            <Badge variant="outline" className="gap-1 border-[#374151] bg-[#1f2937] text-[#9ca3af] text-[10px] px-1.5 py-0">
               <Coins className="h-2.5 w-2.5" /> {tool.creditCost}
             </Badge>
           )}
@@ -42,19 +44,19 @@ export function ToolCard({ tool, onLaunch }: ToolCardProps) {
       </div>
 
       {/* Title + description */}
-      <div className="space-y-1">
-        <h3 className="text-sm font-semibold text-foreground leading-tight">{tool.name}</h3>
-        <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2">{tool.description}</p>
+      <div className="space-y-1 pl-1">
+        <h3 className="text-sm font-bold text-[#f9fafb] leading-tight">{tool.name}</h3>
+        <p className="text-xs text-[#9ca3af] leading-relaxed line-clamp-2">{tool.description}</p>
       </div>
 
       {/* Footer */}
-      <div className="mt-auto pt-2 w-full">
+      <div className="mt-auto pt-2 w-full pl-1">
         {tool.comingSoon ? (
-          <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+          <div className="flex items-center gap-1.5 text-[11px] text-[#6b7280]">
             <Clock className="h-3 w-3" /> Coming Soon
           </div>
         ) : (
-          <div className="flex items-center gap-1.5 text-[11px] font-medium text-primary opacity-0 transition-opacity group-hover:opacity-100">
+          <div className="flex items-center gap-1.5 text-[11px] font-medium text-emerald-400 opacity-0 transition-opacity group-hover:opacity-100">
             Launch <ArrowRight className="h-3 w-3" />
           </div>
         )}
