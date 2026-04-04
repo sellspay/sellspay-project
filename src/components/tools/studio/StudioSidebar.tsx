@@ -410,7 +410,7 @@ export function StudioSidebar({
                                 {profile?.avatar_url ? (
                                   <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
                                 ) : (
-                                  <div className="w-full h-full bg-accent flex items-center justify-center">
+                                   <div className="w-full h-full bg-white/[0.06] flex items-center justify-center">
                                     <span className="text-[10px] font-bold text-[#3b82f6]">
                                       {(profile?.username || "U").slice(0, 2).toUpperCase()}
                                     </span>
