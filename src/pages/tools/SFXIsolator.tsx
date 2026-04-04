@@ -7,6 +7,7 @@ import { AudioWaveformPlayer } from "@/components/tools/AudioWaveformPlayer";
 import { useSubscription } from "@/hooks/useSubscription";
 import { UpgradeModal } from "@/components/subscription/UpgradeModal";
 import { dispatchAuthGate } from "@/utils/authGateEvent";
+import { useAuth } from "@/lib/auth";
 
 interface StemResult {
   url: string;
@@ -34,6 +35,7 @@ export default function SFXIsolator() {
   const isProcessingRef = useRef(false);
 
   const { deductCredits, canUseFeature } = useSubscription();
+  const { user } = useAuth();
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -47,6 +49,7 @@ export default function SFXIsolator() {
 
   const processWithCreditCheck = useCallback(async (audioFile: File) => {
     if (isProcessingRef.current) return;
+    if (!user) { dispatchAuthGate(); return; }
     if (!canUseFeature("sfx-isolator")) {
       setShowOutOfCredits(true);
       return;

@@ -7,6 +7,7 @@ import { AudioWaveformPlayer } from "./AudioWaveformPlayer";
 import { useSubscription } from "@/hooks/useSubscription";
 import { UpgradeModal } from "@/components/subscription/UpgradeModal";
 import { dispatchAuthGate } from "@/utils/authGateEvent";
+import { useAuth } from "@/lib/auth";
 
 interface StemResult {
   url: string;
@@ -46,6 +47,7 @@ export function AudioProcessingView({
   const isProcessingRef = useRef(false);
 
   const { deductCredits, canUseFeature, credits } = useSubscription();
+  const { user } = useAuth();
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -62,6 +64,7 @@ export function AudioProcessingView({
       console.log("Processing already in progress, ignoring duplicate request");
       return;
     }
+    if (!user) { dispatchAuthGate(); return; }
     if (!canUseFeature(toolId)) {
       setShowOutOfCredits(true);
       return;

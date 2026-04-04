@@ -17,6 +17,8 @@ import {
 import { SFXWaveform } from "@/components/tools/SFXWaveform";
 import { useSubscription } from "@/hooks/useSubscription";
 import { UpgradeModal } from "@/components/subscription/UpgradeModal";
+import { useAuth } from "@/lib/auth";
+import { dispatchAuthGate } from "@/utils/authGateEvent";
 
 const C = {
   bg: "#0e0e10",
@@ -45,6 +47,7 @@ export default function SFXGenerator() {
   const isGeneratingRef = useRef(false);
   
   const { deductCredits, credits: creditBalance, canUseFeature } = useSubscription();
+  const { user } = useAuth();
 
   const handleEnhancePrompt = async () => {
     if (!prompt.trim()) { toast.error("Please enter a prompt first"); return; }
@@ -66,6 +69,7 @@ export default function SFXGenerator() {
   const handleGenerate = async () => {
     if (!prompt.trim()) { toast.error("Please enter a prompt"); return; }
     if (isGeneratingRef.current) return;
+    if (!user) { dispatchAuthGate(); return; }
     if (!canUseFeature("sfx-generator")) { setShowOutOfCredits(true); return; }
     isGeneratingRef.current = true;
     setIsGenerating(true);
