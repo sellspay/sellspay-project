@@ -295,7 +295,8 @@ export default function StudioLayout() {
 
         {/* Workspace */}
         <div className="flex-1 flex min-w-0 p-2 gap-0" style={{ backgroundColor: 'hsl(210 40% 97%)' }}>
-          <main className="flex-1 min-w-0 overflow-y-auto custom-scrollbar rounded-[22px] border border-[hsl(200_30%_88%)] bg-gradient-to-br from-[hsl(200_50%_97%)] to-[hsl(200_40%_95%)] shadow-[0_12px_40px_rgba(15,23,42,0.08)] ring-1 ring-[hsl(200_35%_92%)]">
+          <main className="flex-1 min-w-0 overflow-hidden rounded-[22px] border border-[hsl(200_30%_88%)] bg-gradient-to-br from-[#e8f6fb] to-[#dff1f7] shadow-[0_12px_40px_rgba(15,23,42,0.08)] ring-1 ring-[hsl(200_35%_92%)]">
+            <div className="h-full overflow-y-auto custom-scrollbar bg-gradient-to-br from-[#f4fbff] to-[#eaf6fb]">
             {isHome ? (
               <StudioHomeBanner
                 creditBalance={creditBalance}
@@ -333,6 +334,7 @@ export default function StudioLayout() {
                 onCampaignStateChange={setCampaignState}
               />
             )}
+            </div>
           </main>
 
           {showRightPanel && (
