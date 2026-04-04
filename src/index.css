@@ -459,6 +459,51 @@ body[style*="margin-right"] {
     0 1px 2px hsl(221 83% 30% / 0.15);
 }
 
+.btn-premium-cyan {
+  position: relative;
+  background: linear-gradient(180deg, hsl(189 94% 48%) 0%, hsl(189 94% 43%) 50%, hsl(189 94% 38%) 100%);
+  border: 1px solid hsl(189 94% 38% / 0.6);
+  box-shadow:
+    inset 0 1px 0 hsl(0 0% 100% / 0.25),
+    inset 0 -1px 0 hsl(189 94% 28% / 0.3),
+    0 1px 3px hsl(189 94% 18% / 0.2),
+    0 4px 12px hsl(189 94% 43% / 0.3),
+    0 8px 24px hsl(189 94% 43% / 0.15);
+  color: hsl(0 0% 100%);
+  transition: all 0.2s ease;
+  overflow: hidden;
+  text-shadow: 0 1px 2px hsl(189 94% 18% / 0.3);
+}
+
+.btn-premium-cyan::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, hsl(0 0% 100% / 0.15) 0%, hsl(0 0% 100% / 0) 50%, hsl(0 0% 0% / 0.05) 100%);
+  border-radius: inherit;
+  pointer-events: none;
+}
+
+.btn-premium-cyan:hover {
+  background: linear-gradient(180deg, hsl(189 94% 52%) 0%, hsl(189 94% 46%) 50%, hsl(189 94% 41%) 100%);
+  transform: translateY(-1px);
+  box-shadow:
+    inset 0 1px 0 hsl(0 0% 100% / 0.3),
+    inset 0 -1px 0 hsl(189 94% 28% / 0.3),
+    0 2px 4px hsl(189 94% 18% / 0.2),
+    0 8px 20px hsl(189 94% 43% / 0.4),
+    0 12px 32px hsl(189 94% 43% / 0.2);
+}
+
+.btn-premium-cyan:active {
+  background: linear-gradient(180deg, hsl(189 94% 43%) 0%, hsl(189 94% 38%) 50%, hsl(189 94% 34%) 100%);
+  transform: translateY(0);
+  box-shadow:
+    inset 0 1px 0 hsl(0 0% 100% / 0.1),
+    inset 0 2px 4px hsl(189 94% 18% / 0.2),
+    0 1px 2px hsl(189 94% 18% / 0.15);
+}
+
 /* Hero Section Button Styles - Blue */
 .btn-hero-primary {
   background: linear-gradient(
