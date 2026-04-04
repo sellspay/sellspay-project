@@ -39,6 +39,7 @@ const VoiceIsolator = lazy(() => import("@/pages/tools/VoiceIsolator"));
 const SFXIsolator = lazy(() => import("@/pages/tools/SFXIsolator"));
 const MusicSplitter = lazy(() => import("@/pages/tools/MusicSplitter"));
 const SFXGenerator = lazy(() => import("@/pages/tools/SFXGenerator"));
+const NanoBanana = lazy(() => import("@/pages/tools/NanoBanana"));
 
 interface ToolActiveViewProps {
   toolId: string;
