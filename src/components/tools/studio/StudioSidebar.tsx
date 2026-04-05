@@ -268,9 +268,9 @@ export function StudioSidebar({
                     {collapsed && <TooltipContent side="right">Add Tools</TooltipContent>}
                   </Tooltip>
                   <PopoverContent side="right" align="start" sideOffset={8} className="w-[540px] p-0 bg-[#0e0e10] border-white/[0.08] rounded-2xl overflow-hidden shadow-2xl shadow-black/60">
-                    <div className="px-4 py-3 border-b border-white/[0.06] flex items-center justify-between">
-                      <span className="text-sm font-bold text-[#f4f4f5]">Add Tools</span>
-                      <button onClick={() => setAddToolsOpen(false)} className="text-[#9ca3af] hover:text-[#f4f4f5] transition-colors">
+                    <div className="px-4 py-3 border-b border-white/[0.08] flex items-center justify-between bg-[#0e0e10]">
+                      <span className="text-sm font-bold text-white">Add Tools</span>
+                      <button onClick={() => setAddToolsOpen(false)} className="text-[#71717a] hover:text-white transition-colors">
                         <X className="h-4 w-4" />
                       </button>
                     </div>
