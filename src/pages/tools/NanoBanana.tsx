@@ -99,7 +99,7 @@ export default function NanoBanana() {
   };
 
   return (
-    <div className="h-full p-3" style={{ background: C.inner }}>
+    <div className="h-full p-3" style={{ background: C.bg }}>
       <div
         className="grid h-full grid-cols-[380px_minmax(0,1fr)] overflow-hidden rounded-[28px]"
         style={{ background: C.inner, border: `1px solid ${C.border}` }}
