@@ -143,10 +143,21 @@ interface StudioSidebarProps {
 
 // Default 10 most popular/useful tools shown pinned
 const DEFAULT_PINNED = [
-  "sfx-generator", "voice-isolator", "music-splitter", "sfx-isolator",
-  "thumbnail-generator", "social-posts-pack", "short-form-script",
-  "background-remover", "image-upscaler", "audio-cutter",
+  "image-generator",
+  "sfx-generator",
+  "voice-isolator",
+  "music-splitter",
+  "audio-cutter",
+  "audio-joiner",
+  "audio-recorder",
+  "audio-converter",
+  "video-to-audio",
+  "waveform-generator",
 ];
+
+const PINNED_TOOLS_STORAGE_KEY = "studio-pinned-tools-v2";
+const PINNED_TOOLS_VERSION_KEY = "studio-pinned-tools-version";
+const PINNED_TOOLS_VERSION = "popular-10-v1";
 
 export function StudioSidebar({
   collapsed, onToggleCollapse, activeSection, onSectionChange,
@@ -179,13 +190,33 @@ export function StudioSidebar({
   // Pinned tools state with localStorage persistence
   const [pinnedToolIds, setPinnedToolIds] = useState<string[]>(() => {
     try {
-      const saved = localStorage.getItem("studio-pinned-tools");
-      return saved ? JSON.parse(saved) : DEFAULT_PINNED;
-    } catch { return DEFAULT_PINNED; }
+      const savedVersion = localStorage.getItem(PINNED_TOOLS_VERSION_KEY);
+      const saved = localStorage.getItem(PINNED_TOOLS_STORAGE_KEY);
+      if (savedVersion === PINNED_TOOLS_VERSION && saved) {
+        const parsed = JSON.parse(saved);
+        return Array.isArray(parsed) && parsed.length > 0 ? parsed : DEFAULT_PINNED;
+      }
+    } catch {}
+    return DEFAULT_PINNED;
   });
 
   useEffect(() => {
-    try { localStorage.setItem("studio-pinned-tools", JSON.stringify(pinnedToolIds)); } catch {}
+    try {
+      const savedVersion = localStorage.getItem(PINNED_TOOLS_VERSION_KEY);
+      if (savedVersion !== PINNED_TOOLS_VERSION) {
+        setPinnedToolIds(DEFAULT_PINNED);
+        localStorage.removeItem("studio-pinned-tools");
+        localStorage.setItem(PINNED_TOOLS_STORAGE_KEY, JSON.stringify(DEFAULT_PINNED));
+        localStorage.setItem(PINNED_TOOLS_VERSION_KEY, PINNED_TOOLS_VERSION);
+      }
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(PINNED_TOOLS_STORAGE_KEY, JSON.stringify(pinnedToolIds));
+      localStorage.setItem(PINNED_TOOLS_VERSION_KEY, PINNED_TOOLS_VERSION);
+    } catch {}
   }, [pinnedToolIds]);
 
   const allQuickTools = toolsRegistry.filter(t => t.category === "quick_tool" && t.isActive);
