@@ -33,16 +33,16 @@ function FeaturedBanner({
     <button
       onClick={onClick}
       className={cn(
-        "group relative overflow-hidden rounded-[22px] border border-white/[0.08] bg-[#0b0b0d] w-full text-left transition-all duration-300 hover:border-white/[0.16]",
+        "group relative overflow-hidden rounded-[22px] border border-white/[0.06] bg-[#0b0b0d] w-full text-left transition-all duration-500 hover:border-white/[0.12]",
         className
       )}
     >
-      <img src={image} alt={title} className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]" />
-      <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+      <img src={image} alt={title} className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 group-hover:scale-[1.05]" />
+      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
       <div className="relative z-10 flex flex-col justify-end h-full p-5">
-        <h3 className="text-[18px] font-semibold text-white">{title}</h3>
-        <p className="mt-1 text-[13px] text-white/50 max-w-md">{subtitle}</p>
-        <span className="mt-3 inline-flex w-fit items-center gap-1.5 rounded-full bg-white/80 px-3 py-1 text-[12px] font-medium text-black backdrop-blur">
+        <h3 className="text-[17px] font-bold text-white leading-snug drop-shadow-lg">{title}</h3>
+        <p className="mt-1 text-[12px] text-white/50 max-w-[260px] leading-relaxed">{subtitle}</p>
+        <span className="mt-3 inline-flex w-fit items-center gap-1.5 rounded-full bg-black/50 border border-white/[0.12] px-3 py-1 text-[11px] font-medium text-white/90">
           Open Tool <ArrowRight className="h-3 w-3" />
         </span>
       </div>
