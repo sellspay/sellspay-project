@@ -274,7 +274,7 @@ export function StudioSidebar({
                         <X className="h-4 w-4" />
                       </button>
                     </div>
-                    <div className="grid grid-cols-2 gap-0 divide-x divide-white/[0.06] max-h-[460px] overflow-y-auto custom-scrollbar">
+                    <div className="grid grid-cols-2 gap-0 divide-x divide-white/[0.08] max-h-[460px] overflow-y-auto custom-scrollbar">
                       {categoryOrder.map(cat => {
                         const tools = toolsByCategory[cat];
                         if (!tools || tools.length === 0) return null;
