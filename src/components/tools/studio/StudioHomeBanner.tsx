@@ -214,29 +214,20 @@ export function StudioHomeBanner({ onToolSelect }: StudioHomeBannerProps) {
         </div>
       </motion.section>
 
-      {/* ── SELLSPAY SUITE (compact mini-cards) ── */}
-      {mediaTools.length > 0 && (
-        <motion.section variants={fadeUp} className="mb-14">
-          <SectionHeader title="SellsPay Suite" showMore />
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-            {mediaTools.map(tool => (
-              <SuiteToolCard key={tool.id} tool={tool} image={thumb(tool.id)} onClick={() => launch(tool.id)} />
-            ))}
-          </div>
-        </motion.section>
-      )}
-
-      {/* ── STORE & SOCIAL (compact mini-cards) ── */}
-      {([...storeTools, ...socialTools].length > 0) && (
-        <motion.section variants={fadeUp} className="mb-14">
-          <SectionHeader title="Store & Social" showMore />
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-            {[...storeTools, ...socialTools].map(tool => (
-              <SuiteToolCard key={tool.id} tool={tool} image={thumb(tool.id)} onClick={() => launch(tool.id)} />
-            ))}
-          </div>
-        </motion.section>
-      )}
+      {/* ── SELLSPAY SUITE — all tools in 5-col grid ── */}
+      {(() => {
+        const suiteTools = [...mediaTools, ...storeTools, ...socialTools].sort((a, b) => a.sortOrder - b.sortOrder);
+        return suiteTools.length > 0 ? (
+          <motion.section variants={fadeUp} className="mb-14">
+            <SectionHeader title="SellsPay Suite" showMore />
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+              {suiteTools.map(tool => (
+                <SuiteToolCard key={tool.id} tool={tool} image={thumb(tool.id)} onClick={() => launch(tool.id)} />
+              ))}
+            </div>
+          </motion.section>
+        ) : null;
+      })()}
 
       {/* ── UTILITY TOOLS (large image model cards) ── */}
       {utilityTools.length > 0 && (
