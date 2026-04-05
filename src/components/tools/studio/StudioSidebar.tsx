@@ -292,7 +292,7 @@ export function StudioSidebar({
                                 return (
                                   <div
                                     key={tool.id}
-                                    className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-white/[0.06] group"
+                                    className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-white/[0.06] group transition-colors"
                                   >
                                     <button
                                       type="button"
