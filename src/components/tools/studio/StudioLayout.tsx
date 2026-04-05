@@ -91,11 +91,6 @@ export default function StudioLayout() {
   }, [profile?.id]);
 
   const handleLaunch = (toolId: string) => {
-    // Auth gate: require sign-in before using ANY tool
-    if (!profile) {
-      setShowSignUpPromo(true);
-      return;
-    }
     const entry = toolsRegistry.find(t => t.id === toolId);
     const resolvedId = entry?.legacyRoute || toolId;
     setActiveTool(resolvedId);
