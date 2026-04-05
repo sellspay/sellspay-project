@@ -66,16 +66,16 @@ function SuiteToolCard({
         tool.comingSoon ? "opacity-55 cursor-default" : "hover:translate-y-[-1px]"
       )}
     >
-      {/* Outer border — neon green halo like reference */}
-      <div className="pointer-events-none absolute inset-0 rounded-[22px] border border-white/[0.04] transition-all duration-500 group-hover:border-[#1aff8c]/[0.7] group-hover:shadow-[0_0_0_1px_rgba(26,255,140,0.28),0_0_18px_rgba(26,255,140,0.38),0_0_42px_rgba(26,255,140,0.22),0_0_72px_rgba(26,255,140,0.12)]" />
-      {/* Broad green halo */}
-      <div className="pointer-events-none absolute inset-[-12px] rounded-[30px] bg-[#19ff88]/[0.02] opacity-0 blur-xl transition-all duration-500 group-hover:opacity-100 group-hover:bg-[#19ff88]/[0.1]" />
+      {/* Outer border — neon blue halo */}
+      <div className="pointer-events-none absolute inset-0 rounded-[22px] border border-white/[0.04] transition-all duration-500 group-hover:border-[#3b82f6]/[0.8] group-hover:shadow-[0_0_0_1px_rgba(59,130,246,0.4),0_0_20px_rgba(59,130,246,0.5),0_0_50px_rgba(59,130,246,0.35),0_0_90px_rgba(59,130,246,0.18)]" />
+      {/* Broad blue halo */}
+      <div className="pointer-events-none absolute inset-[-14px] rounded-[32px] bg-[#3b82f6]/[0.02] opacity-0 blur-xl transition-all duration-500 group-hover:opacity-100 group-hover:bg-[#3b82f6]/[0.14]" />
       {/* Tinted surface glow */}
-      <div className="pointer-events-none absolute inset-[1px] rounded-[21px] bg-[linear-gradient(180deg,rgba(11,11,13,0.96),rgba(8,8,10,0.98))] transition-all duration-500 group-hover:bg-[linear-gradient(180deg,rgba(8,36,22,0.98),rgba(5,24,15,0.99))]" />
-      {/* Inner green light bloom */}
-      <div className="pointer-events-none absolute inset-0 rounded-[22px] bg-[radial-gradient(circle_at_left_center,rgba(26,255,140,0.12),transparent_55%)] opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
+      <div className="pointer-events-none absolute inset-[1px] rounded-[21px] bg-[linear-gradient(180deg,rgba(11,11,13,0.96),rgba(8,8,10,0.98))] transition-all duration-500 group-hover:bg-[linear-gradient(180deg,rgba(10,18,42,0.98),rgba(6,12,30,0.99))]" />
+      {/* Inner blue light bloom */}
+      <div className="pointer-events-none absolute inset-0 rounded-[22px] bg-[radial-gradient(circle_at_left_center,rgba(59,130,246,0.18),transparent_55%)] opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
       {/* Inner highlight line */}
-      <div className="pointer-events-none absolute inset-[1px] rounded-[21px] shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] transition-shadow duration-300 group-hover:shadow-[inset_0_1px_0_rgba(120,255,184,0.18)]" />
+      <div className="pointer-events-none absolute inset-[1px] rounded-[21px] shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] transition-shadow duration-300 group-hover:shadow-[inset_0_1px_0_rgba(100,160,255,0.22)]" />
 
       <div className="relative z-10 flex h-[108px] items-center justify-between gap-4 px-5">
         {/* Text */}
