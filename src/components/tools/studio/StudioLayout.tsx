@@ -108,7 +108,7 @@ export default function StudioLayout() {
     navigate("/studio", { replace: true });
   };
 
-  const hasUnsavedProgress = activeTool || promoOpen || (campaignState?.selectedProduct != null) || (campaignState?.selectedTemplate != null);
+  const hasUnsavedProgress = promoOpen || (campaignState?.selectedProduct != null) || (campaignState?.selectedTemplate != null);
 
   const handleSectionChange = (section: StudioSection) => {
     if (section === "assets") {
@@ -353,16 +353,16 @@ export default function StudioLayout() {
       />
 
       <AlertDialog open={!!pendingSection} onOpenChange={(open) => !open && setPendingSection(null)}>
-        <AlertDialogContent>
+        <AlertDialogContent className="bg-[#18181b] border-zinc-800 text-white">
           <AlertDialogHeader>
-            <AlertDialogTitle>Leave this screen?</AlertDialogTitle>
-            <AlertDialogDescription>
+            <AlertDialogTitle className="text-white">Leave this screen?</AlertDialogTitle>
+            <AlertDialogDescription className="text-zinc-400">
               Leaving this screen will cancel your current progress. Any unsaved work will be lost.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Stay</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmSectionChange} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+            <AlertDialogCancel className="bg-zinc-800 border-zinc-700 text-zinc-300 hover:bg-zinc-700 hover:text-white">Stay</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmSectionChange} className="bg-blue-600 text-white hover:bg-blue-500">
               Leave
             </AlertDialogAction>
           </AlertDialogFooter>
