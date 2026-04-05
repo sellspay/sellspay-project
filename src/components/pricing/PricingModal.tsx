@@ -45,7 +45,7 @@ const PLAN_CARDS = [
     credits: "500 credits / month",
     addOns: false,
     isPopular: false,
-    btnClass: "bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700",
+    btnClass: "bg-gradient-to-r from-cyan-500 to-blue-500 text-white border-transparent hover:opacity-90 shadow-lg shadow-cyan-500/20",
     creditPillBg: "bg-cyan-950/50 border-cyan-800/40",
     creditPillText: "text-cyan-300",
     features: [
