@@ -70,8 +70,6 @@ interface ToolNavItemProps {
 }
 
 function ToolNavItem({ tool, isSelected, onClick }: ToolNavItemProps) {
-  const Icon = tool.icon;
-  
   return (
     <button
       onClick={onClick}
@@ -82,10 +80,19 @@ function ToolNavItem({ tool, isSelected, onClick }: ToolNavItemProps) {
           : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground border border-transparent"
       )}
     >
-      <Icon className={cn(
-        "w-4 h-4 flex-shrink-0",
-        isSelected && "text-primary"
-      )} />
+      {tool.iconImage ? (
+        <img 
+          src={tool.iconImage} 
+          alt={tool.title} 
+          className="w-5 h-5 flex-shrink-0 rounded-sm object-contain" 
+          loading="lazy"
+        />
+      ) : (
+        <tool.icon className={cn(
+          "w-4 h-4 flex-shrink-0",
+          isSelected && "text-primary"
+        )} />
+      )}
       <span className="text-sm font-medium truncate flex-1">{tool.title}</span>
       {tool.isPro && (
         <Sparkles className="w-3 h-3 text-primary flex-shrink-0" />

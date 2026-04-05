@@ -6,9 +6,19 @@ import {
   FileAudio, 
   AudioWaveform,
   Volume2,
-  SlidersHorizontal,
   Sparkles
 } from "lucide-react";
+
+import imageGeneratorIcon from "@/assets/tools/image-generator.png";
+import voiceIsolatorIcon from "@/assets/tools/voice-isolator.png";
+import musicSplitterIcon from "@/assets/tools/music-splitter.png";
+import sfxGeneratorIcon from "@/assets/tools/sfx-generator.png";
+import audioCutterIcon from "@/assets/tools/audio-cutter.png";
+import audioJoinerIcon from "@/assets/tools/audio-joiner.png";
+import audioRecorderIcon from "@/assets/tools/audio-recorder.png";
+import audioConverterIcon from "@/assets/tools/audio-converter.png";
+import videoToAudioIcon from "@/assets/tools/video-to-audio.png";
+import waveformGeneratorIcon from "@/assets/tools/waveform-generator.png";
 
 export interface ToolData {
   id: string;
@@ -16,6 +26,7 @@ export interface ToolData {
   tagline: string;
   description: string;
   icon: React.ComponentType<{ className?: string }>;
+  iconImage?: string;
   category: "audio" | "generators";
   badge?: "Popular" | "New" | "Pro" | "Free";
   available: boolean;
@@ -37,6 +48,7 @@ export const toolsData: ToolData[] = [
     tagline: "Create Any Sound Effect with AI",
     description: "Transform text descriptions into professional-quality sound effects instantly. Perfect for games, videos, podcasts, and more.",
     icon: Volume2,
+    iconImage: sfxGeneratorIcon,
     category: "audio",
     badge: "Pro",
     available: true,
@@ -61,6 +73,7 @@ export const toolsData: ToolData[] = [
     tagline: "Create Images & Variations with AI",
     description: "Generate original images from prompts or create variations from references using a single dedicated image tool with multiple models.",
     icon: Sparkles,
+    iconImage: imageGeneratorIcon,
     category: "generators",
     badge: "New",
     available: true,
@@ -83,6 +96,7 @@ export const toolsData: ToolData[] = [
     tagline: "Extract Pure Vocals Instantly",
     description: "Separate vocals from any audio track with studio-quality AI. Remove backgrounds or isolate voices in seconds.",
     icon: Mic2,
+    iconImage: voiceIsolatorIcon,
     category: "audio",
     badge: "Pro",
     available: true,
@@ -101,34 +115,12 @@ export const toolsData: ToolData[] = [
     accentColor: "purple",
   },
   {
-    id: "sfx-isolator",
-    title: "SFX Isolator",
-    tagline: "Isolate Sound Effects from Any Audio",
-    description: "Extract specific sound effects from complex audio mixes. Perfect for sound designers and editors.",
-    icon: SlidersHorizontal,
-    category: "audio",
-    badge: "Pro",
-    available: true,
-    isPro: true,
-    features: [
-      "Isolate specific sound effects",
-      "Remove unwanted elements",
-      "Preserve audio quality",
-      "Multiple output formats"
-    ],
-    previewExamples: [
-      { label: "Movie Scene", before: "🎬", after: "Isolated foley sounds" },
-      { label: "Game Audio", before: "🎮", after: "Clean sound effects" },
-    ],
-    gradient: "from-cyan-500 via-teal-500 to-emerald-500",
-    accentColor: "teal",
-  },
-  {
     id: "music-splitter",
     title: "Music Splitter",
     tagline: "Split Any Track into Stems",
     description: "Separate vocals, drums, bass, and other instruments from any song. Professional stem separation powered by AI.",
     icon: Music,
+    iconImage: musicSplitterIcon,
     category: "audio",
     badge: "Pro",
     available: true,
@@ -152,6 +144,7 @@ export const toolsData: ToolData[] = [
     tagline: "Precision Audio Trimming",
     description: "Trim and slice audio files with frame-accurate precision. Create loops, remove silences, or extract the perfect clip.",
     icon: Scissors,
+    iconImage: audioCutterIcon,
     category: "audio",
     badge: "Free",
     available: true,
@@ -173,6 +166,7 @@ export const toolsData: ToolData[] = [
     tagline: "Merge Audio Files Seamlessly",
     description: "Combine multiple audio files into one seamless track with crossfades and transitions.",
     icon: Sparkles,
+    iconImage: audioJoinerIcon,
     category: "audio",
     badge: "Free",
     available: true,
@@ -194,6 +188,7 @@ export const toolsData: ToolData[] = [
     tagline: "Record High-Quality Audio",
     description: "Record professional audio directly in your browser. Perfect for voiceovers, podcasts, and quick recordings.",
     icon: Mic2,
+    iconImage: audioRecorderIcon,
     category: "audio",
     badge: "Free",
     available: true,
@@ -215,6 +210,7 @@ export const toolsData: ToolData[] = [
     tagline: "Convert to Any Format",
     description: "Convert audio files between any format. MP3, WAV, FLAC, AAC, OGG, and more.",
     icon: FileAudio,
+    iconImage: audioConverterIcon,
     category: "audio",
     badge: "Free",
     available: true,
@@ -236,6 +232,7 @@ export const toolsData: ToolData[] = [
     tagline: "Extract Audio from Video",
     description: "Pull high-quality audio from any video file. Perfect for music, voiceovers, and sound design.",
     icon: Video,
+    iconImage: videoToAudioIcon,
     category: "audio",
     badge: "Free",
     available: true,
@@ -257,6 +254,7 @@ export const toolsData: ToolData[] = [
     tagline: "Visualize Your Audio",
     description: "Generate stunning visual waveforms from any audio file. Perfect for social media and video content.",
     icon: AudioWaveform,
+    iconImage: waveformGeneratorIcon,
     category: "audio",
     badge: "Free",
     available: true,
