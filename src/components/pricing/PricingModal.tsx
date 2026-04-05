@@ -45,7 +45,7 @@ const PLAN_CARDS = [
     credits: "500 credits / month",
     addOns: false,
     isPopular: false,
-    btnClass: "bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700",
+    btnClass: "bg-gradient-to-r from-cyan-500 to-blue-500 text-white border-transparent hover:opacity-90 shadow-lg shadow-cyan-500/20",
     creditPillBg: "bg-cyan-950/50 border-cyan-800/40",
     creditPillText: "text-cyan-300",
     features: [
@@ -379,7 +379,7 @@ export function PricingModal({ open, onOpenChange, darkMode = false }: PricingMo
                     <td colSpan={5} className="pt-6 pb-4 px-1">
                       <div className="flex items-center gap-2">
                         <Zap className="h-4 w-4 text-cyan-400" />
-                        <span className={cn("text-sm font-bold", textPrimary)}>Credits Usage</span>
+                        <span className="text-sm font-bold bg-gradient-to-r from-white via-cyan-300 to-blue-400 bg-clip-text text-transparent">Credits Usage</span>
                       </div>
                     </td>
                   </tr>
@@ -406,7 +406,7 @@ export function PricingModal({ open, onOpenChange, darkMode = false }: PricingMo
                     <td colSpan={5} className="pt-12 pb-4 px-1">
                       <div className="flex items-center gap-2">
                         <Sparkles className="h-4 w-4 text-cyan-400" />
-                        <span className={cn("text-sm font-bold", textPrimary)}>Features</span>
+                        <span className="text-sm font-bold bg-gradient-to-r from-white via-cyan-300 to-blue-400 bg-clip-text text-transparent">Features</span>
                       </div>
                     </td>
                   </tr>
@@ -448,7 +448,7 @@ export function PricingModal({ open, onOpenChange, darkMode = false }: PricingMo
           <div className="px-8 pb-12">
             <div className="max-w-[1000px] mx-auto">
               <div className="flex items-start gap-10">
-                <h3 className={cn("text-2xl font-bold shrink-0 pt-3", textPrimary)}>FAQs</h3>
+                <h3 className="text-2xl font-bold shrink-0 pt-3 bg-gradient-to-r from-white via-cyan-300 to-blue-400 bg-clip-text text-transparent">FAQs</h3>
                 <div className={cn("flex-1 divide-y", darkMode ? "divide-zinc-800" : "divide-border/50")}>
                   {FAQS.map((faq, idx) => (
                     <div key={idx}>
