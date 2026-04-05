@@ -139,6 +139,7 @@ const FAQS = [
 interface PricingModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  darkMode?: boolean;
 }
 
 export function PricingModal({ open, onOpenChange }: PricingModalProps) {
