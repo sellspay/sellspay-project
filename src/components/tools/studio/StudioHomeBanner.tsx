@@ -60,12 +60,15 @@ function SuiteToolCard({
     <button
       onClick={onClick}
       className={cn(
-        "group relative flex h-[108px] items-center justify-between rounded-[22px] border border-[#143a34] bg-[#05080a] px-4 w-full text-left transition-all duration-300 hover:border-[#1ee7b7]/40",
+        "group relative flex h-[120px] items-center justify-between rounded-[22px] border border-[#0c2d4a] bg-[#05080a] px-4 w-full text-left transition-all duration-300 hover:border-[#3b82f6]/50 hover:shadow-[0_0_20px_-4px_rgba(59,130,246,0.35)]",
         tool.comingSoon && "opacity-50 cursor-default"
       )}
     >
+      {/* Blue glow on hover */}
+      <div className="absolute inset-0 rounded-[22px] opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none bg-gradient-to-br from-[#3b82f6]/[0.07] via-transparent to-[#6366f1]/[0.07]" />
+
       {/* Text */}
-      <div className="min-w-0 pr-4 flex-1">
+      <div className="relative z-10 min-w-0 pr-4 flex-1">
         <h3 className="text-[15px] font-semibold leading-tight bg-gradient-to-r from-[#4da6ff] via-[#3b82f6] to-[#6366f1] bg-clip-text text-transparent">
           {tool.name}
         </h3>
@@ -76,8 +79,8 @@ function SuiteToolCard({
           <span className="mt-1.5 inline-block text-[9px] font-bold text-white/30 uppercase tracking-wider">Coming Soon</span>
         )}
       </div>
-      {/* Thumbnail */}
-      <div className="h-[84px] w-[84px] shrink-0 overflow-hidden rounded-[18px]">
+      {/* Thumbnail — larger */}
+      <div className="relative z-10 h-[96px] w-[96px] shrink-0 overflow-hidden rounded-[18px]">
         {image ? (
           <img src={image} alt={tool.name} loading="lazy" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110" />
         ) : (
