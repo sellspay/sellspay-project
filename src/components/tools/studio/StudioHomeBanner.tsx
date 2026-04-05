@@ -181,6 +181,15 @@ export function StudioHomeBanner({ onToolSelect }: StudioHomeBannerProps) {
       animate="show"
       className="px-6 pt-6 pb-12 w-full"
     >
+      {/* ── Hero headline ── */}
+      <motion.div variants={fadeUp} className="text-center pt-6 pb-12">
+        <h1 className="text-[42px] sm:text-[52px] font-extrabold leading-[1.1] tracking-[-0.03em] text-white">
+          What will you{" "}
+          <span className="bg-gradient-to-r from-[#3b82f6] via-[#6366f1] to-[#a855f7] bg-clip-text text-transparent">build</span>
+          {" "}today? 🚀
+        </h1>
+      </motion.div>
+
       {/* ── FEATURED BANNERS — 3 cinematic cards ── */}
       <motion.section variants={fadeUp} className="mb-14">
         <div className="grid grid-cols-12 gap-3">
