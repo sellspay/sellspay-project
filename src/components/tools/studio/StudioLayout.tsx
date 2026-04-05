@@ -65,9 +65,15 @@ export default function StudioLayout() {
 
   useEffect(() => {
     if (routeToolId) {
-      setActiveTool(routeToolId);
+      if (!profile) {
+        setShowSignUpPromo(true);
+        setActiveTool(null);
+        navigate("/studio", { replace: true });
+      } else {
+        setActiveTool(routeToolId);
+      }
     }
-  }, [routeToolId]);
+  }, [routeToolId, profile]);
 
   useEffect(() => {
     try { localStorage.setItem("studio-sidebar-collapsed", String(sidebarCollapsed)); } catch {}
