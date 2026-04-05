@@ -3,7 +3,9 @@ import { ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toolsRegistry, type ToolRegistryEntry } from "@/components/tools/toolsRegistry";
 import { toolThumbnails } from "./toolThumbnails";
-import heroImageGen from "@/assets/tools/hero-image-gen.jpg";
+import bannerHero1 from "@/assets/tools/banner-hero-1.jpg";
+import bannerHero2 from "@/assets/tools/banner-hero-2.jpg";
+import bannerHero3 from "@/assets/tools/banner-hero-3.jpg";
 
 interface StudioHomeBannerProps {
   creditBalance: number;
@@ -31,16 +33,16 @@ function FeaturedBanner({
     <button
       onClick={onClick}
       className={cn(
-        "group relative overflow-hidden rounded-[22px] border border-white/[0.08] bg-[#0b0b0d] w-full text-left transition-all duration-300 hover:border-white/[0.16]",
+        "group relative overflow-hidden rounded-[22px] border border-white/[0.06] bg-[#0b0b0d] w-full text-left transition-all duration-500 hover:border-white/[0.12]",
         className
       )}
     >
-      <img src={image} alt={title} className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]" />
-      <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+      <img src={image} alt={title} className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 group-hover:scale-[1.05]" />
+      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
       <div className="relative z-10 flex flex-col justify-end h-full p-5">
-        <h3 className="text-[18px] font-semibold text-white">{title}</h3>
-        <p className="mt-1 text-[13px] text-white/50 max-w-md">{subtitle}</p>
-        <span className="mt-3 inline-flex w-fit items-center gap-1.5 rounded-full bg-white/80 px-3 py-1 text-[12px] font-medium text-black backdrop-blur">
+        <h3 className="text-[17px] font-bold text-white leading-snug drop-shadow-lg">{title}</h3>
+        <p className="mt-1 text-[12px] text-white/50 max-w-[260px] leading-relaxed">{subtitle}</p>
+        <span className="mt-3 inline-flex w-fit items-center gap-1.5 rounded-full bg-black/50 border border-white/[0.12] px-3 py-1 text-[11px] font-medium text-white/90">
           Open Tool <ArrowRight className="h-3 w-3" />
         </span>
       </div>
@@ -179,40 +181,36 @@ export function StudioHomeBanner({ onToolSelect }: StudioHomeBannerProps) {
       animate="show"
       className="px-6 pt-6 pb-12 w-full"
     >
-      {/* ── FEATURED BANNERS ── */}
+      {/* ── FEATURED BANNERS — 3 cinematic cards ── */}
       <motion.section variants={fadeUp} className="mb-14">
         <div className="grid grid-cols-12 gap-3">
           <div className="col-span-12 lg:col-span-6">
             <FeaturedBanner
-              title="Create Images with AI"
-              subtitle="Generate, remix, and upscale visuals with multiple AI models."
-              image={heroImageGen}
-              onClick={() => launch("image-generator")}
-              className="h-[200px]"
+              title="AI-Powered SFX Generation"
+              subtitle="Create cinematic sound effects from text prompts instantly."
+              image={bannerHero1}
+              onClick={() => launch("sfx-generator")}
+              className="h-[220px]"
             />
           </div>
-          {sideBanner1 && (
-            <div className="col-span-6 lg:col-span-3">
-              <FeaturedBanner
-                title={sideBanner1.name}
-                subtitle={sideBanner1.description}
-                image={thumb("voice-isolator") || heroImageGen}
-                onClick={() => launch("voice-isolator")}
-                className="h-[200px]"
-              />
-            </div>
-          )}
-          {sideBanner2 && (
-            <div className="col-span-6 lg:col-span-3">
-              <FeaturedBanner
-                title={sideBanner2.name}
-                subtitle={sideBanner2.description}
-                image={thumb("music-splitter") || heroImageGen}
-                onClick={() => launch("music-splitter")}
-                className="h-[200px]"
-              />
-            </div>
-          )}
+          <div className="col-span-6 lg:col-span-3">
+            <FeaturedBanner
+              title="Create Your Own AI World"
+              subtitle="Generate stunning visuals and variations."
+              image={bannerHero2}
+              onClick={() => launch("image-generator")}
+              className="h-[220px]"
+            />
+          </div>
+          <div className="col-span-6 lg:col-span-3">
+            <FeaturedBanner
+              title="AI Avatar Studio"
+              subtitle="Create stylized AI characters and portraits."
+              image={bannerHero3}
+              onClick={() => launch("image-generator")}
+              className="h-[220px]"
+            />
+          </div>
         </div>
       </motion.section>
 
