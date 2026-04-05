@@ -240,8 +240,8 @@ export default function StudioLayout() {
 
           {/* Pricing */}
           <button
-            onClick={() => navigate("/pricing")}
-            className="px-3 py-1.5 text-sm text-[#a1a1aa] hover:text-[#f4f4f5] transition-colors"
+            onClick={() => setPricingOpen(true)}
+            className="relative px-4 py-1.5 text-sm font-semibold rounded-full bg-gradient-to-r from-white via-[#22d3ee] to-[#2563eb] text-[#0e0e10] transition-all duration-300 hover:shadow-[0_0_20px_rgba(34,211,238,0.4),0_0_40px_rgba(37,99,235,0.2)]"
           >
             Pricing
           </button>
