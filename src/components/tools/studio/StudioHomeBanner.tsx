@@ -67,11 +67,11 @@ function SuiteToolCard({
       )}
     >
       {/* Ultra-subtle outer border — glows blue on hover */}
-      <div className="pointer-events-none absolute inset-0 rounded-[22px] border border-white/[0.04] transition-all duration-500 group-hover:border-[#3b82f6]/[0.35] group-hover:shadow-[0_0_24px_-4px_rgba(59,130,246,0.3),inset_0_0_12px_-2px_rgba(59,130,246,0.08)]" />
+      <div className="pointer-events-none absolute inset-0 rounded-[22px] border border-white/[0.04] transition-all duration-500 group-hover:border-[#2563eb]/[0.45] group-hover:shadow-[0_0_32px_-4px_rgba(37,99,235,0.45),inset_0_0_16px_-2px_rgba(37,99,235,0.12)]" />
       {/* Top-left corner glow */}
-      <div className="pointer-events-none absolute -left-10 -top-10 h-32 w-32 rounded-full bg-[#2f6bff]/[0.08] blur-2xl transition-all duration-500 group-hover:bg-[#2f6bff]/[0.25]" />
+      <div className="pointer-events-none absolute -left-8 -top-8 h-36 w-36 rounded-full bg-[#2563eb]/[0.06] blur-2xl transition-all duration-500 group-hover:bg-[#2563eb]/[0.35] group-hover:h-44 group-hover:w-44" />
       {/* Bottom-right corner glow */}
-      <div className="pointer-events-none absolute -bottom-10 -right-10 h-32 w-32 rounded-full bg-[#6366f1]/[0.06] blur-2xl transition-all duration-500 group-hover:bg-[#6366f1]/[0.20]" />
+      <div className="pointer-events-none absolute -bottom-8 -right-8 h-36 w-36 rounded-full bg-[#3b82f6]/[0.04] blur-2xl transition-all duration-500 group-hover:bg-[#3b82f6]/[0.28] group-hover:h-44 group-hover:w-44" />
       {/* Faint surface gradient */}
       <div className="pointer-events-none absolute inset-[1px] rounded-[21px] bg-[linear-gradient(180deg,rgba(11,11,13,0.95),rgba(8,8,10,0.98))]" />
       {/* Inner highlight line */}
@@ -80,7 +80,7 @@ function SuiteToolCard({
       <div className="relative z-10 flex h-[108px] items-center justify-between gap-4 px-5">
         {/* Text */}
         <div className="min-w-0 flex-1 pr-2">
-          <h3 className="text-[16px] font-bold leading-tight bg-gradient-to-r from-white/90 via-[#93b4f5] to-[#3b82f6] bg-clip-text text-transparent">
+          <h3 className="text-[16px] font-bold leading-tight bg-gradient-to-r from-[#e0eaff] via-[#60a5fa] to-[#2563eb] bg-clip-text text-transparent">
             {tool.name}
           </h3>
           <p className="mt-2 line-clamp-2 text-[13px] leading-[1.45] text-[#8b8fa3]">
@@ -126,7 +126,7 @@ function ModelCard({
         )}
       </div>
       <div className="pt-4">
-        <h3 className="text-[16px] font-bold bg-gradient-to-r from-white/90 via-[#93b4f5] to-[#3b82f6] bg-clip-text text-transparent">
+        <h3 className="text-[16px] font-bold bg-gradient-to-r from-[#e0eaff] via-[#60a5fa] to-[#2563eb] bg-clip-text text-transparent">
           {tool.name}
         </h3>
         <p className="mt-1 text-[14px] text-[#8b8fa3]">
