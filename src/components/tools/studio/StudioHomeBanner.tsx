@@ -226,16 +226,18 @@ export function StudioHomeBanner({ onToolSelect }: StudioHomeBannerProps) {
         </div>
       </motion.section>
 
-      {/* ── SELLSPAY SUITE — all tools in 5-col grid ── */}
+      {/* ── SELLSPAY SUITE — curated 5×2 grid ── */}
       {(() => {
-        const suiteTools = [...mediaTools, ...storeTools, ...socialTools]
-          .sort((a, b) => a.sortOrder - b.sortOrder)
-          .slice(0, 10);
-        return suiteTools.length > 0 ? (
+        const featuredIds = [
+          "image-generator", "video-generator", "image-upscaler", "image-editor", "text-to-video",
+          "sfx-generator", "product-description", "voice-isolator", "sfx-isolator", "music-splitter",
+        ];
+        const featuredTools = featuredIds.map(id => byId(id)).filter(Boolean);
+        return featuredTools.length > 0 ? (
           <motion.section variants={fadeUp} className="mb-14">
             <SectionHeader title="SellsPay Suite" showMore />
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-              {suiteTools.map(tool => (
+              {featuredTools.map(tool => (
                 <SuiteToolCard key={tool.id} tool={tool} image={thumb(tool.id)} onClick={() => launch(tool.id)} />
               ))}
             </div>
