@@ -257,34 +257,36 @@ export function PricingModal({ open, onOpenChange, darkMode = false }: PricingMo
                   <div
                     key={plan.id}
                     className={cn(
-                      "relative rounded-2xl border overflow-hidden transition-all duration-300 flex flex-col",
+                      "relative rounded-2xl transition-all duration-300 flex flex-col",
                       darkMode
                         ? cn(
-                            "bg-gradient-to-b from-zinc-800/80 to-zinc-900/90",
-                            "shadow-[0_4px_20px_-4px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.06)]",
-                            "hover:shadow-[0_8px_30px_-4px_rgba(0,0,0,0.6),inset_0_1px_0_rgba(255,255,255,0.08)]",
-                            "hover:translate-y-[-2px]"
+                            "bg-gradient-to-b from-[#1e1e24] via-[#18181c] to-[#111114]",
+                            "border border-zinc-700/50",
+                            "shadow-[0_8px_32px_-4px_rgba(0,0,0,0.7),0_2px_4px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.07),inset_0_-1px_0_rgba(0,0,0,0.3)]",
+                            "hover:shadow-[0_12px_40px_-4px_rgba(0,0,0,0.8),0_4px_8px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.1),inset_0_-1px_0_rgba(0,0,0,0.3)]",
+                            "hover:translate-y-[-3px]"
                           )
-                        : "bg-card",
+                        : "bg-card border overflow-hidden",
                       plan.isPopular
                         ? darkMode
-                          ? "border-fuchsia-500/50 shadow-[0_4px_30px_-4px_rgba(192,38,211,0.3),inset_0_1px_0_rgba(255,255,255,0.06)]"
+                          ? "!border-fuchsia-500/60 !shadow-[0_8px_40px_-4px_rgba(192,38,211,0.35),0_2px_4px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.07),inset_0_-1px_0_rgba(0,0,0,0.3)]"
                           : "border-fuchsia-300 shadow-[0_0_40px_-8px_rgba(192,38,211,0.2)]"
                         : plan.id === "agency"
                           ? darkMode
-                            ? "border-amber-500/50 shadow-[0_4px_30px_-4px_rgba(245,158,11,0.25),inset_0_1px_0_rgba(255,255,255,0.06)]"
+                            ? "!border-amber-500/60 !shadow-[0_8px_40px_-4px_rgba(245,158,11,0.3),0_2px_4px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.07),inset_0_-1px_0_rgba(0,0,0,0.3)]"
                             : "border-amber-300 shadow-[0_0_40px_-8px_rgba(245,158,11,0.15)]"
                           : plan.id === "basic"
                             ? darkMode
-                              ? "border-cyan-500/30 shadow-[0_4px_20px_-4px_rgba(6,182,212,0.15),inset_0_1px_0_rgba(255,255,255,0.06)]"
+                              ? "!border-cyan-500/40 !shadow-[0_8px_32px_-4px_rgba(6,182,212,0.2),0_2px_4px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.07),inset_0_-1px_0_rgba(0,0,0,0.3)]"
                               : "border-border hover:shadow-lg"
                             : darkMode
-                              ? "border-zinc-700/60 hover:border-zinc-600"
+                              ? ""
                               : "border-border hover:shadow-lg"
                     )}
+                    style={darkMode ? { transform: 'perspective(800px) rotateX(0deg)' } : undefined}
                   >
                     {/* Top gradient strip */}
-                    <div className={cn("h-1.5 w-full bg-gradient-to-r", plan.topBorder)} />
+                    <div className={cn("h-1.5 w-full bg-gradient-to-r rounded-t-2xl", plan.topBorder)} />
 
                     {/* Card header */}
                     <div className="p-6 pb-0">
