@@ -185,9 +185,9 @@ export default function StudioLayout() {
   const showRightPanel = !isHome && !campaignResult && !activeTool && activeSection === "campaign";
 
   return (
-    <div className="studio-dark h-screen flex flex-col overflow-hidden bg-black studio-layout">
+    <div className="studio-dark h-screen flex flex-col overflow-hidden bg-[hsl(var(--studio-surface))] studio-layout">
       {/* Fixed top header - independent of sidebar */}
-      <header className="h-12 shrink-0 flex items-center justify-between px-3 bg-[#0e0e10]">
+      <header className="h-12 shrink-0 flex items-center justify-between px-3 bg-[hsl(var(--studio-surface))]">
         {/* Left: sidebar toggle + logo */}
         <div className="flex items-center gap-2">
           <button
@@ -290,8 +290,8 @@ export default function StudioLayout() {
         </div>
 
         {/* Workspace */}
-        <div className="flex-1 flex min-w-0 gap-0 bg-black">
-          <main className="flex-1 min-w-0 overflow-y-auto custom-scrollbar bg-black">
+        <div className="flex-1 flex min-w-0 gap-0 bg-[hsl(var(--studio-surface))]">
+          <main className="flex-1 min-w-0 overflow-y-auto custom-scrollbar bg-[hsl(var(--studio-surface))]">
             {isHome ? (
               <StudioHomeBanner
                 creditBalance={creditBalance}

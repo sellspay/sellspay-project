@@ -107,6 +107,7 @@
   --sidebar-accent-foreground: 0 0% 9%;
   --sidebar-border: 0 0% 92%;
   --sidebar-ring: 217 91% 60%;
+  --studio-surface: 0 0% 0%;
 }
 
 @layer base {
