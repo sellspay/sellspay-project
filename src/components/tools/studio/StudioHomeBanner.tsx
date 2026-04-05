@@ -60,7 +60,7 @@ function SuiteToolCard({
     <button
       onClick={onClick}
       className={cn(
-        "group relative w-full overflow-hidden rounded-[22px] bg-[#04070a] text-left transition-all duration-300",
+        "group relative w-full overflow-hidden rounded-[22px] bg-[#0b0b0d] text-left transition-all duration-300",
         tool.comingSoon ? "opacity-55 cursor-default" : "hover:translate-y-[-1px]"
       )}
     >
@@ -71,7 +71,7 @@ function SuiteToolCard({
       {/* Bottom-right corner glow */}
       <div className="pointer-events-none absolute -bottom-10 -right-10 h-28 w-28 rounded-full bg-[#6366f1]/[0.10] blur-2xl transition-all duration-300 group-hover:bg-[#6366f1]/[0.18]" />
       {/* Faint surface gradient */}
-      <div className="pointer-events-none absolute inset-[1px] rounded-[21px] bg-[linear-gradient(180deg,rgba(8,14,20,0.92),rgba(4,8,12,0.98))]" />
+      <div className="pointer-events-none absolute inset-[1px] rounded-[21px] bg-[linear-gradient(180deg,rgba(11,11,13,0.95),rgba(8,8,10,0.98))]" />
       {/* Inner highlight line */}
       <div className="pointer-events-none absolute inset-[1px] rounded-[21px] shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] transition-shadow duration-300 group-hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]" />
 
@@ -94,7 +94,7 @@ function SuiteToolCard({
           {image ? (
             <img src={image} alt={tool.name} loading="lazy" className="relative z-10 h-full w-full object-cover transition-transform duration-500 group-hover:scale-110" />
           ) : (
-            <div className="relative z-10 h-full w-full flex items-center justify-center bg-[#0a0f14]">
+            <div className="relative z-10 h-full w-full flex items-center justify-center bg-[#111318]">
               <Icon className="h-7 w-7 text-[#1a3a30]" />
             </div>
           )}
@@ -114,11 +114,11 @@ function ModelCard({
   const Icon = tool.icon;
   return (
     <button onClick={onClick} className={cn("group text-left w-full", tool.comingSoon && "opacity-50 cursor-default")}>
-      <div className="relative overflow-hidden rounded-[22px] border border-[#143a34] bg-[#08090c] transition-all duration-300 hover:border-[#1ee7b7]/40">
+      <div className="relative overflow-hidden rounded-[22px] border border-[#143a34] bg-[#0b0b0d] transition-all duration-300 hover:border-[#1ee7b7]/40">
         {image ? (
           <img src={image} alt={tool.name} loading="lazy" className="h-[260px] w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]" />
         ) : (
-          <div className="h-[260px] w-full flex items-center justify-center bg-[#0a0f14]">
+          <div className="h-[260px] w-full flex items-center justify-center bg-[#111318]">
             <Icon className="h-12 w-12 text-[#1a3a30]" />
           </div>
         )}
