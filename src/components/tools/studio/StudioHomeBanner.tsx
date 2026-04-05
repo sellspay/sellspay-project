@@ -61,36 +61,34 @@ function ToolCardWide({
     <button
       onClick={onClick}
       className={cn(
-        "group overflow-hidden rounded-[16px] border border-white/[0.06] bg-[#16181d] transition-all duration-200 w-full text-left",
-        "hover:border-cyan-500/30 hover:bg-[#1a1d24]",
+        "group rounded-[20px] p-[1.2px] bg-gradient-to-br from-[#4da6ff]/40 via-[#7cc8ff]/20 to-[#bfe6ff]/10 transition-all duration-300 w-full text-left",
+        "hover:from-[#4da6ff]/80 hover:via-[#7cc8ff]/50 hover:to-[#bfe6ff]/30 hover:shadow-[0_0_25px_rgba(77,166,255,0.2)]",
         tool.comingSoon && "opacity-50 cursor-default"
       )}
     >
-      <div className="grid grid-cols-[1fr_100px] min-h-[120px]">
-        <div className="p-4 flex flex-col justify-center">
-          <div className="flex items-center gap-2 mb-1.5">
-            <h4 className="text-sm font-semibold text-[#f4f4f5] leading-tight">{tool.name}</h4>
-            {tool.isPro && <Sparkles className="h-3 w-3 text-cyan-400/60 shrink-0" />}
+      <div className="relative rounded-[18px] bg-[#0f172a] overflow-hidden transition-colors duration-300 group-hover:bg-[#111827]">
+        {/* Inner hover glow */}
+        <div className="absolute inset-0 rounded-[18px] opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-gradient-to-br from-[#4da6ff]/[0.07] to-transparent pointer-events-none" />
+        <div className="relative grid grid-cols-[1fr_100px] min-h-[120px]">
+          <div className="p-4 flex flex-col justify-center">
+            <div className="flex items-center gap-2 mb-1.5">
+              <h4 className="text-sm font-semibold text-[#f4f4f5] leading-tight">{tool.name}</h4>
+              {tool.isPro && <Sparkles className="h-3 w-3 text-[#4da6ff]/60 shrink-0" />}
+            </div>
+            <p className="text-[12px] text-[#71717a] leading-relaxed line-clamp-2">{tool.description}</p>
+            {tool.comingSoon && (
+              <span className="mt-2 text-[10px] font-bold text-[#52525b] uppercase tracking-wider">Coming Soon</span>
+            )}
           </div>
-          <p className="text-[12px] text-[#71717a] leading-relaxed line-clamp-2">{tool.description}</p>
-          {tool.comingSoon && (
-            <span className="mt-2 text-[10px] font-bold text-[#52525b] uppercase tracking-wider">Coming Soon</span>
-          )}
-          {tool.creditCost > 0 && !tool.comingSoon && (
-            <div className="flex items-center gap-1 mt-2">
-              <Zap className="h-3 w-3 text-cyan-400/60" />
-              <span className="text-[10px] text-[#52525b]">{tool.creditCost} credits</span>
-            </div>
-          )}
-        </div>
-        <div className="overflow-hidden">
-          {image ? (
-            <img src={image} alt={tool.name} loading="lazy" className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-300" />
-          ) : (
-            <div className="h-full w-full flex items-center justify-center bg-[#1a1d24]">
-              <Icon className="h-8 w-8 text-[#27272a]" />
-            </div>
-          )}
+          <div className="overflow-hidden">
+            {image ? (
+              <img src={image} alt={tool.name} loading="lazy" className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-300" />
+            ) : (
+              <div className="h-full w-full flex items-center justify-center bg-[#111827]">
+                <Icon className="h-8 w-8 text-[#27272a]" />
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </button>
