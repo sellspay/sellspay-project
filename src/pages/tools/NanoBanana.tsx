@@ -99,12 +99,15 @@ export default function NanoBanana() {
   };
 
   return (
-    <div className="h-full" style={{ background: C.inner }}>
-      <div className="grid h-full grid-cols-[380px_minmax(0,1fr)]">
+    <div className="h-full p-3" style={{ background: C.inner }}>
+      <div
+        className="grid h-full grid-cols-[380px_minmax(0,1fr)] overflow-hidden rounded-[28px]"
+        style={{ background: C.inner, border: `1px solid ${C.border}` }}
+      >
         {/* ───── LEFT CONTROL PANEL ───── */}
         <aside
-          className="h-full overflow-hidden flex flex-col border-r"
-          style={{ background: C.panel, borderColor: C.border }}
+          className="h-full overflow-hidden flex flex-col"
+          style={{ background: C.panel, borderRight: `1px solid ${C.border}` }}
         >
           {/* Header */}
           <div className="p-5 pb-4">
