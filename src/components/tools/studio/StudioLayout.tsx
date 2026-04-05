@@ -369,6 +369,7 @@ export default function StudioLayout() {
       </AlertDialog>
 
       <SignUpPromoDialog open={showSignUpPromo} onOpenChange={setShowSignUpPromo} />
+      <PricingModal open={pricingOpen} onOpenChange={setPricingOpen} />
     </div>
   );
 }

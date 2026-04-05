@@ -138,6 +138,7 @@ interface StudioSidebarProps {
   activeTool: string | null;
   onToolSelect: (toolId: string) => void;
   onGoHome: () => void;
+  onOpenPricing?: () => void;
 }
 
 // Default 10 most popular/useful tools shown pinned
