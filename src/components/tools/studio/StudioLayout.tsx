@@ -185,7 +185,7 @@ export default function StudioLayout() {
   const showRightPanel = !isHome && !campaignResult && !activeTool && activeSection === "campaign";
 
   return (
-    <div className="studio-dark h-screen flex flex-col overflow-hidden bg-[#0e0e10] studio-layout">
+    <div className="studio-dark h-screen flex flex-col overflow-hidden bg-black studio-layout">
       {/* Fixed top header - independent of sidebar */}
       <header className="h-12 shrink-0 flex items-center justify-between px-3 bg-[#0e0e10]">
         {/* Left: sidebar toggle + logo */}
