@@ -99,8 +99,8 @@ export default function NanoBanana() {
   };
 
   return (
-    <div className="h-full p-3" style={{ background: C.bg }}>
-      <div className="grid h-full grid-cols-[380px_minmax(0,1fr)] gap-3">
+    <div className="h-full" style={{ background: C.inner }}>
+      <div className="grid h-full grid-cols-[380px_minmax(0,1fr)]">
         {/* ───── LEFT CONTROL PANEL ───── */}
         <aside
           className="h-full rounded-[24px] overflow-hidden flex flex-col"
