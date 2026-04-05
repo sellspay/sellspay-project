@@ -25,6 +25,7 @@ import {
   AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
+import { PricingModal } from "@/components/pricing/PricingModal";
 import type { CampaignState } from "./CampaignCanvas";
 
 export type StudioSection = "home" | "campaign" | "listings" | "social" | "media" | "assets";
