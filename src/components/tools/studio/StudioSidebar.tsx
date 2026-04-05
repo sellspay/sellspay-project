@@ -303,7 +303,7 @@ export function StudioSidebar({
                                       className="flex items-center gap-2 flex-1 min-w-0 text-left cursor-pointer"
                                     >
                                       <Icon className="h-3.5 w-3.5 text-[#3b82f6] shrink-0" />
-                                      <span className="text-sm text-[#f4f4f5] flex-1 truncate">{tool.name}</span>
+                                      <span className="text-sm text-[#e4e4e7] flex-1 truncate">{tool.name}</span>
                                     </button>
                                     <button
                                       type="button"
