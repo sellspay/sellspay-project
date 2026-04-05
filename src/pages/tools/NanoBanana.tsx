@@ -263,8 +263,8 @@ export default function NanoBanana() {
 
         {/* ───── RIGHT CANVAS ───── */}
         <main
-          className="relative rounded-[24px] overflow-hidden flex items-center justify-center"
-          style={{ background: C.inner, border: `1px solid ${C.border}` }}
+          className="relative overflow-hidden flex items-center justify-center"
+          style={{ background: C.inner }}
         >
           {/* Ambient glow background */}
           <div
