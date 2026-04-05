@@ -288,6 +288,7 @@ export default function StudioLayout() {
             activeTool={activeTool}
             onToolSelect={handleLaunch}
             onGoHome={handleGoHome}
+            onOpenPricing={() => setPricingOpen(true)}
           />
         </div>
 
