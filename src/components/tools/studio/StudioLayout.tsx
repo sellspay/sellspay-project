@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -25,6 +25,7 @@ import {
   AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
+import { PricingModal } from "@/components/pricing/PricingModal";
 import type { CampaignState } from "./CampaignCanvas";
 
 export type StudioSection = "home" | "campaign" | "listings" | "social" | "media" | "assets";
@@ -53,6 +54,7 @@ export default function StudioLayout() {
   const [campaignResult, setCampaignResult] = useState<any>(null);
   const [creditsUsed, setCreditsUsed] = useState(0);
   const [showSignUpPromo, setShowSignUpPromo] = useState(false);
+  const [pricingOpen, setPricingOpen] = useState(false);
 
   // Listen for auth gate events from tool components
   useEffect(() => {
@@ -238,8 +240,8 @@ export default function StudioLayout() {
 
           {/* Pricing */}
           <button
-            onClick={() => navigate("/pricing")}
-            className="px-3 py-1.5 text-sm text-[#a1a1aa] hover:text-[#f4f4f5] transition-colors"
+            onClick={() => setPricingOpen(true)}
+            className="relative px-4 py-1.5 text-sm font-semibold rounded-full bg-gradient-to-r from-white via-[#22d3ee] to-[#2563eb] text-[#0e0e10] transition-all duration-300 hover:shadow-[0_0_20px_rgba(34,211,238,0.4),0_0_40px_rgba(37,99,235,0.2)]"
           >
             Pricing
           </button>
@@ -286,6 +288,7 @@ export default function StudioLayout() {
             activeTool={activeTool}
             onToolSelect={handleLaunch}
             onGoHome={handleGoHome}
+            onOpenPricing={() => setPricingOpen(true)}
           />
         </div>
 
@@ -367,6 +370,7 @@ export default function StudioLayout() {
       </AlertDialog>
 
       <SignUpPromoDialog open={showSignUpPromo} onOpenChange={setShowSignUpPromo} />
+      <PricingModal open={pricingOpen} onOpenChange={setPricingOpen} />
     </div>
   );
 }

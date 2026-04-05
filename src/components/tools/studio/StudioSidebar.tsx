@@ -138,6 +138,7 @@ interface StudioSidebarProps {
   activeTool: string | null;
   onToolSelect: (toolId: string) => void;
   onGoHome: () => void;
+  onOpenPricing?: () => void;
 }
 
 // Default 10 most popular/useful tools shown pinned
@@ -149,7 +150,7 @@ const DEFAULT_PINNED = [
 
 export function StudioSidebar({
   collapsed, onToggleCollapse, activeSection, onSectionChange,
-  creditBalance, isLoadingCredits, activeTool, onToolSelect, onGoHome,
+  creditBalance, isLoadingCredits, activeTool, onToolSelect, onGoHome, onOpenPricing,
 }: StudioSidebarProps) {
   const { user, profile, signOut } = useAuth();
   const { plan } = useSubscription();
@@ -474,7 +475,7 @@ export function StudioSidebar({
                           <div className="flex items-center justify-between">
                             <span className="text-sm font-medium text-[#f4f4f5]">Credits</span>
                             <button
-                              onClick={() => navigate("/pricing")}
+                              onClick={() => onOpenPricing?.()}
                               className="flex items-center gap-1 text-sm text-[#a1a1aa] hover:text-[#f4f4f5] transition-colors"
                             >
                               <span className="font-bold text-[#f4f4f5] tabular-nums">
