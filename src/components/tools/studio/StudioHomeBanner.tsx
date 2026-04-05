@@ -181,40 +181,36 @@ export function StudioHomeBanner({ onToolSelect }: StudioHomeBannerProps) {
       animate="show"
       className="px-6 pt-6 pb-12 w-full"
     >
-      {/* ── FEATURED BANNERS ── */}
+      {/* ── FEATURED BANNERS — 3 cinematic cards ── */}
       <motion.section variants={fadeUp} className="mb-14">
         <div className="grid grid-cols-12 gap-3">
           <div className="col-span-12 lg:col-span-6">
             <FeaturedBanner
-              title="Create Images with AI"
-              subtitle="Generate, remix, and upscale visuals with multiple AI models."
-              image={heroImageGen}
-              onClick={() => launch("image-generator")}
-              className="h-[200px]"
+              title="AI-Powered SFX Generation"
+              subtitle="Create cinematic sound effects from text prompts instantly."
+              image={bannerHero1}
+              onClick={() => launch("sfx-generator")}
+              className="h-[220px]"
             />
           </div>
-          {sideBanner1 && (
-            <div className="col-span-6 lg:col-span-3">
-              <FeaturedBanner
-                title={sideBanner1.name}
-                subtitle={sideBanner1.description}
-                image={thumb("voice-isolator") || heroImageGen}
-                onClick={() => launch("voice-isolator")}
-                className="h-[200px]"
-              />
-            </div>
-          )}
-          {sideBanner2 && (
-            <div className="col-span-6 lg:col-span-3">
-              <FeaturedBanner
-                title={sideBanner2.name}
-                subtitle={sideBanner2.description}
-                image={thumb("music-splitter") || heroImageGen}
-                onClick={() => launch("music-splitter")}
-                className="h-[200px]"
-              />
-            </div>
-          )}
+          <div className="col-span-6 lg:col-span-3">
+            <FeaturedBanner
+              title="Create Your Own AI World"
+              subtitle="Generate stunning visuals and variations."
+              image={bannerHero2}
+              onClick={() => launch("image-generator")}
+              className="h-[220px]"
+            />
+          </div>
+          <div className="col-span-6 lg:col-span-3">
+            <FeaturedBanner
+              title="AI Avatar Studio"
+              subtitle="Create stylized AI characters and portraits."
+              image={bannerHero3}
+              onClick={() => launch("image-generator")}
+              className="h-[220px]"
+            />
+          </div>
         </div>
       </motion.section>
 
