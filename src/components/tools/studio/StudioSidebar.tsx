@@ -280,8 +280,8 @@ export function StudioSidebar({
                         if (!tools || tools.length === 0) return null;
                         return (
                           <div key={cat} className="p-3">
-                            <div className="flex items-center gap-2 px-1 mb-2">
-                              <span className="text-[10px] font-bold text-[#9ca3af] uppercase tracking-widest">
+                             <div className="flex items-center gap-2 px-1 mb-2">
+                              <span className="text-[10px] font-bold text-[#71717a] uppercase tracking-widest">
                                 {SUBCATEGORY_LABELS[cat]}
                               </span>
                             </div>
