@@ -126,7 +126,7 @@ function ModelCard({
         )}
       </div>
       <div className="pt-4">
-        <h3 className="text-[16px] font-bold bg-gradient-to-r from-white via-white to-[#3b82f6] bg-clip-text text-transparent">
+        <h3 className="text-[16px] font-bold bg-gradient-to-r from-white/90 via-[#93b4f5] to-[#3b82f6] bg-clip-text text-transparent">
           {tool.name}
         </h3>
         <p className="mt-1 text-[14px] text-[#8b8fa3]">
