@@ -54,6 +54,7 @@ export default function StudioLayout() {
   const [campaignResult, setCampaignResult] = useState<any>(null);
   const [creditsUsed, setCreditsUsed] = useState(0);
   const [showSignUpPromo, setShowSignUpPromo] = useState(false);
+  const [pricingOpen, setPricingOpen] = useState(false);
 
   // Listen for auth gate events from tool components
   useEffect(() => {
