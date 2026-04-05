@@ -99,12 +99,12 @@ export default function NanoBanana() {
   };
 
   return (
-    <div className="h-full p-3" style={{ background: C.bg }}>
-      <div className="grid h-full grid-cols-[380px_minmax(0,1fr)] gap-3">
+    <div className="h-full" style={{ background: C.inner }}>
+      <div className="grid h-full grid-cols-[380px_minmax(0,1fr)]">
         {/* ───── LEFT CONTROL PANEL ───── */}
         <aside
-          className="h-full rounded-[24px] overflow-hidden flex flex-col"
-          style={{ background: C.panel, border: `1px solid ${C.border}` }}
+          className="h-full overflow-hidden flex flex-col border-r"
+          style={{ background: C.panel, borderColor: C.border }}
         >
           {/* Header */}
           <div className="p-5 pb-4">
@@ -263,8 +263,8 @@ export default function NanoBanana() {
 
         {/* ───── RIGHT CANVAS ───── */}
         <main
-          className="relative rounded-[24px] overflow-hidden flex items-center justify-center"
-          style={{ background: C.inner, border: `1px solid ${C.border}` }}
+          className="relative overflow-hidden flex items-center justify-center"
+          style={{ background: C.inner }}
         >
           {/* Ambient glow background */}
           <div
