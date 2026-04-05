@@ -475,7 +475,7 @@ export function StudioSidebar({
                           <div className="flex items-center justify-between">
                             <span className="text-sm font-medium text-[#f4f4f5]">Credits</span>
                             <button
-                              onClick={() => navigate("/pricing")}
+                              onClick={() => onOpenPricing?.()}
                               className="flex items-center gap-1 text-sm text-[#a1a1aa] hover:text-[#f4f4f5] transition-colors"
                             >
                               <span className="font-bold text-[#f4f4f5] tabular-nums">
