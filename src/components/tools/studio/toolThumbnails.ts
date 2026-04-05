@@ -9,6 +9,10 @@ import imageUpscalerThumb from "@/assets/tools/image-upscaler-thumb.jpg";
 import sfxIsolatorThumb from "@/assets/tools/sfx-isolator-thumb.jpg";
 import productDescThumb from "@/assets/tools/product-desc-thumb.jpg";
 import shortFormThumb from "@/assets/tools/short-form-thumb.jpg";
+import imageGeneratorThumb from "@/assets/tools/image-generator-thumb.jpg";
+import videoGeneratorThumb from "@/assets/tools/video-generator-thumb.jpg";
+import imageEditorThumb from "@/assets/tools/image-editor-thumb.jpg";
+import textToVideoThumb from "@/assets/tools/text-to-video-thumb.jpg";
 
 export const toolThumbnails: Record<string, string> = {
   "sfx-generator": sfxGeneratorThumb,
@@ -21,5 +25,8 @@ export const toolThumbnails: Record<string, string> = {
   "sfx-isolator": sfxIsolatorThumb,
   "product-description": productDescThumb,
   "short-form-script": shortFormThumb,
-  // Tools without thumbnails will use icon fallback
+  "image-generator": imageGeneratorThumb,
+  "video-generator": videoGeneratorThumb,
+  "image-editor": imageEditorThumb,
+  "text-to-video": textToVideoThumb,
 };
