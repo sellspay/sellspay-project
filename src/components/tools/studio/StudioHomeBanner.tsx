@@ -20,34 +20,11 @@ const stagger = {
   show: { transition: { staggerChildren: 0.06 } },
 };
 
-/* ── Spotlight Hero ── */
-
-function SpotlightCard({
-  title, subtitle, image, onClick,
-}: {
-  title: string; subtitle: string; image: string; onClick: () => void;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className="group relative overflow-hidden rounded-xl border border-[#1e3a5f]/60 bg-[#0b1220] w-full text-left transition-all duration-300 hover:border-[#3b82f6]/50"
-    >
-      <div className="relative h-full min-h-[220px]">
-        <img src={image} className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]" />
-        <div className="absolute inset-0 bg-gradient-to-t from-[#0b1220] via-black/40 to-transparent" />
-        <div className="relative z-10 flex flex-col justify-end h-full min-h-[220px] p-5">
-          <h3 className="text-xl font-semibold text-white">{title}</h3>
-          <p className="mt-1 max-w-md text-sm text-[#94a3b8]">{subtitle}</p>
-          <span className="mt-3 inline-flex w-fit items-center gap-2 rounded-full bg-white/10 backdrop-blur-sm px-3 py-1.5 text-xs font-medium text-white border border-white/10 group-hover:bg-white/20 transition-colors">
-            Open Tool <ArrowRight className="h-3 w-3" />
-          </span>
-        </div>
-      </div>
-    </button>
-  );
-}
-
-/* ── OpenArt-style compact card: text left, thumbnail right ── */
+/* ── OpenArt-style corner-glow card ──
+   The card background matches the page (#0e0e10).
+   Two small radial gradients sit in top-left and bottom-right corners,
+   creating the signature subtle glow border effect on hover.
+*/
 
 function ToolCard({
   tool, image, onClick,
@@ -59,27 +36,33 @@ function ToolCard({
     <button
       onClick={onClick}
       className={cn(
-        "group relative overflow-hidden rounded-xl border border-[#1e3a5f]/40 bg-[#0b1220] w-full text-left",
-        "transition-all duration-200 hover:border-[#3b82f6]/40",
+        "group relative rounded-[14px] w-full text-left overflow-hidden",
+        "bg-[#0e0e10] border border-[#1a2332]",
+        "transition-all duration-300",
+        "hover:border-[#22d3ee]/40",
         tool.comingSoon && "opacity-50 cursor-default"
       )}
     >
-      <div className="flex items-center gap-3 p-3">
-        {/* Text */}
+      {/* Corner glow effects — visible on hover */}
+      <div className="absolute top-0 left-0 w-24 h-24 bg-[radial-gradient(circle_at_0%_0%,rgba(34,211,238,0.18),transparent_70%)] opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+      <div className="absolute bottom-0 right-0 w-24 h-24 bg-[radial-gradient(circle_at_100%_100%,rgba(34,211,238,0.18),transparent_70%)] opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+
+      <div className="relative z-10 flex items-center gap-3 p-3.5">
+        {/* Text side */}
         <div className="flex-1 min-w-0">
-          <h4 className="text-[13px] font-semibold text-[#58b3ff] leading-tight">{tool.name}</h4>
-          <p className="mt-1 text-[11px] text-[#64748b] line-clamp-2 leading-relaxed">{tool.description}</p>
+          <h4 className="text-[13px] font-semibold text-[#22d3ee] leading-tight">{tool.name}</h4>
+          <p className="mt-1.5 text-[11px] text-[#64748b] line-clamp-2 leading-relaxed">{tool.description}</p>
           {tool.comingSoon && (
-            <span className="mt-1 inline-block text-[9px] font-bold text-[#475569] uppercase tracking-wider">Coming Soon</span>
+            <span className="mt-1.5 inline-block text-[9px] font-bold text-[#475569] uppercase tracking-wider">Coming Soon</span>
           )}
         </div>
         {/* Thumbnail */}
-        <div className="shrink-0 w-[72px] h-[72px] rounded-lg overflow-hidden bg-[#0a0f1a]">
+        <div className="shrink-0 w-[76px] h-[76px] rounded-xl overflow-hidden">
           {image ? (
-            <img src={image} alt={tool.name} loading="lazy" className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-110" />
+            <img src={image} alt={tool.name} loading="lazy" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110" />
           ) : (
-            <div className="h-full w-full flex items-center justify-center">
-              <Icon className="h-6 w-6 text-[#1e3a5f]" />
+            <div className="h-full w-full flex items-center justify-center bg-[#141820]">
+              <Icon className="h-7 w-7 text-[#1e3a5f]" />
             </div>
           )}
         </div>
@@ -88,12 +71,46 @@ function ToolCard({
   );
 }
 
+/* ── Hero Spotlight (featured banner) ── */
+
+function SpotlightCard({
+  title, subtitle, image, onClick,
+}: {
+  title: string; subtitle: string; image: string; onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className="group relative overflow-hidden rounded-[14px] bg-[#0e0e10] border border-[#1a2332] w-full text-left transition-all duration-300 hover:border-[#22d3ee]/40"
+    >
+      {/* Corner glows */}
+      <div className="absolute top-0 left-0 w-32 h-32 bg-[radial-gradient(circle_at_0%_0%,rgba(34,211,238,0.15),transparent_70%)] opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none z-20" />
+      <div className="absolute bottom-0 right-0 w-32 h-32 bg-[radial-gradient(circle_at_100%_100%,rgba(34,211,238,0.15),transparent_70%)] opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none z-20" />
+
+      <div className="relative h-full min-h-[220px]">
+        <img src={image} className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]" />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#0e0e10] via-black/50 to-transparent" />
+        <div className="relative z-10 flex flex-col justify-end h-full min-h-[220px] p-5">
+          <h3 className="text-xl font-semibold text-white">{title}</h3>
+          <p className="mt-1 max-w-md text-sm text-[#94a3b8]">{subtitle}</p>
+          <span className="mt-3 inline-flex w-fit items-center gap-2 rounded-lg bg-[#141820] px-3 py-1.5 text-xs font-medium text-white border border-[#1a2332] group-hover:border-[#22d3ee]/30 transition-colors">
+            Open Tool <ArrowRight className="h-3 w-3" />
+          </span>
+        </div>
+      </div>
+    </button>
+  );
+}
+
 /* ── Section Header ── */
 
-function SectionHeader({ title }: { title: string }) {
+function SectionHeader({ title, showMore }: { title: string; showMore?: boolean }) {
   return (
-    <div className="flex items-center justify-between mb-3">
-      <h2 className="text-lg font-semibold text-white tracking-tight">{title}</h2>
+    <div className="flex items-center justify-between mb-4">
+      <h2 className="text-xl font-bold text-white tracking-tight">{title}</h2>
+      {showMore && (
+        <span className="text-sm font-medium text-[#64748b] hover:text-white cursor-pointer transition-colors">More →</span>
+      )}
     </div>
   );
 }
@@ -120,11 +137,10 @@ export function StudioHomeBanner({ onToolSelect }: StudioHomeBannerProps) {
       variants={stagger}
       initial="hidden"
       animate="show"
-      className="py-6 lg:py-8 space-y-8 max-w-[1400px] mx-auto"
+      className="py-6 lg:py-8 space-y-10 max-w-[1400px] mx-auto"
     >
       {/* ── HERO ROW ── */}
       <motion.section variants={fadeUp}>
-        <SectionHeader title="Featured" />
         <div className="grid grid-cols-12 gap-3">
           <div className="col-span-12 lg:col-span-7">
             <SpotlightCard
@@ -141,10 +157,10 @@ export function StudioHomeBanner({ onToolSelect }: StudioHomeBannerProps) {
         </div>
       </motion.section>
 
-      {/* ── MEDIA CREATION ── */}
+      {/* ── SELLSPAY SUITE (like OpenArt Suite) ── */}
       {mediaTools.length > 0 && (
         <motion.section variants={fadeUp}>
-          <SectionHeader title="Media Creation" />
+          <SectionHeader title="SellsPay Suite" showMore />
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
             {mediaTools.map(tool => (
               <ToolCard key={tool.id} tool={tool} image={thumb(tool.id)} onClick={() => launch(tool.id)} />
@@ -156,7 +172,7 @@ export function StudioHomeBanner({ onToolSelect }: StudioHomeBannerProps) {
       {/* ── STORE & SOCIAL ── */}
       {([...storeTools, ...socialTools].length > 0) && (
         <motion.section variants={fadeUp}>
-          <SectionHeader title="Store & Social Tools" />
+          <SectionHeader title="Store & Social" showMore />
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
             {[...storeTools, ...socialTools].map(tool => (
               <ToolCard key={tool.id} tool={tool} image={thumb(tool.id)} onClick={() => launch(tool.id)} />
@@ -168,7 +184,7 @@ export function StudioHomeBanner({ onToolSelect }: StudioHomeBannerProps) {
       {/* ── UTILITY ── */}
       {utilityTools.length > 0 && (
         <motion.section variants={fadeUp}>
-          <SectionHeader title="Utility Tools" />
+          <SectionHeader title="Utility Tools" showMore />
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
             {utilityTools.map(tool => (
               <ToolCard key={tool.id} tool={tool} image={thumb(tool.id)} onClick={() => launch(tool.id)} />
