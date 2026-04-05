@@ -241,7 +241,7 @@ export default function StudioLayout() {
           {/* Pricing */}
           <button
             onClick={() => setPricingOpen(true)}
-            className="relative px-4 py-1.5 text-sm font-semibold rounded-full bg-gradient-to-r from-white via-[#22d3ee] to-[#2563eb] text-[#0e0e10] transition-all duration-300 hover:shadow-[0_0_20px_rgba(34,211,238,0.4),0_0_40px_rgba(37,99,235,0.2)]"
+            className="relative px-5 py-1.5 text-sm font-bold rounded-full text-[#0a0a0c] bg-gradient-to-b from-white via-[#b0ecff] to-[#38bdf8] shadow-[0_1px_0_rgba(255,255,255,0.9)_inset,0_-1px_2px_rgba(56,189,248,0.5)_inset,0_2px_8px_rgba(37,99,235,0.25)] transition-all duration-300 hover:shadow-[0_1px_0_rgba(255,255,255,0.9)_inset,0_-1px_2px_rgba(56,189,248,0.5)_inset,0_4px_20px_rgba(34,211,238,0.45),0_0_40px_rgba(37,99,235,0.2)] hover:translate-y-[-1px] active:translate-y-[0.5px] active:shadow-[0_1px_0_rgba(255,255,255,0.6)_inset,0_1px_4px_rgba(37,99,235,0.2)]"
           >
             Pricing
           </button>
