@@ -71,7 +71,7 @@ function SortableToolItem({ tool, isActive, collapsed, onToolSelect, thumbnail }
         "group/tool flex items-center w-full transition-colors duration-150 relative",
         collapsed
           ? cn(
-              "justify-center rounded-xl p-1",
+              "justify-center rounded-full p-1",
               isActive
                 ? "bg-[#1e3a8a]/30 shadow-[0_0_0_1px_#3b82f6,0_0_12px_rgba(59,130,246,0.2)]"
                 : "hover:bg-white/[0.06]"
