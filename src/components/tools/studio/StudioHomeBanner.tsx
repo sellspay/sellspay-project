@@ -114,9 +114,9 @@ function ModelCard({
   const Icon = tool.icon;
   return (
     <button onClick={onClick} className={cn("group text-left w-full", tool.comingSoon && "opacity-50 cursor-default")}>
-      <div className="relative overflow-hidden rounded-[22px] border border-[#143a34] bg-[#0b0b0d] transition-all duration-300 hover:border-[#1ee7b7]/40">
+      <div className="relative overflow-hidden rounded-[22px] border border-white/[0.04] bg-[#0b0b0d] transition-all duration-500 hover:border-[#3b82f6]/[0.35] hover:shadow-[0_0_24px_-4px_rgba(59,130,246,0.3)]">
         {image ? (
-          <img src={image} alt={tool.name} loading="lazy" className="h-[260px] w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]" />
+          <img src={image} alt={tool.name} loading="lazy" className="h-[260px] w-full object-cover transition-all duration-500 group-hover:scale-[1.04] group-hover:brightness-110" />
         ) : (
           <div className="h-[260px] w-full flex items-center justify-center bg-[#111318]">
             <Icon className="h-12 w-12 text-[#1a3a30]" />
@@ -124,10 +124,10 @@ function ModelCard({
         )}
       </div>
       <div className="pt-4">
-        <h3 className="text-[16px] font-semibold bg-gradient-to-r from-[#4da6ff] via-[#3b82f6] to-[#6366f1] bg-clip-text text-transparent">
+        <h3 className="text-[16px] font-bold bg-gradient-to-r from-white via-white to-[#3b82f6] bg-clip-text text-transparent">
           {tool.name}
         </h3>
-        <p className="mt-1 text-[14px] text-white/45">
+        <p className="mt-1 text-[14px] text-[#8b8fa3]">
           {tool.description}
         </p>
         {tool.comingSoon && (
