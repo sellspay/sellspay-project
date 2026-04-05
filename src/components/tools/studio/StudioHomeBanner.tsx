@@ -216,7 +216,9 @@ export function StudioHomeBanner({ onToolSelect }: StudioHomeBannerProps) {
 
       {/* ── SELLSPAY SUITE — all tools in 5-col grid ── */}
       {(() => {
-        const suiteTools = [...mediaTools, ...storeTools, ...socialTools].sort((a, b) => a.sortOrder - b.sortOrder);
+        const suiteTools = [...mediaTools, ...storeTools, ...socialTools]
+          .sort((a, b) => a.sortOrder - b.sortOrder)
+          .slice(0, 10);
         return suiteTools.length > 0 ? (
           <motion.section variants={fadeUp} className="mb-14">
             <SectionHeader title="SellsPay Suite" showMore />
