@@ -66,7 +66,7 @@ function SuiteToolCard({
     >
       {/* Text */}
       <div className="min-w-0 pr-4 flex-1">
-        <h3 className="text-[15px] font-semibold leading-tight bg-gradient-to-r from-[#40f2b2] via-[#25d7d9] to-[#22b8ff] bg-clip-text text-transparent">
+        <h3 className="text-[15px] font-semibold leading-tight bg-gradient-to-r from-[#4da6ff] via-[#3b82f6] to-[#6366f1] bg-clip-text text-transparent">
           {tool.name}
         </h3>
         <p className="mt-2 line-clamp-2 text-[13px] leading-[1.35] text-white/45">
@@ -110,7 +110,7 @@ function ModelCard({
         )}
       </div>
       <div className="pt-4">
-        <h3 className="text-[16px] font-semibold bg-gradient-to-r from-[#40f2b2] via-[#25d7d9] to-[#22b8ff] bg-clip-text text-transparent">
+        <h3 className="text-[16px] font-semibold bg-gradient-to-r from-[#4da6ff] via-[#3b82f6] to-[#6366f1] bg-clip-text text-transparent">
           {tool.name}
         </h3>
         <p className="mt-1 text-[14px] text-white/45">
