@@ -201,7 +201,7 @@ export function PricingModal({ open, onOpenChange, darkMode = false }: PricingMo
       )}>
         
         {/* Scrollable content */}
-        <div className="overflow-y-auto flex-1 custom-scrollbar">
+        <div className={cn("overflow-y-auto flex-1", darkMode ? "dark-scrollbar" : "custom-scrollbar")}>
           {/* Header */}
           <div className={cn("text-center pt-12 pb-6 px-8 sticky top-0 backdrop-blur-xl z-20", headerBg)}>
             <h2 className={cn("text-4xl font-extrabold tracking-tight", textPrimary)}>
