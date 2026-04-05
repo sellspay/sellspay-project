@@ -344,6 +344,26 @@
   background: hsl(var(--studio-scrollbar-track));
 }
 
+/* Dark scrollbar for modals rendered outside .studio-layout */
+.dark-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: #333 #111;
+}
+.dark-scrollbar::-webkit-scrollbar {
+  width: 8px;
+}
+.dark-scrollbar::-webkit-scrollbar-track {
+  background: #111;
+  border-radius: 999px;
+}
+.dark-scrollbar::-webkit-scrollbar-thumb {
+  background: #333;
+  border-radius: 999px;
+}
+.dark-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #444;
+}
+
 /* Single-scrollbar strategy:
    - html owns the vertical scrollbar
    - body never becomes an independent scroll container

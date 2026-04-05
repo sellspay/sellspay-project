@@ -201,7 +201,7 @@ export function PricingModal({ open, onOpenChange, darkMode = false }: PricingMo
       )}>
         
         {/* Scrollable content */}
-        <div className="overflow-y-auto flex-1 custom-scrollbar">
+        <div className={cn("overflow-y-auto flex-1", darkMode ? "dark-scrollbar" : "custom-scrollbar")}>
           {/* Header */}
           <div className={cn("text-center pt-12 pb-6 px-8 sticky top-0 backdrop-blur-xl z-20", headerBg)}>
             <h2 className={cn("text-4xl font-extrabold tracking-tight", textPrimary)}>
@@ -258,18 +258,29 @@ export function PricingModal({ open, onOpenChange, darkMode = false }: PricingMo
                     key={plan.id}
                     className={cn(
                       "relative rounded-2xl border overflow-hidden transition-all duration-300 flex flex-col",
-                      darkMode ? cardBg : "bg-card",
+                      darkMode
+                        ? cn(
+                            "bg-gradient-to-b from-zinc-800/80 to-zinc-900/90",
+                            "shadow-[0_4px_20px_-4px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.06)]",
+                            "hover:shadow-[0_8px_30px_-4px_rgba(0,0,0,0.6),inset_0_1px_0_rgba(255,255,255,0.08)]",
+                            "hover:translate-y-[-2px]"
+                          )
+                        : "bg-card",
                       plan.isPopular
                         ? darkMode
-                          ? "border-fuchsia-500/40 shadow-[0_0_50px_-10px_rgba(192,38,211,0.25)]"
+                          ? "border-fuchsia-500/50 shadow-[0_4px_30px_-4px_rgba(192,38,211,0.3),inset_0_1px_0_rgba(255,255,255,0.06)]"
                           : "border-fuchsia-300 shadow-[0_0_40px_-8px_rgba(192,38,211,0.2)]"
                         : plan.id === "agency"
                           ? darkMode
-                            ? "border-amber-500/40 shadow-[0_0_50px_-10px_rgba(245,158,11,0.2)]"
+                            ? "border-amber-500/50 shadow-[0_4px_30px_-4px_rgba(245,158,11,0.25),inset_0_1px_0_rgba(255,255,255,0.06)]"
                             : "border-amber-300 shadow-[0_0_40px_-8px_rgba(245,158,11,0.15)]"
-                          : darkMode
-                            ? "border-zinc-800 hover:border-zinc-700"
-                            : "border-border hover:shadow-lg"
+                          : plan.id === "basic"
+                            ? darkMode
+                              ? "border-cyan-500/30 shadow-[0_4px_20px_-4px_rgba(6,182,212,0.15),inset_0_1px_0_rgba(255,255,255,0.06)]"
+                              : "border-border hover:shadow-lg"
+                            : darkMode
+                              ? "border-zinc-700/60 hover:border-zinc-600"
+                              : "border-border hover:shadow-lg"
                     )}
                   >
                     {/* Top gradient strip */}
