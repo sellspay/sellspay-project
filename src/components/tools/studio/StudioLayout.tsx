@@ -108,7 +108,7 @@ export default function StudioLayout() {
     navigate("/studio", { replace: true });
   };
 
-  const hasUnsavedProgress = activeTool || promoOpen || (campaignState?.selectedProduct != null) || (campaignState?.selectedTemplate != null);
+  const hasUnsavedProgress = promoOpen || (campaignState?.selectedProduct != null) || (campaignState?.selectedTemplate != null);
 
   const handleSectionChange = (section: StudioSection) => {
     if (section === "assets") {
