@@ -60,36 +60,45 @@ function SuiteToolCard({
     <button
       onClick={onClick}
       className={cn(
-        "group relative flex h-[120px] items-center justify-between rounded-[22px] border border-[#0c2d4a] bg-[#05080a] px-4 w-full text-left transition-all duration-500 hover:border-[#3b82f6]/70 hover:shadow-[0_0_30px_-2px_rgba(59,130,246,0.5),0_0_60px_-5px_rgba(99,102,241,0.3)]",
-        tool.comingSoon && "opacity-50 cursor-default"
+        "group relative w-full overflow-hidden rounded-[22px] bg-[#04070a] text-left transition-all duration-300",
+        tool.comingSoon ? "opacity-55 cursor-default" : "hover:translate-y-[-1px]"
       )}
     >
-      {/* Blue glow on hover */}
-      <div className="absolute inset-0 rounded-[22px] opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none bg-gradient-to-br from-[#3b82f6]/[0.12] via-transparent to-[#6366f1]/[0.12]" />
-      {/* Edge highlight */}
-      <div className="absolute inset-0 rounded-[22px] opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none shadow-[inset_0_1px_1px_rgba(59,130,246,0.25)]" />
+      {/* Ultra-subtle outer border */}
+      <div className="pointer-events-none absolute inset-0 rounded-[22px] border border-white/[0.04]" />
+      {/* Top-left corner glow */}
+      <div className="pointer-events-none absolute -left-10 -top-10 h-28 w-28 rounded-full bg-[#2f6bff]/[0.12] blur-2xl transition-all duration-300 group-hover:bg-[#2f6bff]/[0.22]" />
+      {/* Bottom-right corner glow */}
+      <div className="pointer-events-none absolute -bottom-10 -right-10 h-28 w-28 rounded-full bg-[#6366f1]/[0.10] blur-2xl transition-all duration-300 group-hover:bg-[#6366f1]/[0.18]" />
+      {/* Faint surface gradient */}
+      <div className="pointer-events-none absolute inset-[1px] rounded-[21px] bg-[linear-gradient(180deg,rgba(8,14,20,0.92),rgba(4,8,12,0.98))]" />
+      {/* Inner highlight line */}
+      <div className="pointer-events-none absolute inset-[1px] rounded-[21px] shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] transition-shadow duration-300 group-hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]" />
 
-      {/* Text */}
-      <div className="relative z-10 min-w-0 pr-4 flex-1">
-        <h3 className="text-[15px] font-semibold leading-tight bg-gradient-to-r from-[#4da6ff] via-[#3b82f6] to-[#6366f1] bg-clip-text text-transparent">
-          {tool.name}
-        </h3>
-        <p className="mt-2 line-clamp-2 text-[13px] leading-[1.35] text-white/45">
-          {tool.description}
-        </p>
-        {tool.comingSoon && (
-          <span className="mt-1.5 inline-block text-[9px] font-bold text-white/30 uppercase tracking-wider">Coming Soon</span>
-        )}
-      </div>
-      {/* Thumbnail — larger */}
-      <div className="relative z-10 h-[96px] w-[96px] shrink-0 overflow-hidden rounded-[18px]">
-        {image ? (
-          <img src={image} alt={tool.name} loading="lazy" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110" />
-        ) : (
-          <div className="h-full w-full flex items-center justify-center bg-[#0a0f14]">
-            <Icon className="h-7 w-7 text-[#1a3a30]" />
-          </div>
-        )}
+      <div className="relative z-10 flex h-[108px] items-center justify-between gap-4 px-5">
+        {/* Text */}
+        <div className="min-w-0 flex-1 pr-2">
+          <h3 className="text-[15px] font-semibold leading-tight bg-gradient-to-r from-[#4da6ff] via-[#3b82f6] to-[#6366f1] bg-clip-text text-transparent">
+            {tool.name}
+          </h3>
+          <p className="mt-2 line-clamp-2 text-[13px] leading-[1.45] text-white/[0.42]">
+            {tool.description}
+          </p>
+          {tool.comingSoon && (
+            <span className="mt-2 inline-block text-[10px] font-semibold uppercase tracking-[0.18em] text-white/20">Coming Soon</span>
+          )}
+        </div>
+        {/* Thumbnail */}
+        <div className="relative h-[88px] w-[88px] shrink-0 overflow-hidden rounded-[20px] ring-1 ring-white/[0.05]">
+          <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.01))]" />
+          {image ? (
+            <img src={image} alt={tool.name} loading="lazy" className="relative z-10 h-full w-full object-cover transition-transform duration-500 group-hover:scale-110" />
+          ) : (
+            <div className="relative z-10 h-full w-full flex items-center justify-center bg-[#0a0f14]">
+              <Icon className="h-7 w-7 text-[#1a3a30]" />
+            </div>
+          )}
+        </div>
       </div>
     </button>
   );
