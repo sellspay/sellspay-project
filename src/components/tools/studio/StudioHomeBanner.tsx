@@ -60,12 +60,14 @@ function SuiteToolCard({
     <button
       onClick={onClick}
       className={cn(
-        "group relative flex h-[120px] items-center justify-between rounded-[22px] border border-[#0c2d4a] bg-[#05080a] px-4 w-full text-left transition-all duration-300 hover:border-[#3b82f6]/50 hover:shadow-[0_0_20px_-4px_rgba(59,130,246,0.35)]",
+        "group relative flex h-[120px] items-center justify-between rounded-[22px] border border-[#0c2d4a] bg-[#05080a] px-4 w-full text-left transition-all duration-500 hover:border-[#3b82f6]/70 hover:shadow-[0_0_30px_-2px_rgba(59,130,246,0.5),0_0_60px_-5px_rgba(99,102,241,0.3)]",
         tool.comingSoon && "opacity-50 cursor-default"
       )}
     >
       {/* Blue glow on hover */}
-      <div className="absolute inset-0 rounded-[22px] opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none bg-gradient-to-br from-[#3b82f6]/[0.07] via-transparent to-[#6366f1]/[0.07]" />
+      <div className="absolute inset-0 rounded-[22px] opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none bg-gradient-to-br from-[#3b82f6]/[0.12] via-transparent to-[#6366f1]/[0.12]" />
+      {/* Edge highlight */}
+      <div className="absolute inset-0 rounded-[22px] opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none shadow-[inset_0_1px_1px_rgba(59,130,246,0.25)]" />
 
       {/* Text */}
       <div className="relative z-10 min-w-0 pr-4 flex-1">
