@@ -105,29 +105,32 @@ function ToolCardTall({
     <button
       onClick={onClick}
       className={cn(
-        "group overflow-hidden rounded-[16px] border border-white/[0.06] bg-[#16181d] transition-all duration-200 w-full text-left",
-        "hover:border-cyan-500/30 hover:bg-[#1a1d24]",
+        "group rounded-[20px] p-[1.2px] bg-gradient-to-br from-[#4da6ff]/40 via-[#7cc8ff]/20 to-[#bfe6ff]/10 transition-all duration-300 w-full text-left",
+        "hover:from-[#4da6ff]/80 hover:via-[#7cc8ff]/50 hover:to-[#bfe6ff]/30 hover:shadow-[0_0_25px_rgba(77,166,255,0.2)]",
         tool.comingSoon && "opacity-50 cursor-default"
       )}
     >
-      <div className="aspect-[4/5] overflow-hidden">
-        {image ? (
-          <img src={image} alt={tool.name} loading="lazy" className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-500" />
-        ) : (
-          <div className="h-full w-full flex items-center justify-center bg-gradient-to-b from-[#1a1d24] to-[#16181d]">
-            <Icon className="h-12 w-12 text-[#27272a]" />
-          </div>
-        )}
-      </div>
-      <div className="p-4">
-        <div className="flex items-center gap-2">
-          <h4 className="text-sm font-semibold text-[#f4f4f5]">{tool.name}</h4>
-          {tool.isPro && <Sparkles className="h-3 w-3 text-cyan-400/60" />}
+      <div className="relative rounded-[18px] bg-[#0f172a] overflow-hidden transition-colors duration-300 group-hover:bg-[#111827]">
+        <div className="absolute inset-0 rounded-[18px] opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-gradient-to-br from-[#4da6ff]/[0.07] to-transparent pointer-events-none" />
+        <div className="aspect-[4/5] overflow-hidden">
+          {image ? (
+            <img src={image} alt={tool.name} loading="lazy" className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-500" />
+          ) : (
+            <div className="h-full w-full flex items-center justify-center bg-gradient-to-b from-[#111827] to-[#0f172a]">
+              <Icon className="h-12 w-12 text-[#27272a]" />
+            </div>
+          )}
         </div>
-        <p className="mt-1 text-[12px] text-[#71717a] line-clamp-2">{tool.description}</p>
-        {tool.comingSoon && (
-          <span className="mt-1.5 inline-block text-[10px] font-bold text-[#52525b] uppercase tracking-wider">Coming Soon</span>
-        )}
+        <div className="relative p-4">
+          <div className="flex items-center gap-2">
+            <h4 className="text-sm font-semibold text-[#f4f4f5]">{tool.name}</h4>
+            {tool.isPro && <Sparkles className="h-3 w-3 text-[#4da6ff]/60" />}
+          </div>
+          <p className="mt-1 text-[12px] text-[#71717a] line-clamp-2">{tool.description}</p>
+          {tool.comingSoon && (
+            <span className="mt-1.5 inline-block text-[10px] font-bold text-[#52525b] uppercase tracking-wider">Coming Soon</span>
+          )}
+        </div>
       </div>
     </button>
   );
