@@ -150,7 +150,7 @@ const DEFAULT_PINNED = [
 
 export function StudioSidebar({
   collapsed, onToggleCollapse, activeSection, onSectionChange,
-  creditBalance, isLoadingCredits, activeTool, onToolSelect, onGoHome,
+  creditBalance, isLoadingCredits, activeTool, onToolSelect, onGoHome, onOpenPricing,
 }: StudioSidebarProps) {
   const { user, profile, signOut } = useAuth();
   const { plan } = useSubscription();
