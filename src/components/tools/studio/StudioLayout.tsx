@@ -287,7 +287,7 @@ export default function StudioLayout() {
             onToolSelect={handleLaunch}
             onGoHome={handleGoHome}
           />
-        </motion.div>
+        </div>
 
         {/* Workspace */}
         <div className="flex-1 flex min-w-0 gap-0 bg-[#0e0e10]">
