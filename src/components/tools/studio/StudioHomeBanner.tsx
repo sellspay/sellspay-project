@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { Sparkles, ArrowRight, Zap } from "lucide-react";
+import { Sparkles, ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toolsRegistry, type ToolRegistryEntry } from "@/components/tools/toolsRegistry";
 import { toolThumbnails } from "./toolThumbnails";
