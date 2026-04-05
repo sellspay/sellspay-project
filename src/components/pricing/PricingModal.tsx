@@ -142,7 +142,7 @@ interface PricingModalProps {
   darkMode?: boolean;
 }
 
-export function PricingModal({ open, onOpenChange }: PricingModalProps) {
+export function PricingModal({ open, onOpenChange, darkMode = false }: PricingModalProps) {
   const [billingPeriod, setBillingPeriod] = useState<"monthly" | "annually">("annually");
   const [openFaq, setOpenFaq] = useState<number | null>(null);
   const navigate = useNavigate();
