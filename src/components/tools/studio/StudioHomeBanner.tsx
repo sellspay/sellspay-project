@@ -185,7 +185,7 @@ export function StudioHomeBanner({ onToolSelect }: StudioHomeBannerProps) {
       <motion.div variants={fadeUp} className="text-center pt-10 pb-16">
         <h1 className="text-[48px] sm:text-[58px] font-extrabold leading-[1.1] tracking-[-0.03em] text-white">
           What will you{" "}
-          <span className="bg-gradient-to-r from-[#3b82f6] via-[#6366f1] to-[#a855f7] bg-clip-text text-transparent">build</span>
+          <span className="bg-gradient-to-r from-white via-[#22d3ee] to-[#2563eb] bg-clip-text text-transparent">build</span>
           {" "}today?
         </h1>
         <p className="mt-4 text-[17px] text-[#8b8fa3] max-w-xl mx-auto leading-relaxed">
