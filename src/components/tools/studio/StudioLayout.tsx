@@ -272,10 +272,9 @@ export default function StudioLayout() {
 
       {/* Sidebar + Workspace below header */}
       <div className="flex flex-1 min-h-0 overflow-hidden">
-        <motion.div
+        <div
           className="shrink-0 overflow-hidden"
-          animate={{ width: sidebarCollapsed ? 56 : 220 }}
-          transition={{ duration: 0.2, ease: "easeInOut" }}
+          style={{ width: sidebarCollapsed ? 56 : 220, transition: 'width 0.15s ease' }}
         >
           <StudioSidebar
             collapsed={sidebarCollapsed}
@@ -288,7 +287,7 @@ export default function StudioLayout() {
             onToolSelect={handleLaunch}
             onGoHome={handleGoHome}
           />
-        </motion.div>
+        </div>
 
         {/* Workspace */}
         <div className="flex-1 flex min-w-0 gap-0 bg-[#0e0e10]">
