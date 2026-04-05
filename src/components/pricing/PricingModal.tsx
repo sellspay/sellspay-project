@@ -159,7 +159,7 @@ export function PricingModal({ open, onOpenChange, darkMode = false }: PricingMo
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[1200px] w-[96vw] p-0 bg-background border-border rounded-2xl overflow-hidden max-h-[92vh] shadow-2xl flex flex-col">
+      <DialogContent className={cn("max-w-[1200px] w-[96vw] p-0 bg-background border-border rounded-2xl overflow-hidden max-h-[92vh] shadow-2xl flex flex-col", darkMode && "dark")}>
         
         {/* Scrollable content */}
         <div className="overflow-y-auto flex-1 custom-scrollbar">
