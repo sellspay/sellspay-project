@@ -66,16 +66,16 @@ function SuiteToolCard({
         tool.comingSoon ? "opacity-55 cursor-default" : "hover:translate-y-[-1px]"
       )}
     >
-      {/* Ultra-subtle outer border — glows blue on hover */}
-      <div className="pointer-events-none absolute inset-0 rounded-[22px] border border-white/[0.04] transition-all duration-500 group-hover:border-[#2563eb]/[0.45] group-hover:shadow-[0_0_32px_-4px_rgba(37,99,235,0.45),inset_0_0_16px_-2px_rgba(37,99,235,0.12)]" />
+      {/* Outer border — glows cyan on hover */}
+      <div className="pointer-events-none absolute inset-0 rounded-[22px] border border-white/[0.04] transition-all duration-500 group-hover:border-[#06b6d4]/[0.5] group-hover:shadow-[0_0_40px_-4px_rgba(6,182,212,0.5),0_0_80px_-8px_rgba(6,182,212,0.2),inset_0_0_20px_-2px_rgba(6,182,212,0.15)]" />
       {/* Top-left corner glow */}
-      <div className="pointer-events-none absolute -left-8 -top-8 h-36 w-36 rounded-full bg-[#2563eb]/[0.06] blur-2xl transition-all duration-500 group-hover:bg-[#2563eb]/[0.35] group-hover:h-44 group-hover:w-44" />
+      <div className="pointer-events-none absolute -left-8 -top-8 h-36 w-36 rounded-full bg-[#06b6d4]/[0.04] blur-2xl transition-all duration-500 group-hover:bg-[#06b6d4]/[0.3] group-hover:h-48 group-hover:w-48" />
       {/* Bottom-right corner glow */}
-      <div className="pointer-events-none absolute -bottom-8 -right-8 h-36 w-36 rounded-full bg-[#3b82f6]/[0.04] blur-2xl transition-all duration-500 group-hover:bg-[#3b82f6]/[0.28] group-hover:h-44 group-hover:w-44" />
+      <div className="pointer-events-none absolute -bottom-8 -right-8 h-36 w-36 rounded-full bg-[#22d3ee]/[0.03] blur-2xl transition-all duration-500 group-hover:bg-[#22d3ee]/[0.25] group-hover:h-48 group-hover:w-48" />
       {/* Faint surface gradient */}
       <div className="pointer-events-none absolute inset-[1px] rounded-[21px] bg-[linear-gradient(180deg,rgba(11,11,13,0.95),rgba(8,8,10,0.98))]" />
       {/* Inner highlight line */}
-      <div className="pointer-events-none absolute inset-[1px] rounded-[21px] shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] transition-shadow duration-300 group-hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]" />
+      <div className="pointer-events-none absolute inset-[1px] rounded-[21px] shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] transition-shadow duration-300 group-hover:shadow-[inset_0_1px_0_rgba(6,182,212,0.1)]" />
 
       <div className="relative z-10 flex h-[108px] items-center justify-between gap-4 px-5">
         {/* Text */}
