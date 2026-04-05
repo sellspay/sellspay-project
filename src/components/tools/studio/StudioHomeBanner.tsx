@@ -146,18 +146,21 @@ function ToolCardCompact({
     <button
       onClick={onClick}
       className={cn(
-        "group rounded-[14px] border border-white/[0.06] bg-[#131518] p-4 transition-all duration-200 w-full text-left",
-        "hover:border-cyan-500/30 hover:bg-[#16181d]",
+        "group rounded-[18px] p-[1px] bg-gradient-to-br from-[#4da6ff]/30 via-[#7cc8ff]/15 to-transparent transition-all duration-300 w-full text-left",
+        "hover:from-[#4da6ff]/60 hover:via-[#7cc8ff]/35 hover:to-[#bfe6ff]/15 hover:shadow-[0_0_20px_rgba(77,166,255,0.15)]",
         tool.comingSoon && "opacity-50 cursor-default"
       )}
     >
-      <div className="flex items-start gap-3">
-        <div className="shrink-0 h-8 w-8 rounded-lg bg-white/[0.04] flex items-center justify-center">
-          <Icon className="h-4 w-4 text-[#52525b] group-hover:text-cyan-400/60 transition-colors" />
-        </div>
-        <div className="min-w-0">
-          <h4 className="text-[13px] font-semibold text-[#f4f4f5]">{tool.name}</h4>
-          <p className="mt-0.5 text-[11px] text-[#52525b] line-clamp-1">{tool.description}</p>
+      <div className="relative rounded-[17px] bg-[#0f172a] p-4 transition-colors duration-300 group-hover:bg-[#111827]">
+        <div className="absolute inset-0 rounded-[17px] opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-gradient-to-br from-[#4da6ff]/[0.05] to-transparent pointer-events-none" />
+        <div className="relative flex items-start gap-3">
+          <div className="shrink-0 h-8 w-8 rounded-lg bg-white/[0.04] flex items-center justify-center">
+            <Icon className="h-4 w-4 text-[#52525b] group-hover:text-[#4da6ff]/70 transition-colors" />
+          </div>
+          <div className="min-w-0">
+            <h4 className="text-[13px] font-semibold text-[#f4f4f5]">{tool.name}</h4>
+            <p className="mt-0.5 text-[11px] text-[#52525b] line-clamp-1">{tool.description}</p>
+          </div>
         </div>
       </div>
     </button>
