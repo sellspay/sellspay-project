@@ -92,7 +92,7 @@ function SortableToolItem({ tool, isActive, collapsed, onToolSelect, thumbnail }
         className="flex items-center gap-2 flex-1 min-w-0 cursor-pointer"
       >
           <div className={cn(
-          "h-9 w-9 rounded-full overflow-hidden shrink-0 border pointer-events-none",
+          "h-11 w-11 rounded-full overflow-hidden shrink-0 border pointer-events-none",
           isActive ? "border-[#3b82f6]/50 ring-2 ring-[#3b82f6]/20" : "border-white/[0.08]"
         )}>
           {thumbnail ? (
@@ -102,7 +102,7 @@ function SortableToolItem({ tool, isActive, collapsed, onToolSelect, thumbnail }
               "w-full h-full flex items-center justify-center",
               isActive ? "bg-[#3b82f6]/20" : "bg-white/[0.06]"
             )}>
-              <Icon className={cn("h-4 w-4", isActive ? "text-[#3b82f6]" : "text-[#9ca3af]")} />
+              <Icon className={cn("h-5 w-5", isActive ? "text-[#3b82f6]" : "text-[#9ca3af]")} />
             </div>
           )}
         </div>
