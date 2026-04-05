@@ -20,13 +20,37 @@ const stagger = {
   show: { transition: { staggerChildren: 0.06 } },
 };
 
-/* ── OpenArt-style corner-glow card ──
-   The card background matches the page (#0e0e10).
-   Two small radial gradients sit in top-left and bottom-right corners,
-   creating the signature subtle glow border effect on hover.
-*/
+/* ── Featured Banner (cinematic top cards) ── */
 
-function ToolCard({
+function FeaturedBanner({
+  title, subtitle, image, onClick, className,
+}: {
+  title: string; subtitle: string; image: string; onClick: () => void; className?: string;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={cn(
+        "group relative overflow-hidden rounded-[22px] border border-white/[0.08] bg-[#0b0b0d] w-full text-left transition-all duration-300 hover:border-white/[0.16]",
+        className
+      )}
+    >
+      <img src={image} alt={title} className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]" />
+      <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+      <div className="relative z-10 flex flex-col justify-end h-full p-5">
+        <h3 className="text-[18px] font-semibold text-white">{title}</h3>
+        <p className="mt-1 text-[13px] text-white/50 max-w-md">{subtitle}</p>
+        <span className="mt-3 inline-flex w-fit items-center gap-1.5 rounded-full bg-white/80 px-3 py-1 text-[12px] font-medium text-black backdrop-blur">
+          Open Tool <ArrowRight className="h-3 w-3" />
+        </span>
+      </div>
+    </button>
+  );
+}
+
+/* ── Suite Tool Card (compact horizontal mini-card) ── */
+
+function SuiteToolCard({
   tool, image, onClick,
 }: {
   tool: ToolRegistryEntry; image?: string; onClick: () => void;
@@ -36,67 +60,65 @@ function ToolCard({
     <button
       onClick={onClick}
       className={cn(
-        "group relative rounded-[14px] w-full text-left overflow-hidden",
-        "bg-[#0e0e10] border border-[#1a2332]",
-        "transition-all duration-300",
-        "hover:border-[#22d3ee]/40",
+        "group relative flex h-[108px] items-center justify-between rounded-[22px] border border-[#143a34] bg-[#05080a] px-4 w-full text-left transition-all duration-300 hover:border-[#1ee7b7]/40",
         tool.comingSoon && "opacity-50 cursor-default"
       )}
     >
-      {/* Corner glow effects — visible on hover */}
-      <div className="absolute top-0 left-0 w-24 h-24 bg-[radial-gradient(circle_at_0%_0%,rgba(34,211,238,0.18),transparent_70%)] opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
-      <div className="absolute bottom-0 right-0 w-24 h-24 bg-[radial-gradient(circle_at_100%_100%,rgba(34,211,238,0.18),transparent_70%)] opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
-
-      <div className="relative z-10 flex items-center gap-3 p-3.5">
-        {/* Text side */}
-        <div className="flex-1 min-w-0">
-          <h4 className="text-[13px] font-semibold text-[#22d3ee] leading-tight">{tool.name}</h4>
-          <p className="mt-1.5 text-[11px] text-[#64748b] line-clamp-2 leading-relaxed">{tool.description}</p>
-          {tool.comingSoon && (
-            <span className="mt-1.5 inline-block text-[9px] font-bold text-[#475569] uppercase tracking-wider">Coming Soon</span>
-          )}
-        </div>
-        {/* Thumbnail */}
-        <div className="shrink-0 w-[76px] h-[76px] rounded-xl overflow-hidden">
-          {image ? (
-            <img src={image} alt={tool.name} loading="lazy" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110" />
-          ) : (
-            <div className="h-full w-full flex items-center justify-center bg-[#141820]">
-              <Icon className="h-7 w-7 text-[#1e3a5f]" />
-            </div>
-          )}
-        </div>
+      {/* Text */}
+      <div className="min-w-0 pr-4 flex-1">
+        <h3 className="text-[15px] font-semibold leading-tight bg-gradient-to-r from-[#40f2b2] via-[#25d7d9] to-[#22b8ff] bg-clip-text text-transparent">
+          {tool.name}
+        </h3>
+        <p className="mt-2 line-clamp-2 text-[13px] leading-[1.35] text-white/45">
+          {tool.description}
+        </p>
+        {tool.comingSoon && (
+          <span className="mt-1.5 inline-block text-[9px] font-bold text-white/30 uppercase tracking-wider">Coming Soon</span>
+        )}
+      </div>
+      {/* Thumbnail */}
+      <div className="h-[84px] w-[84px] shrink-0 overflow-hidden rounded-[18px]">
+        {image ? (
+          <img src={image} alt={tool.name} loading="lazy" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110" />
+        ) : (
+          <div className="h-full w-full flex items-center justify-center bg-[#0a0f14]">
+            <Icon className="h-7 w-7 text-[#1a3a30]" />
+          </div>
+        )}
       </div>
     </button>
   );
 }
 
-/* ── Hero Spotlight (featured banner) ── */
+/* ── Model Card (large image with title below) ── */
 
-function SpotlightCard({
-  title, subtitle, image, onClick,
+function ModelCard({
+  tool, image, onClick,
 }: {
-  title: string; subtitle: string; image: string; onClick: () => void;
+  tool: ToolRegistryEntry; image?: string; onClick: () => void;
 }) {
+  const Icon = tool.icon;
   return (
-    <button
-      onClick={onClick}
-      className="group relative overflow-hidden rounded-[14px] bg-[#0e0e10] border border-[#1a2332] w-full text-left transition-all duration-300 hover:border-[#22d3ee]/40"
-    >
-      {/* Corner glows */}
-      <div className="absolute top-0 left-0 w-32 h-32 bg-[radial-gradient(circle_at_0%_0%,rgba(34,211,238,0.15),transparent_70%)] opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none z-20" />
-      <div className="absolute bottom-0 right-0 w-32 h-32 bg-[radial-gradient(circle_at_100%_100%,rgba(34,211,238,0.15),transparent_70%)] opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none z-20" />
-
-      <div className="relative h-full min-h-[220px]">
-        <img src={image} className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]" />
-        <div className="absolute inset-0 bg-gradient-to-t from-[#0e0e10] via-black/50 to-transparent" />
-        <div className="relative z-10 flex flex-col justify-end h-full min-h-[220px] p-5">
-          <h3 className="text-xl font-semibold text-white">{title}</h3>
-          <p className="mt-1 max-w-md text-sm text-[#94a3b8]">{subtitle}</p>
-          <span className="mt-3 inline-flex w-fit items-center gap-2 rounded-lg bg-[#141820] px-3 py-1.5 text-xs font-medium text-white border border-[#1a2332] group-hover:border-[#22d3ee]/30 transition-colors">
-            Open Tool <ArrowRight className="h-3 w-3" />
-          </span>
-        </div>
+    <button onClick={onClick} className={cn("group text-left w-full", tool.comingSoon && "opacity-50 cursor-default")}>
+      <div className="relative overflow-hidden rounded-[22px] border border-[#143a34] bg-[#08090c] transition-all duration-300 hover:border-[#1ee7b7]/40">
+        {image ? (
+          <img src={image} alt={tool.name} loading="lazy" className="h-[260px] w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]" />
+        ) : (
+          <div className="h-[260px] w-full flex items-center justify-center bg-[#0a0f14]">
+            <Icon className="h-12 w-12 text-[#1a3a30]" />
+          </div>
+        )}
+      </div>
+      <div className="pt-4">
+        <h3 className="text-[16px] font-semibold bg-gradient-to-r from-[#40f2b2] via-[#25d7d9] to-[#22b8ff] bg-clip-text text-transparent">
+          {tool.name}
+        </h3>
+        <p className="mt-1 text-[14px] text-white/45">
+          {tool.description}
+        </p>
+        {tool.comingSoon && (
+          <span className="mt-1 inline-block text-[10px] font-bold text-white/30 uppercase tracking-wider">Coming Soon</span>
+        )}
       </div>
     </button>
   );
@@ -106,10 +128,10 @@ function SpotlightCard({
 
 function SectionHeader({ title, showMore }: { title: string; showMore?: boolean }) {
   return (
-    <div className="flex items-center justify-between mb-4">
-      <h2 className="text-xl font-bold text-white tracking-tight">{title}</h2>
+    <div className="mb-6 flex items-center justify-between">
+      <h2 className="text-[26px] font-semibold tracking-[-0.02em] text-white">{title}</h2>
       {showMore && (
-        <span className="text-sm font-medium text-[#64748b] hover:text-white cursor-pointer transition-colors">More →</span>
+        <span className="text-[15px] font-medium text-white/70 hover:text-white cursor-pointer transition-colors">More →</span>
       )}
     </div>
   );
@@ -132,62 +154,85 @@ export function StudioHomeBanner({ onToolSelect }: StudioHomeBannerProps) {
   const socialTools = allTools.filter(t => t.subcategory === "social_content").sort((a, b) => a.sortOrder - b.sortOrder);
   const utilityTools = allTools.filter(t => t.subcategory === "utility").sort((a, b) => a.sortOrder - b.sortOrder);
 
+  // Pick first 2 tools for side banners
+  const sideBanner1 = byId("voice-isolator");
+  const sideBanner2 = byId("music-splitter");
+
   return (
     <motion.div
       variants={stagger}
       initial="hidden"
       animate="show"
-      className="py-6 lg:py-8 space-y-10 max-w-[1400px] mx-auto"
+      className="px-6 pt-6 pb-12 w-full"
     >
-      {/* ── HERO ROW ── */}
-      <motion.section variants={fadeUp}>
+      {/* ── FEATURED BANNERS ── */}
+      <motion.section variants={fadeUp} className="mb-14">
         <div className="grid grid-cols-12 gap-3">
-          <div className="col-span-12 lg:col-span-7">
-            <SpotlightCard
+          <div className="col-span-12 lg:col-span-6">
+            <FeaturedBanner
               title="Create Images with AI"
               subtitle="Generate, remix, and upscale visuals with multiple AI models."
               image={heroImageGen}
               onClick={() => launch("image-generator")}
+              className="h-[200px]"
             />
           </div>
-          <div className="col-span-12 lg:col-span-5 grid grid-rows-2 gap-3">
-            {byId("voice-isolator") && <ToolCard tool={byId("voice-isolator")} image={thumb("voice-isolator")} onClick={() => launch("voice-isolator")} />}
-            {byId("music-splitter") && <ToolCard tool={byId("music-splitter")} image={thumb("music-splitter")} onClick={() => launch("music-splitter")} />}
-          </div>
+          {sideBanner1 && (
+            <div className="col-span-6 lg:col-span-3">
+              <FeaturedBanner
+                title={sideBanner1.name}
+                subtitle={sideBanner1.description}
+                image={thumb("voice-isolator") || heroImageGen}
+                onClick={() => launch("voice-isolator")}
+                className="h-[200px]"
+              />
+            </div>
+          )}
+          {sideBanner2 && (
+            <div className="col-span-6 lg:col-span-3">
+              <FeaturedBanner
+                title={sideBanner2.name}
+                subtitle={sideBanner2.description}
+                image={thumb("music-splitter") || heroImageGen}
+                onClick={() => launch("music-splitter")}
+                className="h-[200px]"
+              />
+            </div>
+          )}
         </div>
       </motion.section>
 
-      {/* ── SELLSPAY SUITE (like OpenArt Suite) ── */}
+      {/* ── SELLSPAY SUITE (compact mini-cards) ── */}
       {mediaTools.length > 0 && (
-        <motion.section variants={fadeUp}>
+        <motion.section variants={fadeUp} className="mb-14">
           <SectionHeader title="SellsPay Suite" showMore />
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
             {mediaTools.map(tool => (
-              <ToolCard key={tool.id} tool={tool} image={thumb(tool.id)} onClick={() => launch(tool.id)} />
+              <SuiteToolCard key={tool.id} tool={tool} image={thumb(tool.id)} onClick={() => launch(tool.id)} />
             ))}
           </div>
         </motion.section>
       )}
 
-      {/* ── STORE & SOCIAL ── */}
+      {/* ── STORE & SOCIAL (compact mini-cards) ── */}
       {([...storeTools, ...socialTools].length > 0) && (
-        <motion.section variants={fadeUp}>
+        <motion.section variants={fadeUp} className="mb-14">
           <SectionHeader title="Store & Social" showMore />
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
             {[...storeTools, ...socialTools].map(tool => (
-              <ToolCard key={tool.id} tool={tool} image={thumb(tool.id)} onClick={() => launch(tool.id)} />
+              <SuiteToolCard key={tool.id} tool={tool} image={thumb(tool.id)} onClick={() => launch(tool.id)} />
             ))}
           </div>
         </motion.section>
       )}
 
-      {/* ── UTILITY ── */}
+      {/* ── UTILITY TOOLS (large image model cards) ── */}
       {utilityTools.length > 0 && (
-        <motion.section variants={fadeUp}>
+        <motion.section variants={fadeUp} className="mb-14">
           <SectionHeader title="Utility Tools" showMore />
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
             {utilityTools.map(tool => (
-              <ToolCard key={tool.id} tool={tool} image={thumb(tool.id)} onClick={() => launch(tool.id)} />
+              <ModelCard key={tool.id} tool={tool} image={thumb(tool.id)} onClick={() => launch(tool.id)} />
             ))}
           </div>
         </motion.section>

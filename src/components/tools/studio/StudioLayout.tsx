@@ -185,7 +185,7 @@ export default function StudioLayout() {
   const showRightPanel = !isHome && !campaignResult && !activeTool && activeSection === "campaign";
 
   return (
-    <div className="studio-dark h-screen flex flex-col overflow-hidden bg-[#0e0e10] studio-layout">
+    <div className="studio-dark h-screen flex flex-col overflow-hidden bg-black studio-layout">
       {/* Fixed top header - independent of sidebar */}
       <header className="h-12 shrink-0 flex items-center justify-between px-3 bg-[#0e0e10]">
         {/* Left: sidebar toggle + logo */}
@@ -290,9 +290,8 @@ export default function StudioLayout() {
         </div>
 
         {/* Workspace */}
-        <div className="flex-1 flex min-w-0 gap-0 bg-[#0e0e10]">
-          <main className="flex-1 min-w-0 overflow-y-auto custom-scrollbar bg-[#0e0e10] px-2">
-            <div>
+        <div className="flex-1 flex min-w-0 gap-0 bg-black">
+          <main className="flex-1 min-w-0 overflow-y-auto custom-scrollbar bg-black">
             {isHome ? (
               <StudioHomeBanner
                 creditBalance={creditBalance}
@@ -330,7 +329,6 @@ export default function StudioLayout() {
                 onCampaignStateChange={setCampaignState}
               />
             )}
-            </div>
           </main>
 
           {showRightPanel && (
