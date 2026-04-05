@@ -65,15 +65,9 @@ export default function StudioLayout() {
 
   useEffect(() => {
     if (routeToolId) {
-      if (!profile) {
-        setShowSignUpPromo(true);
-        setActiveTool(null);
-        navigate("/studio", { replace: true });
-      } else {
-        setActiveTool(routeToolId);
-      }
+      setActiveTool(routeToolId);
     }
-  }, [routeToolId, profile]);
+  }, [routeToolId]);
 
   useEffect(() => {
     try { localStorage.setItem("studio-sidebar-collapsed", String(sidebarCollapsed)); } catch {}
@@ -97,11 +91,6 @@ export default function StudioLayout() {
   }, [profile?.id]);
 
   const handleLaunch = (toolId: string) => {
-    // Auth gate: require sign-in before using ANY tool
-    if (!profile) {
-      setShowSignUpPromo(true);
-      return;
-    }
     const entry = toolsRegistry.find(t => t.id === toolId);
     const resolvedId = entry?.legacyRoute || toolId;
     setActiveTool(resolvedId);
