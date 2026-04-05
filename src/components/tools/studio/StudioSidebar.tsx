@@ -68,11 +68,20 @@ function SortableToolItem({ tool, isActive, collapsed, onToolSelect, thumbnail }
       ref={setNodeRef}
       style={style}
       className={cn(
-        "group/tool flex items-center gap-2 w-full rounded-full px-2 py-1.5 text-[13px] transition-colors duration-150 relative",
-        isActive
-          ? "bg-[#1e3a8a]/30 text-[#f4f4f5] font-medium shadow-[0_0_0_1px_#3b82f6,0_0_12px_rgba(59,130,246,0.2)] border border-[#3b82f6]"
-          : "text-[#a1a1aa] hover:text-[#f4f4f5] hover:bg-white/[0.06]",
-        collapsed && "justify-center rounded-xl"
+        "group/tool flex items-center w-full transition-colors duration-150 relative",
+        collapsed
+          ? cn(
+              "justify-center rounded-xl p-1",
+              isActive
+                ? "bg-[#1e3a8a]/30 shadow-[0_0_0_1px_#3b82f6,0_0_12px_rgba(59,130,246,0.2)]"
+                : "hover:bg-white/[0.06]"
+            )
+          : cn(
+              "gap-2 rounded-full px-2 py-1.5 text-[13px]",
+              isActive
+                ? "bg-[#1e3a8a]/30 text-[#f4f4f5] font-medium shadow-[0_0_0_1px_#3b82f6,0_0_12px_rgba(59,130,246,0.2)] border border-[#3b82f6]"
+                : "text-[#a1a1aa] hover:text-[#f4f4f5] hover:bg-white/[0.06] border border-transparent"
+            )
       )}
     >
       {/* Drag handle - only this element is draggable */}
@@ -89,10 +98,14 @@ function SortableToolItem({ tool, isActive, collapsed, onToolSelect, thumbnail }
       {/* Click area for selecting */}
       <button
         onClick={(e) => { e.stopPropagation(); onToolSelect(tool.id); }}
-        className="flex items-center gap-2 flex-1 min-w-0 cursor-pointer"
+        className={cn(
+          "flex items-center gap-2 min-w-0 cursor-pointer",
+          collapsed ? "justify-center" : "flex-1"
+        )}
       >
-          <div className={cn(
-          "h-11 w-11 rounded-full overflow-hidden shrink-0 border pointer-events-none",
+        <div className={cn(
+          "rounded-full overflow-hidden shrink-0 border pointer-events-none",
+          collapsed ? "h-9 w-9" : "h-11 w-11",
           isActive ? "border-[#3b82f6]/50 ring-2 ring-[#3b82f6]/20" : "border-white/[0.08]"
         )}>
           {thumbnail ? (
