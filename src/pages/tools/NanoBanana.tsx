@@ -34,18 +34,18 @@ const OUTPUT_OPTIONS = [
 ];
 
 const C = {
-  bg: "#0e0e10",
-  panel: "#18181b",
-  panel2: "#1e1e22",
-  inner: "#141416",
-  deepInner: "#0c0c0e",
-  border: "rgba(255,255,255,0.06)",
-  borderMid: "rgba(255,255,255,0.10)",
+  bg: "#0a0a0c",
+  panel: "#111114",
+  panel2: "#151518",
+  inner: "#0d0d10",
+  deepInner: "#09090b",
+  border: "rgba(255,255,255,0.05)",
+  borderMid: "rgba(255,255,255,0.08)",
   text: "#f4f4f5",
   textSoft: "#a1a1aa",
-  textMuted: "#71717a",
+  textMuted: "#63637a",
   accent: "#06b6d4",
-  accentBg: "rgba(6,182,212,0.12)",
+  accentBg: "rgba(6,182,212,0.10)",
   cta: "#06b6d4",
   ctaShadow: "rgba(6,182,212,0.3)",
 } as const;
