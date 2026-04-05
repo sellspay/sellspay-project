@@ -64,24 +64,24 @@ function SuiteToolCard({
         tool.comingSoon ? "opacity-55 cursor-default" : "hover:translate-y-[-1px]"
       )}
     >
-      {/* Ultra-subtle outer border */}
-      <div className="pointer-events-none absolute inset-0 rounded-[22px] border border-white/[0.04]" />
+      {/* Ultra-subtle outer border — glows blue on hover */}
+      <div className="pointer-events-none absolute inset-0 rounded-[22px] border border-white/[0.04] transition-all duration-500 group-hover:border-[#3b82f6]/[0.35] group-hover:shadow-[0_0_24px_-4px_rgba(59,130,246,0.3),inset_0_0_12px_-2px_rgba(59,130,246,0.08)]" />
       {/* Top-left corner glow */}
-      <div className="pointer-events-none absolute -left-10 -top-10 h-28 w-28 rounded-full bg-[#2f6bff]/[0.12] blur-2xl transition-all duration-300 group-hover:bg-[#2f6bff]/[0.22]" />
+      <div className="pointer-events-none absolute -left-10 -top-10 h-32 w-32 rounded-full bg-[#2f6bff]/[0.08] blur-2xl transition-all duration-500 group-hover:bg-[#2f6bff]/[0.25]" />
       {/* Bottom-right corner glow */}
-      <div className="pointer-events-none absolute -bottom-10 -right-10 h-28 w-28 rounded-full bg-[#6366f1]/[0.10] blur-2xl transition-all duration-300 group-hover:bg-[#6366f1]/[0.18]" />
+      <div className="pointer-events-none absolute -bottom-10 -right-10 h-32 w-32 rounded-full bg-[#6366f1]/[0.06] blur-2xl transition-all duration-500 group-hover:bg-[#6366f1]/[0.20]" />
       {/* Faint surface gradient */}
       <div className="pointer-events-none absolute inset-[1px] rounded-[21px] bg-[linear-gradient(180deg,rgba(11,11,13,0.95),rgba(8,8,10,0.98))]" />
       {/* Inner highlight line */}
-      <div className="pointer-events-none absolute inset-[1px] rounded-[21px] shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] transition-shadow duration-300 group-hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]" />
+      <div className="pointer-events-none absolute inset-[1px] rounded-[21px] shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] transition-shadow duration-300 group-hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]" />
 
       <div className="relative z-10 flex h-[108px] items-center justify-between gap-4 px-5">
         {/* Text */}
         <div className="min-w-0 flex-1 pr-2">
-          <h3 className="text-[15px] font-semibold leading-tight bg-gradient-to-r from-[#4da6ff] via-[#3b82f6] to-[#6366f1] bg-clip-text text-transparent">
+          <h3 className="text-[16px] font-bold leading-tight bg-gradient-to-r from-white via-white to-[#3b82f6] bg-clip-text text-transparent">
             {tool.name}
           </h3>
-          <p className="mt-2 line-clamp-2 text-[13px] leading-[1.45] text-white/[0.42]">
+          <p className="mt-2 line-clamp-2 text-[13px] leading-[1.45] text-[#8b8fa3]">
             {tool.description}
           </p>
           {tool.comingSoon && (
@@ -92,7 +92,7 @@ function SuiteToolCard({
         <div className="relative h-[88px] w-[88px] shrink-0 overflow-hidden rounded-[20px] ring-1 ring-white/[0.05]">
           <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.01))]" />
           {image ? (
-            <img src={image} alt={tool.name} loading="lazy" className="relative z-10 h-full w-full object-cover transition-transform duration-500 group-hover:scale-110" />
+            <img src={image} alt={tool.name} loading="lazy" className="relative z-10 h-full w-full object-cover transition-all duration-500 group-hover:scale-110 group-hover:brightness-110" />
           ) : (
             <div className="relative z-10 h-full w-full flex items-center justify-center bg-[#111318]">
               <Icon className="h-7 w-7 text-[#1a3a30]" />
