@@ -92,7 +92,7 @@ function SortableToolItem({ tool, isActive, collapsed, onToolSelect, thumbnail }
         className="flex items-center gap-2 flex-1 min-w-0 cursor-pointer"
       >
           <div className={cn(
-          "h-7 w-7 rounded-full overflow-hidden shrink-0 border pointer-events-none",
+          "h-9 w-9 rounded-full overflow-hidden shrink-0 border pointer-events-none",
           isActive ? "border-[#3b82f6]/50 ring-2 ring-[#3b82f6]/20" : "border-white/[0.08]"
         )}>
           {thumbnail ? (
@@ -102,7 +102,7 @@ function SortableToolItem({ tool, isActive, collapsed, onToolSelect, thumbnail }
               "w-full h-full flex items-center justify-center",
               isActive ? "bg-[#3b82f6]/20" : "bg-white/[0.06]"
             )}>
-              <Icon className={cn("h-3.5 w-3.5", isActive ? "text-[#3b82f6]" : "text-[#9ca3af]")} />
+              <Icon className={cn("h-4 w-4", isActive ? "text-[#3b82f6]" : "text-[#9ca3af]")} />
             </div>
           )}
         </div>
@@ -267,21 +267,21 @@ export function StudioSidebar({
                     </TooltipTrigger>
                     {collapsed && <TooltipContent side="right">Add Tools</TooltipContent>}
                   </Tooltip>
-                  <PopoverContent side="right" align="start" sideOffset={8} className="w-[540px] p-0 bg-[#18181b] border-white/[0.06] rounded-2xl overflow-hidden shadow-xl">
-                    <div className="px-4 py-3 border-b border-white/[0.06] flex items-center justify-between">
-                      <span className="text-sm font-bold text-[#f4f4f5]">Add Tools</span>
-                      <button onClick={() => setAddToolsOpen(false)} className="text-[#9ca3af] hover:text-[#f4f4f5] transition-colors">
+                  <PopoverContent side="right" align="start" sideOffset={8} className="w-[540px] p-0 bg-[#0e0e10] border-white/[0.08] rounded-2xl overflow-hidden shadow-2xl shadow-black/60">
+                    <div className="px-4 py-3 border-b border-white/[0.08] flex items-center justify-between bg-[#0e0e10]">
+                      <span className="text-sm font-bold text-white">Add Tools</span>
+                      <button onClick={() => setAddToolsOpen(false)} className="text-[#71717a] hover:text-white transition-colors">
                         <X className="h-4 w-4" />
                       </button>
                     </div>
-                    <div className="grid grid-cols-2 gap-0 divide-x divide-white/[0.06] max-h-[460px] overflow-y-auto custom-scrollbar">
+                    <div className="grid grid-cols-2 gap-0 divide-x divide-white/[0.08] max-h-[460px] overflow-y-auto custom-scrollbar">
                       {categoryOrder.map(cat => {
                         const tools = toolsByCategory[cat];
                         if (!tools || tools.length === 0) return null;
                         return (
                           <div key={cat} className="p-3">
-                            <div className="flex items-center gap-2 px-1 mb-2">
-                              <span className="text-[10px] font-bold text-[#9ca3af] uppercase tracking-widest">
+                             <div className="flex items-center gap-2 px-1 mb-2">
+                              <span className="text-[10px] font-bold text-[#71717a] uppercase tracking-widest">
                                 {SUBCATEGORY_LABELS[cat]}
                               </span>
                             </div>
@@ -292,7 +292,7 @@ export function StudioSidebar({
                                 return (
                                   <div
                                     key={tool.id}
-                                    className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-white/[0.06] group"
+                                    className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-white/[0.06] group transition-colors"
                                   >
                                     <button
                                       type="button"
@@ -303,7 +303,7 @@ export function StudioSidebar({
                                       className="flex items-center gap-2 flex-1 min-w-0 text-left cursor-pointer"
                                     >
                                       <Icon className="h-3.5 w-3.5 text-[#3b82f6] shrink-0" />
-                                      <span className="text-sm text-[#f4f4f5] flex-1 truncate">{tool.name}</span>
+                                      <span className="text-sm text-[#e4e4e7] flex-1 truncate">{tool.name}</span>
                                     </button>
                                     <button
                                       type="button"
