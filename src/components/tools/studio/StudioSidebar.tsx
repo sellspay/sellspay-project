@@ -35,7 +35,97 @@ import { toolThumbnails } from "./toolThumbnails";
 import sellspayLogo from "@/assets/sellspay-s-logo-new.png";
 
 
-/* ── Sortable Tool Item ── */
+/* ── Tool Item ── */
+interface ToolItemProps {
+  tool: typeof toolsRegistry[number];
+  isActive: boolean;
+  collapsed: boolean;
+  onToolSelect: (id: string) => void;
+  thumbnail?: string;
+}
+
+function ToolItem({ tool, isActive, collapsed, onToolSelect, thumbnail }: ToolItemProps) {
+  const Icon = tool.icon;
+
+  const content = (
+    <button
+      onClick={() => onToolSelect(tool.id)}
+      className={cn(
+        "group/tool flex items-center w-full transition-all duration-200 relative cursor-pointer",
+        collapsed
+          ? "justify-center p-1.5"
+          : "gap-2.5 px-2.5 py-[7px] text-[13px]",
+      )}
+    >
+      {/* Active indicator bar */}
+      {isActive && (
+        <motion.div
+          layoutId="active-tool-indicator"
+          className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] rounded-r-full"
+          style={{
+            height: collapsed ? 20 : 24,
+            background: "linear-gradient(180deg, #06b6d4, #3b82f6)",
+            boxShadow: "0 0 8px rgba(6,182,212,0.5)",
+          }}
+          transition={{ type: "spring", stiffness: 400, damping: 30 }}
+        />
+      )}
+
+      {/* Icon */}
+      <div className={cn(
+        "rounded-lg overflow-hidden shrink-0 transition-all duration-200",
+        collapsed ? "h-8 w-8" : "h-7 w-7",
+        isActive
+          ? "ring-1 ring-cyan-500/40 shadow-[0_0_10px_rgba(6,182,212,0.2)]"
+          : "ring-0"
+      )}>
+        {thumbnail ? (
+          <img src={thumbnail} alt="" className={cn(
+            "w-full h-full object-cover transition-all duration-200",
+            isActive ? "brightness-110" : "brightness-75 group-hover/tool:brightness-100"
+          )} />
+        ) : (
+          <div className={cn(
+            "w-full h-full flex items-center justify-center transition-all duration-200",
+            isActive
+              ? "bg-gradient-to-br from-cyan-500/20 to-blue-500/20"
+              : "bg-white/[0.04] group-hover/tool:bg-white/[0.08]"
+          )}>
+            <Icon className={cn(
+              "h-4 w-4 transition-colors duration-200",
+              isActive ? "text-cyan-400" : "text-zinc-500 group-hover/tool:text-zinc-300"
+            )} />
+          </div>
+        )}
+      </div>
+
+      {!collapsed && (
+        <span className={cn(
+          "truncate flex-1 text-left transition-colors duration-200",
+          isActive ? "text-white font-medium" : "text-zinc-500 group-hover/tool:text-zinc-200"
+        )}>
+          {tool.name}
+        </span>
+      )}
+      {!collapsed && tool.comingSoon && (
+        <span className="text-[8px] text-zinc-600 uppercase font-bold shrink-0 px-1 py-0.5 rounded bg-white/[0.03]">Soon</span>
+      )}
+    </button>
+  );
+
+  if (collapsed) {
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>{content}</TooltipTrigger>
+        <TooltipContent side="right">{tool.name}</TooltipContent>
+      </Tooltip>
+    );
+  }
+
+  return content;
+}
+
+/* ── Sortable Tool Item (for pinned reorder) ── */
 interface SortableToolItemProps {
   tool: typeof toolsRegistry[number];
   isActive: boolean;
@@ -61,84 +151,28 @@ function SortableToolItem({ tool, isActive, collapsed, onToolSelect, thumbnail }
     zIndex: isDragging ? 50 : undefined,
   };
 
-  const Icon = tool.icon;
-
-  const content = (
-    <div
-      ref={setNodeRef}
-      style={style}
-      className={cn(
-        "group/tool flex items-center w-full transition-colors duration-150 relative",
-        collapsed
-          ? cn(
-              "justify-center rounded-full p-1",
-              isActive
-                ? "bg-[#1e3a8a]/30 shadow-[0_0_0_1px_#3b82f6,0_0_12px_rgba(59,130,246,0.2)]"
-                : "hover:bg-white/[0.06]"
-            )
-          : cn(
-              "gap-2 rounded-full px-2 py-1.5 text-[13px]",
-              isActive
-                ? "bg-[#1e3a8a]/30 text-[#f4f4f5] font-medium shadow-[0_0_0_1px_#3b82f6,0_0_12px_rgba(59,130,246,0.2)] border border-[#3b82f6]"
-                : "text-[#a1a1aa] hover:text-[#f4f4f5] hover:bg-white/[0.06] border border-transparent"
-            )
-      )}
-    >
-      {/* Drag handle - only this element is draggable */}
+  return (
+    <div ref={setNodeRef} style={style} className="flex items-center group/sortable">
       {!collapsed && (
         <div
           {...attributes}
           {...listeners}
-          className="shrink-0 cursor-grab active:cursor-grabbing p-0.5 rounded hover:bg-white/[0.06] transition-colors touch-none"
+          className="shrink-0 cursor-grab active:cursor-grabbing p-0.5 rounded hover:bg-white/[0.06] transition-colors touch-none opacity-0 group-hover/sortable:opacity-60"
         >
-          <GripVertical className="h-3.5 w-3.5 opacity-30 group-hover/tool:opacity-70 transition-opacity text-[#71717a]" />
+          <GripVertical className="h-3 w-3 text-zinc-600" />
         </div>
       )}
-
-      {/* Click area for selecting */}
-      <button
-        onClick={(e) => { e.stopPropagation(); onToolSelect(tool.id); }}
-        className={cn(
-          "flex items-center gap-2 min-w-0 cursor-pointer",
-          collapsed ? "justify-center" : "flex-1"
-        )}
-      >
-        <div className={cn(
-          "rounded-full overflow-hidden shrink-0 border pointer-events-none",
-          collapsed ? "h-9 w-9" : "h-11 w-11",
-          isActive ? "border-[#3b82f6]/50 ring-2 ring-[#3b82f6]/20" : "border-white/[0.08]"
-        )}>
-          {thumbnail ? (
-            <img src={thumbnail} alt="" className="w-full h-full object-cover" />
-          ) : (
-            <div className={cn(
-              "w-full h-full flex items-center justify-center",
-              isActive ? "bg-[#3b82f6]/20" : "bg-white/[0.06]"
-            )}>
-              <Icon className={cn("h-5 w-5", isActive ? "text-[#3b82f6]" : "text-[#9ca3af]")} />
-            </div>
-          )}
-        </div>
-        {!collapsed && (
-          <span className="truncate flex-1 text-left">{tool.name}</span>
-        )}
-        {!collapsed && tool.comingSoon && (
-          <span className="text-[8px] text-[#9ca3af] uppercase font-bold shrink-0">Soon</span>
-        )}
-      </button>
+      <div className="flex-1 min-w-0">
+        <ToolItem
+          tool={tool}
+          isActive={isActive}
+          collapsed={collapsed}
+          onToolSelect={onToolSelect}
+          thumbnail={thumbnail}
+        />
+      </div>
     </div>
   );
-
-  if (collapsed) {
-    return (
-      <Tooltip>
-        <TooltipTrigger asChild>{content}</TooltipTrigger>
-        <TooltipContent side="right">{tool.name}</TooltipContent>
-      </Tooltip>
-    );
-  }
-
-  return content;
 }
 
 interface StudioSidebarProps {
