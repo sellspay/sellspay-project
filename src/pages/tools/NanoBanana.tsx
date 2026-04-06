@@ -328,6 +328,18 @@ export default function NanoBanana() {
                       <RotateCcw className="h-3 w-3" /> New
                     </button>
                     <button
+                      onClick={() => {
+                        if (generatedImage) {
+                          setPendingAnimateImage(generatedImage);
+                          navigate("/studio/video-generator", { replace: true });
+                        }
+                      }}
+                      className="rounded-xl px-3.5 py-2 text-[11px] font-semibold text-white transition flex items-center gap-1.5"
+                      style={{ background: "linear-gradient(135deg, #8b5cf6, #d946ef)" }}
+                    >
+                      <Play className="h-3 w-3" /> Animate
+                    </button>
+                    <button
                       onClick={handleDownload}
                       className="rounded-xl px-3.5 py-2 text-[11px] font-semibold text-white transition flex items-center gap-1.5"
                       style={{ background: "linear-gradient(135deg, #06b6d4, #3b82f6)" }}
