@@ -166,6 +166,11 @@ export default function StudioLayout() {
     }
     if (section === activeSection && !activeTool && !campaignResult) return;
 
+    if (activeGenTool) {
+      toast.warning(`${activeGenTool.toolName} is still generating. Please wait.`);
+      return;
+    }
+
     if (hasUnsavedProgress || campaignResult) {
       setPendingSection(section);
       return;
