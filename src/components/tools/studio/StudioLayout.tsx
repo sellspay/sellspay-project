@@ -8,6 +8,7 @@ import { PanelLeftClose, PanelLeft, MessageCircle } from "lucide-react";
 import sellspayLogo from "@/assets/sellspay-s-logo-new.png";
 import { supabase } from "@/integrations/supabase/client";
 import { dispatchAuthGate, AUTH_GATE_EVENT } from "@/utils/authGateEvent";
+import { TOOL_GEN_START, TOOL_GEN_END, type ToolGenDetail } from "@/utils/toolGenerationEvent";
 import { SignUpPromoDialog } from "@/components/tools/SignUpPromoDialog";
 import { toolsRegistry } from "@/components/tools/toolsRegistry";
 import { ToolActiveView } from "@/components/tools/ToolActiveView";

@@ -17,6 +17,7 @@ import { toast } from "sonner";
 import { useSubscription } from "@/hooks/useSubscription";
 import { useAuth } from "@/lib/auth";
 import { dispatchAuthGate } from "@/utils/authGateEvent";
+import { dispatchToolGenStart, dispatchToolGenEnd } from "@/utils/toolGenerationEvent";
 import {
   IMAGE_MODELS,
   MODEL_CATEGORIES,
@@ -56,17 +57,22 @@ export default function NanoBanana() {
     if (creditBalance < (currentModel.creditCost || 1)) { toast.error("Insufficient credits."); return; }
     setIsGenerating(true);
     setGeneratedImage(null);
+    dispatchToolGenStart({ toolId: "image-generator", toolName: "Image Generator" });
+    let success = false;
     try {
       const deductResult = await deductCredits("vibecoder_gen");
       if (!deductResult.success) { toast.error("Failed to deduct credit"); return; }
       const { data, error } = await supabase.functions.invoke("generate-image", { body: { prompt: prompt.trim(), model } });
       if (error) throw error;
-      if (data?.image_url) { setGeneratedImage(data.image_url); toast.success(`${currentModel.name} finished generating.`); }
+      if (data?.image_url) { setGeneratedImage(data.image_url); toast.success(`${currentModel.name} finished generating.`); success = true; }
       else throw new Error("No image returned");
     } catch (error) {
       console.error("Generation error:", error);
       toast.error(error instanceof Error ? error.message : "Failed to generate image");
-    } finally { setIsGenerating(false); }
+    } finally {
+      setIsGenerating(false);
+      dispatchToolGenEnd({ toolId: "image-generator", toolName: "Image Generator", success });
+    }
   };
 
   const handleDownload = async () => {
