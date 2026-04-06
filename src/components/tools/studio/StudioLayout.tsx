@@ -132,6 +132,10 @@ export default function StudioLayout() {
   }, [profile?.id]);
 
   const handleLaunch = (toolId: string) => {
+    if (activeGenTool) {
+      toast.warning(`${activeGenTool.toolName} is still generating. Please wait.`);
+      return;
+    }
     const entry = toolsRegistry.find(t => t.id === toolId);
     const resolvedId = entry?.legacyRoute || toolId;
     setActiveTool(resolvedId);
