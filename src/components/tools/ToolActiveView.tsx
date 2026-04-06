@@ -168,6 +168,17 @@ export function ToolActiveView({
     );
   }
 
+  // Image Animator gets full-bleed layout
+  if (toolId === "video-generator") {
+    return (
+      <div className="h-full">
+        <Suspense fallback={<div className="flex items-center justify-center h-full"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>}>
+          <ImageAnimator />
+        </Suspense>
+      </div>
+    );
+  }
+
   return (
     <div className="h-full bg-[#0e0e10]">
       {/* Intro Animation Overlay */}
