@@ -5,11 +5,12 @@ import {
   Wand2,
   Image as ImageIcon,
   Upload,
-  Sparkles,
   Minus,
   Plus,
   ChevronDown,
   Check,
+  Sparkles,
+  RotateCcw,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -23,32 +24,16 @@ import {
   getModelById,
   type ModelCategory,
 } from "@/models/imageModels";
+import { motion, AnimatePresence } from "framer-motion";
 
 type Mode = "create" | "variations";
 
 const OUTPUT_OPTIONS = [
-  { value: "1:1-1024", label: "1:1 | 1K", hint: "Square" },
-  { value: "4:3-1k", label: "4:3 | 1K", hint: "Landscape" },
-  { value: "16:9-1k", label: "16:9 | 1K", hint: "Wide" },
-  { value: "9:16-1k", label: "9:16 | 1K", hint: "Vertical" },
+  { value: "1:1-1024", label: "1:1", hint: "Square" },
+  { value: "4:3-1k", label: "4:3", hint: "Landscape" },
+  { value: "16:9-1k", label: "16:9", hint: "Wide" },
+  { value: "9:16-1k", label: "9:16", hint: "Portrait" },
 ];
-
-const C = {
-  bg: "#0a0a0c",
-  panel: "#111114",
-  panel2: "#151518",
-  inner: "#0d0d10",
-  deepInner: "#09090b",
-  border: "rgba(255,255,255,0.05)",
-  borderMid: "rgba(255,255,255,0.08)",
-  text: "#f4f4f5",
-  textSoft: "#a1a1aa",
-  textMuted: "#63637a",
-  accent: "#06b6d4",
-  accentBg: "rgba(6,182,212,0.10)",
-  cta: "#06b6d4",
-  ctaShadow: "rgba(6,182,212,0.3)",
-} as const;
 
 export default function NanoBanana() {
   const [mode, setMode] = useState<Mode>("create");
@@ -99,106 +84,118 @@ export default function NanoBanana() {
   };
 
   return (
-    <div className="h-full p-3" style={{ background: "hsl(var(--studio-surface))" }}>
-      <div
-        className="grid h-full grid-cols-[380px_minmax(0,1fr)] overflow-hidden rounded-[28px]"
-        style={{ background: C.inner, border: `1px solid ${C.border}` }}
-      >
-        {/* ───── LEFT CONTROL PANEL ───── */}
-        <aside
-          className="h-full overflow-hidden flex flex-col"
-          style={{ background: C.panel, borderRight: `1px solid ${C.border}` }}
-        >
+    <div className="h-full w-full" style={{ background: "#08080a" }}>
+      <div className="grid h-full grid-cols-[340px_minmax(0,1fr)] overflow-hidden">
+
+        {/* ───── LEFT PANEL ───── */}
+        <aside className="h-full overflow-hidden flex flex-col border-r border-white/[0.06]" style={{ background: "#0c0c0f" }}>
+
           {/* Header */}
-          <div className="p-5 pb-4">
-            <h1 className="text-xl font-bold" style={{ color: C.text }}>Image Generator</h1>
-            <p className="text-xs mt-1" style={{ color: C.textMuted }}>Create stunning images from text prompts</p>
+          <div className="px-5 pt-5 pb-3">
+            <div className="flex items-center gap-2.5 mb-1">
+              <div className="h-8 w-8 rounded-xl bg-gradient-to-br from-cyan-500/20 to-blue-500/20 flex items-center justify-center border border-cyan-500/20">
+                <Sparkles className="h-4 w-4 text-cyan-400" />
+              </div>
+              <div>
+                <h1 className="text-[15px] font-semibold text-white">Image Generator</h1>
+                <p className="text-[11px] text-zinc-500">AI-powered creation</p>
+              </div>
+            </div>
           </div>
 
-          {/* Scrollable controls */}
-          <div className="flex-1 overflow-y-auto px-5 pb-5 space-y-3">
+          {/* Scrollable body */}
+          <div className="flex-1 overflow-y-auto px-4 pb-4 space-y-3">
+
             {/* Mode tabs */}
-            <div className="grid grid-cols-2 gap-1.5 rounded-[16px] p-1.5" style={{ background: C.inner }}>
+            <div className="grid grid-cols-2 gap-1 rounded-xl p-1 bg-white/[0.03] border border-white/[0.04]">
               {(["create", "variations"] as const).map((entry) => (
                 <button
                   key={entry}
                   onClick={() => setMode(entry)}
-                  className="rounded-[12px] px-3 py-2.5 text-xs font-semibold transition-all"
+                  className="rounded-lg px-3 py-2 text-[11px] font-semibold transition-all"
                   style={{
                     background: mode === entry
-                      ? "radial-gradient(circle at top, #22d3ee 0%, #0891b2 45%, #18181b 100%)"
+                      ? "linear-gradient(135deg, rgba(6,182,212,0.25), rgba(59,130,246,0.15))"
                       : "transparent",
-                    color: mode === entry ? "#fff" : C.textSoft,
+                    color: mode === entry ? "#fff" : "#71717a",
+                    boxShadow: mode === entry ? "0 0 12px rgba(6,182,212,0.15)" : "none",
+                    border: mode === entry ? "1px solid rgba(6,182,212,0.2)" : "1px solid transparent",
                   }}
                 >
-                  {entry === "create" ? "Create Image" : "Image Variations"}
+                  {entry === "create" ? "Create Image" : "Variations"}
                 </button>
               ))}
             </div>
 
-            {/* Model selector */}
-            <div className="rounded-[16px] p-3" style={{ background: C.panel2, border: `1px solid ${C.border}` }}>
-              <div className="text-[10px] font-semibold uppercase tracking-wider mb-2" style={{ color: C.textMuted }}>Model</div>
+            {/* Model */}
+            <div>
+              <label className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500 mb-1.5 block">Model</label>
               <button
                 onClick={() => setModelSelectorOpen(!modelSelectorOpen)}
-                className="flex w-full items-center justify-between gap-2 rounded-[12px] px-3 py-2.5 text-left text-sm transition"
-                style={{ background: C.deepInner, border: `1px solid ${C.border}` }}
+                className="flex w-full items-center justify-between gap-2 rounded-xl px-3 py-2.5 text-left text-[13px] transition bg-white/[0.03] border border-white/[0.06] hover:border-white/[0.1]"
               >
-                <span className="truncate font-medium" style={{ color: C.text }}>{currentModel.name}</span>
-                <ChevronDown className={`h-3.5 w-3.5 shrink-0 transition-transform ${modelSelectorOpen ? "rotate-180" : ""}`} style={{ color: C.textMuted }} />
+                <span className="truncate font-medium text-white">{currentModel.name}</span>
+                <ChevronDown className={`h-3.5 w-3.5 shrink-0 text-zinc-500 transition-transform ${modelSelectorOpen ? "rotate-180" : ""}`} />
               </button>
 
-              {modelSelectorOpen && (
-                <div className="mt-2 max-h-[260px] overflow-y-auto space-y-3 rounded-[12px] p-2" style={{ background: C.deepInner, border: `1px solid ${C.border}` }}>
-                  {(Object.keys(MODEL_CATEGORIES) as ModelCategory[]).map((cat) => {
-                    const models = grouped[cat];
-                    if (!models?.length) return null;
-                    const meta = MODEL_CATEGORIES[cat];
-                    return (
-                      <div key={cat}>
-                        <div className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider" style={{ color: C.textMuted }}>
-                          {meta.emoji} {meta.label}
-                        </div>
-                        <div className="space-y-0.5">
-                          {models.map((m) => {
-                            const selected = model === m.id;
-                            return (
-                              <button
-                                key={m.id}
-                                onClick={() => { setModel(m.id); setModelSelectorOpen(false); }}
-                                className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs transition"
-                                style={{
-                                  background: selected ? C.accentBg : "transparent",
-                                  color: selected ? C.accent : C.textSoft,
-                                }}
-                              >
-                                {selected && <Check className="h-3 w-3 shrink-0" />}
-                                <span className="truncate">{m.name}</span>
-                                {m.tag && <TagBadge tag={m.tag} small />}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
+              <AnimatePresence>
+                {modelSelectorOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "auto" }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="mt-1.5 overflow-hidden"
+                  >
+                    <div className="max-h-[220px] overflow-y-auto space-y-2 rounded-xl p-2 bg-[#0a0a0d] border border-white/[0.06]">
+                      {(Object.keys(MODEL_CATEGORIES) as ModelCategory[]).map((cat) => {
+                        const models = grouped[cat];
+                        if (!models?.length) return null;
+                        const meta = MODEL_CATEGORIES[cat];
+                        return (
+                          <div key={cat}>
+                            <div className="mb-1 text-[9px] font-bold uppercase tracking-widest text-zinc-600 px-1">
+                              {meta.emoji} {meta.label}
+                            </div>
+                            <div className="space-y-px">
+                              {models.map((m) => {
+                                const selected = model === m.id;
+                                return (
+                                  <button
+                                    key={m.id}
+                                    onClick={() => { setModel(m.id); setModelSelectorOpen(false); }}
+                                    className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[11px] transition hover:bg-white/[0.04]"
+                                    style={{
+                                      background: selected ? "rgba(6,182,212,0.1)" : undefined,
+                                      color: selected ? "#22d3ee" : "#a1a1aa",
+                                    }}
+                                  >
+                                    {selected && <Check className="h-3 w-3 shrink-0" />}
+                                    <span className="truncate">{m.name}</span>
+                                    {m.tag && <TagBadge tag={m.tag} small />}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
 
-            {/* Prompt */}
-            <div className="rounded-[16px] p-3" style={{ background: C.panel2, border: `1px solid ${C.border}` }}>
-              <div className="text-xs font-semibold mb-2" style={{ color: C.text }}>Describe your image</div>
+            {/* Prompt area */}
+            <div>
+              <label className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500 mb-1.5 block">Prompt</label>
 
-              {/* Reference upload box */}
-              <div className="rounded-[12px] p-[1px]" style={{ border: `1px solid rgba(6,182,212,0.3)`, background: "linear-gradient(180deg, rgba(6,182,212,0.15), rgba(6,182,212,0.03))" }}>
-                <div className="rounded-[11px] px-3 py-2.5" style={{ background: C.deepInner }}>
-                  <div className="flex items-center gap-2">
-                    <Upload className="h-4 w-4" style={{ color: C.accent }} />
-                    <div>
-                      <div className="text-xs font-medium" style={{ color: C.text }}>Add visual references</div>
-                      <div className="text-[10px]" style={{ color: C.textMuted }}>JPEG/PNG/WEBP/GIF, 20 MB max</div>
-                    </div>
+              {/* Upload zone */}
+              <div className="rounded-xl p-[1px] mb-2" style={{ border: "1px solid rgba(6,182,212,0.15)", background: "linear-gradient(180deg, rgba(6,182,212,0.08), transparent)" }}>
+                <div className="rounded-[11px] px-3 py-2 bg-white/[0.02] flex items-center gap-2">
+                  <Upload className="h-3.5 w-3.5 text-cyan-500/60" />
+                  <div>
+                    <div className="text-[11px] font-medium text-zinc-300">Add references</div>
+                    <div className="text-[9px] text-zinc-600">JPEG/PNG/WEBP/GIF, 20MB</div>
                   </div>
                 </div>
               </div>
@@ -206,53 +203,58 @@ export default function NanoBanana() {
               <textarea
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
-                placeholder='What do you want to see? Example: "A cat sitting on a table, warm morning light."'
-                className="mt-2.5 min-h-[120px] w-full resize-none rounded-[12px] px-3.5 py-3 text-sm outline-none focus:ring-1 focus:ring-cyan-500/40"
-                style={{ background: C.deepInner, border: `1px solid ${C.border}`, color: C.text }}
+                placeholder='Describe what you want to see...'
+                className="w-full min-h-[100px] resize-none rounded-xl px-3 py-2.5 text-[13px] text-white placeholder:text-zinc-600 outline-none bg-white/[0.03] border border-white/[0.06] focus:border-cyan-500/30 transition"
                 disabled={isGenerating}
               />
             </div>
 
-            {/* Output */}
-            <div className="rounded-[16px] p-3" style={{ background: C.panel2, border: `1px solid ${C.border}` }}>
-              <div className="text-[10px] font-semibold uppercase tracking-wider mb-2" style={{ color: C.textMuted }}>Output</div>
-              <div className="flex flex-wrap gap-1.5">
-                {OUTPUT_OPTIONS.map((opt) => (
-                  <button
-                    key={opt.value}
-                    onClick={() => setOutput(opt.value)}
-                    className="rounded-lg px-2.5 py-1.5 text-[11px] font-medium transition"
-                    style={{
-                      background: output === opt.value ? C.accentBg : "transparent",
-                      color: output === opt.value ? C.accent : C.textMuted,
-                      border: output === opt.value ? `1px solid rgba(6,182,212,0.3)` : `1px solid transparent`,
-                    }}
-                  >
-                    {opt.label}
-                  </button>
-                ))}
+            {/* Output options */}
+            <div>
+              <label className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500 mb-1.5 block">Size</label>
+              <div className="flex gap-1.5">
+                {OUTPUT_OPTIONS.map((opt) => {
+                  const active = output === opt.value;
+                  return (
+                    <button
+                      key={opt.value}
+                      onClick={() => setOutput(opt.value)}
+                      className="flex-1 rounded-lg px-2 py-1.5 text-[11px] font-medium transition text-center"
+                      style={{
+                        background: active ? "rgba(6,182,212,0.12)" : "rgba(255,255,255,0.02)",
+                        color: active ? "#22d3ee" : "#52525b",
+                        border: active ? "1px solid rgba(6,182,212,0.25)" : "1px solid rgba(255,255,255,0.04)",
+                      }}
+                    >
+                      <span className="block text-[11px] font-semibold">{opt.label}</span>
+                      <span className="block text-[9px] opacity-60">{opt.hint}</span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
+          </div>
 
-            {/* Count + Generate */}
-            <div className="grid grid-cols-[100px_minmax(0,1fr)] gap-2">
-              <div
-                className="flex items-center justify-between rounded-[12px] px-3 py-2.5"
-                style={{ background: C.deepInner, border: `1px solid ${C.border}` }}
-              >
-                <button onClick={() => setCount(Math.max(1, count - 1))}>
-                  <Minus className="h-3 w-3" style={{ color: C.textSoft }} />
+          {/* Sticky bottom action bar */}
+          <div className="px-4 pb-4 pt-2 border-t border-white/[0.04]">
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-0 rounded-lg border border-white/[0.06] bg-white/[0.02]">
+                <button onClick={() => setCount(Math.max(1, count - 1))} className="px-2.5 py-2 text-zinc-500 hover:text-white transition">
+                  <Minus className="h-3 w-3" />
                 </button>
-                <span className="text-xs font-medium" style={{ color: C.text }}>{count}</span>
-                <button onClick={() => setCount(Math.min(4, count + 1))}>
-                  <Plus className="h-3 w-3" style={{ color: C.textSoft }} />
+                <span className="text-xs font-medium text-white w-5 text-center">{count}</span>
+                <button onClick={() => setCount(Math.min(4, count + 1))} className="px-2.5 py-2 text-zinc-500 hover:text-white transition">
+                  <Plus className="h-3 w-3" />
                 </button>
               </div>
-
               <button
                 onClick={handleGenerate}
                 disabled={isGenerating || !prompt.trim()}
-                className="btn-premium-cyan inline-flex items-center justify-center gap-2 rounded-[12px] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-40 transition"
+                className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-30 transition-all"
+                style={{
+                  background: "linear-gradient(135deg, #06b6d4, #3b82f6)",
+                  boxShadow: isGenerating || !prompt.trim() ? "none" : "0 4px 20px rgba(6,182,212,0.3), 0 0 0 1px rgba(6,182,212,0.2)",
+                }}
               >
                 {isGenerating ? (
                   <><Loader2 className="h-4 w-4 animate-spin" /> Generating...</>
@@ -261,76 +263,125 @@ export default function NanoBanana() {
                 )}
               </button>
             </div>
+            <div className="mt-1.5 text-center text-[10px] text-zinc-600">
+              {currentModel.creditCost || 1} credit{(currentModel.creditCost || 1) > 1 ? "s" : ""} per image · {currentModel.name}
+            </div>
           </div>
         </aside>
 
         {/* ───── RIGHT CANVAS ───── */}
-        <main
-          className="relative overflow-hidden flex items-center justify-center"
-          style={{ background: C.inner }}
-        >
-          {/* Ambient glow background */}
+        <main className="relative overflow-hidden flex items-center justify-center" style={{ background: "#08080a" }}>
+
+          {/* Subtle grid pattern */}
           <div
-            className="absolute inset-0 blur-3xl opacity-40 pointer-events-none"
+            className="absolute inset-0 opacity-[0.03] pointer-events-none"
             style={{
-              background: "radial-gradient(circle at 40% 30%, rgba(6,182,212,0.15), transparent 50%), radial-gradient(circle at 70% 70%, rgba(139,92,246,0.1), transparent 50%)",
+              backgroundImage: "linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)",
+              backgroundSize: "40px 40px",
             }}
           />
 
-          <div className="relative z-10 w-full h-full flex items-center justify-center p-6">
-            {generatedImage ? (
-              <div className="relative max-w-[85%] max-h-[85%]">
-                <img
-                  src={generatedImage}
-                  alt="Generated result"
-                  className="max-w-full max-h-full rounded-2xl object-contain"
-                  style={{ boxShadow: "0 20px 60px rgba(0,0,0,0.5)" }}
-                />
-                <div className="absolute bottom-4 right-4 flex gap-2">
-                  <button
-                    onClick={() => setGeneratedImage(null)}
-                    className="rounded-xl px-4 py-2 text-xs font-medium transition hover:brightness-110"
-                    style={{ background: C.panel, border: `1px solid ${C.borderMid}`, color: C.textSoft }}
-                  >
-                    New
-                  </button>
-                  <button
-                    onClick={handleDownload}
-                    className="inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-semibold text-white transition hover:brightness-110"
-                    style={{ background: C.accent }}
-                  >
-                    <Download className="h-3.5 w-3.5" /> Download
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div className="flex flex-col items-center gap-5 text-center max-w-md">
-                <div
-                  className="w-20 h-20 rounded-2xl flex items-center justify-center"
-                  style={{ background: C.accentBg, border: `1px solid rgba(6,182,212,0.2)` }}
-                >
-                  <ImageIcon className="h-9 w-9" style={{ color: C.accent }} />
-                </div>
-                <div>
-                  <h2 className="text-2xl font-bold mb-2" style={{ color: C.text }}>
-                    AI Image Generator
-                  </h2>
-                  <p className="text-sm leading-relaxed" style={{ color: C.textMuted }}>
-                    Enter a prompt on the left and click Create to generate stunning images with AI.
-                  </p>
-                </div>
+          {/* Ambient gradient */}
+          <div
+            className="absolute inset-0 pointer-events-none opacity-50"
+            style={{
+              background: "radial-gradient(ellipse 60% 50% at 50% 50%, rgba(6,182,212,0.06), transparent), radial-gradient(ellipse 40% 40% at 30% 70%, rgba(99,102,241,0.04), transparent)",
+            }}
+          />
 
-                {isGenerating && (
-                  <div className="flex flex-col items-center gap-3 mt-4">
-                    <div className="w-16 h-16 rounded-2xl flex items-center justify-center" style={{ background: `linear-gradient(135deg, ${C.accent}, #8b5cf6)` }}>
-                      <Loader2 className="w-8 h-8 text-white animate-spin" />
+          <div className="relative z-10 w-full h-full flex items-center justify-center p-8">
+            <AnimatePresence mode="wait">
+              {generatedImage ? (
+                <motion.div
+                  key="result"
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  className="relative max-w-[90%] max-h-[90%] group"
+                >
+                  <img
+                    src={generatedImage}
+                    alt="Generated result"
+                    className="max-w-full max-h-full rounded-2xl object-contain"
+                    style={{ boxShadow: "0 25px 80px rgba(0,0,0,0.6), 0 0 40px rgba(6,182,212,0.08)" }}
+                  />
+                  <motion.div
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.3 }}
+                    className="absolute bottom-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+                  >
+                    <button
+                      onClick={() => setGeneratedImage(null)}
+                      className="rounded-xl px-3.5 py-2 text-[11px] font-medium text-zinc-300 bg-black/60 backdrop-blur-sm border border-white/[0.08] hover:bg-black/80 transition flex items-center gap-1.5"
+                    >
+                      <RotateCcw className="h-3 w-3" /> New
+                    </button>
+                    <button
+                      onClick={handleDownload}
+                      className="rounded-xl px-3.5 py-2 text-[11px] font-semibold text-white transition flex items-center gap-1.5"
+                      style={{ background: "linear-gradient(135deg, #06b6d4, #3b82f6)" }}
+                    >
+                      <Download className="h-3 w-3" /> Save
+                    </button>
+                  </motion.div>
+                </motion.div>
+              ) : isGenerating ? (
+                <motion.div
+                  key="loading"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="flex flex-col items-center gap-6"
+                >
+                  <div className="relative">
+                    <div className="absolute inset-0 rounded-full blur-2xl opacity-30" style={{ background: "linear-gradient(135deg, #06b6d4, #8b5cf6)" }} />
+                    <div
+                      className="relative w-20 h-20 rounded-2xl flex items-center justify-center"
+                      style={{ background: "linear-gradient(135deg, rgba(6,182,212,0.2), rgba(99,102,241,0.15))", border: "1px solid rgba(6,182,212,0.2)" }}
+                    >
+                      <Loader2 className="w-9 h-9 text-cyan-400 animate-spin" />
                     </div>
-                    <p className="text-sm font-medium" style={{ color: C.text }}>Generating your image...</p>
-                    <p className="text-xs" style={{ color: C.textMuted }}>This may take a few seconds</p>
                   </div>
-                )}
-              </div>
-            )}
+                  <div className="text-center">
+                    <p className="text-[15px] font-medium text-white mb-1">Creating your image…</p>
+                    <p className="text-[12px] text-zinc-500">Using {currentModel.name}</p>
+                  </div>
+                  <div className="w-48 h-1 rounded-full overflow-hidden bg-white/[0.04]">
+                    <motion.div
+                      className="h-full rounded-full"
+                      style={{ background: "linear-gradient(90deg, #06b6d4, #8b5cf6)" }}
+                      initial={{ width: "0%" }}
+                      animate={{ width: "85%" }}
+                      transition={{ duration: 12, ease: "easeOut" }}
+                    />
+                  </div>
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="empty"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  className="flex flex-col items-center gap-5 text-center max-w-sm"
+                >
+                  <div
+                    className="w-16 h-16 rounded-2xl flex items-center justify-center"
+                    style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}
+                  >
+                    <ImageIcon className="h-7 w-7 text-zinc-600" />
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-semibold text-zinc-300 mb-1.5">
+                      Create something amazing
+                    </h2>
+                    <p className="text-[13px] leading-relaxed text-zinc-600">
+                      Write a prompt and hit Create to generate images with AI
+                    </p>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         </main>
       </div>
@@ -340,7 +391,7 @@ export default function NanoBanana() {
 
 /* ── Sub-components ── */
 function TagBadge({ tag, small = false }: { tag: string; small?: boolean }) {
-  const base = small ? "px-1.5 py-0.5 text-[9px]" : "px-2 py-0.5 text-[10px]";
+  const base = small ? "px-1.5 py-0.5 text-[8px]" : "px-2 py-0.5 text-[10px]";
   const colors =
     tag === "Pro" || tag === "HD"
       ? "text-amber-400 bg-amber-500/10 border border-amber-500/20"
