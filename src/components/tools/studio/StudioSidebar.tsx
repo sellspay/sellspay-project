@@ -50,65 +50,38 @@ function ToolItem({ tool, isActive, collapsed, onToolSelect, thumbnail }: ToolIt
   const content = (
     <button
       onClick={() => onToolSelect(tool.id)}
-      className={cn(
-        "group/tool flex items-center w-full transition-all duration-200 relative cursor-pointer",
-        collapsed
-          ? "justify-center p-1.5"
-          : "gap-2.5 px-2.5 py-[7px] text-[13px]",
-      )}
+      data-active={isActive ? "true" : "false"}
+      data-collapsed={collapsed ? "true" : "false"}
+      className="studio-tool-item group/tool cursor-pointer"
     >
-      {/* Active indicator bar */}
       {isActive && (
         <motion.div
-          layoutId="active-tool-indicator"
-          className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] rounded-r-full"
-          style={{
-            height: collapsed ? 20 : 24,
-            background: "linear-gradient(180deg, #06b6d4, #3b82f6)",
-            boxShadow: "0 0 8px rgba(6,182,212,0.5)",
-          }}
-          transition={{ type: "spring", stiffness: 400, damping: 30 }}
+          layoutId="active-tool-surface"
+          className={cn(
+            "studio-tool-active-surface",
+            collapsed && "studio-tool-active-surface-collapsed"
+          )}
+          transition={{ type: "spring", stiffness: 380, damping: 34, mass: 0.7 }}
         />
       )}
 
-      {/* Icon */}
-      <div className={cn(
-        "rounded-lg overflow-hidden shrink-0 transition-all duration-200",
-        collapsed ? "h-8 w-8" : "h-7 w-7",
-        isActive
-          ? "ring-1 ring-cyan-500/40 shadow-[0_0_10px_rgba(6,182,212,0.2)]"
-          : "ring-0"
-      )}>
+      <div className="studio-tool-icon">
         {thumbnail ? (
-          <img src={thumbnail} alt="" className={cn(
-            "w-full h-full object-cover transition-all duration-200",
-            isActive ? "brightness-110" : "brightness-75 group-hover/tool:brightness-100"
-          )} />
+          <img src={thumbnail} alt="" className="studio-tool-thumbnail" />
         ) : (
-          <div className={cn(
-            "w-full h-full flex items-center justify-center transition-all duration-200",
-            isActive
-              ? "bg-gradient-to-br from-cyan-500/20 to-blue-500/20"
-              : "bg-white/[0.04] group-hover/tool:bg-white/[0.08]"
-          )}>
-            <Icon className={cn(
-              "h-4 w-4 transition-colors duration-200",
-              isActive ? "text-cyan-400" : "text-zinc-500 group-hover/tool:text-zinc-300"
-            )} />
+          <div className="studio-tool-fallback">
+            <Icon className="h-4 w-4" />
           </div>
         )}
       </div>
 
       {!collapsed && (
-        <span className={cn(
-          "truncate flex-1 text-left transition-colors duration-200",
-          isActive ? "text-white font-medium" : "text-zinc-500 group-hover/tool:text-zinc-200"
-        )}>
-          {tool.name}
-        </span>
+        <span className="studio-tool-label truncate">{tool.name}</span>
       )}
       {!collapsed && tool.comingSoon && (
-        <span className="text-[8px] text-zinc-600 uppercase font-bold shrink-0 px-1 py-0.5 rounded bg-white/[0.03]">Soon</span>
+        <span className="shrink-0 rounded-full border border-border/60 bg-background/30 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+          Soon
+        </span>
       )}
     </button>
   );
