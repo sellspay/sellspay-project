@@ -21,6 +21,7 @@ import { useAuth } from "@/lib/auth";
 import { dispatchAuthGate } from "@/utils/authGateEvent";
 import { dispatchToolGenStart, dispatchToolGenEnd } from "@/utils/toolGenerationEvent";
 import { setPendingAnimateImage } from "@/utils/pendingAnimateImage";
+import { saveToolAsset } from "@/utils/saveToolAsset";
 import {
   IMAGE_MODELS,
   MODEL_CATEGORIES,
@@ -68,7 +69,12 @@ export default function NanoBanana() {
       if (!deductResult.success) { toast.error("Failed to deduct credit"); return; }
       const { data, error } = await supabase.functions.invoke("generate-image", { body: { prompt: prompt.trim(), model } });
       if (error) throw error;
-      if (data?.image_url) { setGeneratedImage(data.image_url); toast.success(`${currentModel.name} finished generating.`); success = true; }
+      if (data?.image_url) {
+        setGeneratedImage(data.image_url);
+        toast.success(`${currentModel.name} finished generating.`);
+        success = true;
+        saveToolAsset({ userId: user.id, type: "image", storageUrl: data.image_url, filename: `image-${Date.now()}.png`, metadata: { prompt: prompt.trim(), model } as any });
+      }
       else throw new Error("No image returned");
     } catch (error) {
       console.error("Generation error:", error);

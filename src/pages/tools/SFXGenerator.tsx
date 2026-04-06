@@ -19,6 +19,7 @@ import { useSubscription } from "@/hooks/useSubscription";
 import { UpgradeModal } from "@/components/subscription/UpgradeModal";
 import { useAuth } from "@/lib/auth";
 import { dispatchAuthGate } from "@/utils/authGateEvent";
+import { saveToolAsset } from "@/utils/saveToolAsset";
 
 const C = {
   bg: "#0e0e10",
@@ -84,6 +85,7 @@ export default function SFXGenerator() {
       if (!deductResult.success) console.warn("Credit deduction failed:", deductResult.error);
       setResult({ audio_url: data.audio_url, filename: data.filename });
       toast.success("Sound effect generated!");
+      saveToolAsset({ userId: user!.id, type: "audio", storageUrl: data.audio_url, filename: data.filename || `sfx-${Date.now()}.wav`, metadata: { prompt: prompt.trim(), duration } as any });
     } catch (err) {
       console.error("Generation error:", err);
       toast.error(err instanceof Error ? err.message : "Failed to generate sound effect");

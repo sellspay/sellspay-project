@@ -15,6 +15,7 @@ import { useAuth } from "@/lib/auth";
 import { dispatchAuthGate } from "@/utils/authGateEvent";
 import { dispatchToolGenStart, dispatchToolGenEnd } from "@/utils/toolGenerationEvent";
 import { consumePendingAnimateImage } from "@/utils/pendingAnimateImage";
+import { saveToolAsset } from "@/utils/saveToolAsset";
 import { motion, AnimatePresence } from "framer-motion";
 
 export default function ImageAnimator() {
@@ -58,6 +59,7 @@ export default function ImageAnimator() {
         setGeneratedVideo(data.video_url);
         toast.success("Animation complete!");
         success = true;
+        saveToolAsset({ userId: user!.id, type: "video", storageUrl: data.video_url, filename: `animation-${Date.now()}.mp4`, metadata: { prompt: prompt.trim(), duration } as any });
       } else {
         throw new Error("No video returned");
       }
