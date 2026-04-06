@@ -35,7 +35,97 @@ import { toolThumbnails } from "./toolThumbnails";
 import sellspayLogo from "@/assets/sellspay-s-logo-new.png";
 
 
-/* ── Sortable Tool Item ── */
+/* ── Tool Item ── */
+interface ToolItemProps {
+  tool: typeof toolsRegistry[number];
+  isActive: boolean;
+  collapsed: boolean;
+  onToolSelect: (id: string) => void;
+  thumbnail?: string;
+}
+
+function ToolItem({ tool, isActive, collapsed, onToolSelect, thumbnail }: ToolItemProps) {
+  const Icon = tool.icon;
+
+  const content = (
+    <button
+      onClick={() => onToolSelect(tool.id)}
+      className={cn(
+        "group/tool flex items-center w-full transition-all duration-200 relative cursor-pointer",
+        collapsed
+          ? "justify-center p-1.5"
+          : "gap-2.5 px-2.5 py-[7px] text-[13px]",
+      )}
+    >
+      {/* Active indicator bar */}
+      {isActive && (
+        <motion.div
+          layoutId="active-tool-indicator"
+          className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] rounded-r-full"
+          style={{
+            height: collapsed ? 20 : 24,
+            background: "linear-gradient(180deg, #06b6d4, #3b82f6)",
+            boxShadow: "0 0 8px rgba(6,182,212,0.5)",
+          }}
+          transition={{ type: "spring", stiffness: 400, damping: 30 }}
+        />
+      )}
+
+      {/* Icon */}
+      <div className={cn(
+        "rounded-lg overflow-hidden shrink-0 transition-all duration-200",
+        collapsed ? "h-8 w-8" : "h-7 w-7",
+        isActive
+          ? "ring-1 ring-cyan-500/40 shadow-[0_0_10px_rgba(6,182,212,0.2)]"
+          : "ring-0"
+      )}>
+        {thumbnail ? (
+          <img src={thumbnail} alt="" className={cn(
+            "w-full h-full object-cover transition-all duration-200",
+            isActive ? "brightness-110" : "brightness-75 group-hover/tool:brightness-100"
+          )} />
+        ) : (
+          <div className={cn(
+            "w-full h-full flex items-center justify-center transition-all duration-200",
+            isActive
+              ? "bg-gradient-to-br from-cyan-500/20 to-blue-500/20"
+              : "bg-white/[0.04] group-hover/tool:bg-white/[0.08]"
+          )}>
+            <Icon className={cn(
+              "h-4 w-4 transition-colors duration-200",
+              isActive ? "text-cyan-400" : "text-zinc-500 group-hover/tool:text-zinc-300"
+            )} />
+          </div>
+        )}
+      </div>
+
+      {!collapsed && (
+        <span className={cn(
+          "truncate flex-1 text-left transition-colors duration-200",
+          isActive ? "text-white font-medium" : "text-zinc-500 group-hover/tool:text-zinc-200"
+        )}>
+          {tool.name}
+        </span>
+      )}
+      {!collapsed && tool.comingSoon && (
+        <span className="text-[8px] text-zinc-600 uppercase font-bold shrink-0 px-1 py-0.5 rounded bg-white/[0.03]">Soon</span>
+      )}
+    </button>
+  );
+
+  if (collapsed) {
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>{content}</TooltipTrigger>
+        <TooltipContent side="right">{tool.name}</TooltipContent>
+      </Tooltip>
+    );
+  }
+
+  return content;
+}
+
+/* ── Sortable Tool Item (for pinned reorder) ── */
 interface SortableToolItemProps {
   tool: typeof toolsRegistry[number];
   isActive: boolean;
@@ -61,84 +151,28 @@ function SortableToolItem({ tool, isActive, collapsed, onToolSelect, thumbnail }
     zIndex: isDragging ? 50 : undefined,
   };
 
-  const Icon = tool.icon;
-
-  const content = (
-    <div
-      ref={setNodeRef}
-      style={style}
-      className={cn(
-        "group/tool flex items-center w-full transition-colors duration-150 relative",
-        collapsed
-          ? cn(
-              "justify-center rounded-full p-1",
-              isActive
-                ? "bg-[#1e3a8a]/30 shadow-[0_0_0_1px_#3b82f6,0_0_12px_rgba(59,130,246,0.2)]"
-                : "hover:bg-white/[0.06]"
-            )
-          : cn(
-              "gap-2 rounded-full px-2 py-1.5 text-[13px]",
-              isActive
-                ? "bg-[#1e3a8a]/30 text-[#f4f4f5] font-medium shadow-[0_0_0_1px_#3b82f6,0_0_12px_rgba(59,130,246,0.2)] border border-[#3b82f6]"
-                : "text-[#a1a1aa] hover:text-[#f4f4f5] hover:bg-white/[0.06] border border-transparent"
-            )
-      )}
-    >
-      {/* Drag handle - only this element is draggable */}
+  return (
+    <div ref={setNodeRef} style={style} className="flex items-center group/sortable">
       {!collapsed && (
         <div
           {...attributes}
           {...listeners}
-          className="shrink-0 cursor-grab active:cursor-grabbing p-0.5 rounded hover:bg-white/[0.06] transition-colors touch-none"
+          className="shrink-0 cursor-grab active:cursor-grabbing p-0.5 rounded hover:bg-white/[0.06] transition-colors touch-none opacity-0 group-hover/sortable:opacity-60"
         >
-          <GripVertical className="h-3.5 w-3.5 opacity-30 group-hover/tool:opacity-70 transition-opacity text-[#71717a]" />
+          <GripVertical className="h-3 w-3 text-zinc-600" />
         </div>
       )}
-
-      {/* Click area for selecting */}
-      <button
-        onClick={(e) => { e.stopPropagation(); onToolSelect(tool.id); }}
-        className={cn(
-          "flex items-center gap-2 min-w-0 cursor-pointer",
-          collapsed ? "justify-center" : "flex-1"
-        )}
-      >
-        <div className={cn(
-          "rounded-full overflow-hidden shrink-0 border pointer-events-none",
-          collapsed ? "h-9 w-9" : "h-11 w-11",
-          isActive ? "border-[#3b82f6]/50 ring-2 ring-[#3b82f6]/20" : "border-white/[0.08]"
-        )}>
-          {thumbnail ? (
-            <img src={thumbnail} alt="" className="w-full h-full object-cover" />
-          ) : (
-            <div className={cn(
-              "w-full h-full flex items-center justify-center",
-              isActive ? "bg-[#3b82f6]/20" : "bg-white/[0.06]"
-            )}>
-              <Icon className={cn("h-5 w-5", isActive ? "text-[#3b82f6]" : "text-[#9ca3af]")} />
-            </div>
-          )}
-        </div>
-        {!collapsed && (
-          <span className="truncate flex-1 text-left">{tool.name}</span>
-        )}
-        {!collapsed && tool.comingSoon && (
-          <span className="text-[8px] text-[#9ca3af] uppercase font-bold shrink-0">Soon</span>
-        )}
-      </button>
+      <div className="flex-1 min-w-0">
+        <ToolItem
+          tool={tool}
+          isActive={isActive}
+          collapsed={collapsed}
+          onToolSelect={onToolSelect}
+          thumbnail={thumbnail}
+        />
+      </div>
     </div>
   );
-
-  if (collapsed) {
-    return (
-      <Tooltip>
-        <TooltipTrigger asChild>{content}</TooltipTrigger>
-        <TooltipContent side="right">{tool.name}</TooltipContent>
-      </Tooltip>
-    );
-  }
-
-  return content;
 }
 
 interface StudioSidebarProps {
@@ -264,15 +298,15 @@ export function StudioSidebar({
     <>
       <TooltipProvider delayDuration={0}>
         <aside className="h-full w-full bg-[hsl(var(--studio-surface))] overflow-hidden flex flex-col">
-              {/* All Tools button */}
-              <div className="shrink-0 px-2 pb-1">
+               {/* All Tools button */}
+               <div className="shrink-0 px-2 pb-2">
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <button
                       onClick={onGoHome}
                       className={cn(
-                        "flex items-center gap-2.5 w-full rounded-full px-3 py-2.5 text-sm font-semibold btn-premium text-white",
-                        collapsed && "justify-center rounded-xl px-2"
+                        "flex items-center gap-2.5 w-full rounded-xl px-3 py-2.5 text-sm font-semibold btn-premium text-white",
+                        collapsed && "justify-center px-2"
                       )}
                     >
                       <Home className="h-4 w-4 shrink-0" />
@@ -283,120 +317,131 @@ export function StudioSidebar({
                 </Tooltip>
               </div>
 
-              {!collapsed && (
-                <div className="shrink-0 px-4 pt-3 pb-1 flex items-center justify-between">
-                  <span className="text-[10px] font-semibold text-[#9ca3af] uppercase tracking-widest">Pinned</span>
-                </div>
-              )}
               {collapsed && <div className="h-px bg-white/[0.06] mx-2 my-1" />}
 
-              {/* Add Tools button */}
-              <div className="shrink-0 px-2 pb-1">
-                <Popover open={addToolsOpen} onOpenChange={setAddToolsOpen}>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <PopoverTrigger asChild>
-                        <button
-                          className={cn(
-                            "flex items-center gap-2.5 w-full rounded-full px-3 py-2 text-sm transition-all duration-150",
-                            "text-[#a1a1aa] hover:text-[#f4f4f5] hover:bg-white/[0.06]",
-                            collapsed && "justify-center px-2"
-                          )}
-                        >
-                          <div className="h-6 w-6 rounded-full border-2 border-dashed border-white/[0.12] flex items-center justify-center shrink-0">
-                            <Plus className="h-3 w-3 text-[#9ca3af]" />
-                          </div>
-                          {!collapsed && <span>Add Tools</span>}
-                        </button>
-                      </PopoverTrigger>
-                    </TooltipTrigger>
-                    {collapsed && <TooltipContent side="right">Add Tools</TooltipContent>}
-                  </Tooltip>
-                  <PopoverContent side="right" align="start" sideOffset={8} className="w-[540px] p-0 bg-[#0e0e10] border-white/[0.08] rounded-2xl overflow-hidden shadow-2xl shadow-black/60">
-                    <div className="px-4 py-3 border-b border-white/[0.08] flex items-center justify-between bg-[#0e0e10]">
-                      <span className="text-sm font-bold text-white">Add Tools</span>
-                      <button onClick={() => setAddToolsOpen(false)} className="text-[#71717a] hover:text-white transition-colors">
-                        <X className="h-4 w-4" />
-                      </button>
-                    </div>
-                    <div className="grid grid-cols-2 gap-0 divide-x divide-white/[0.08] max-h-[460px] overflow-y-auto custom-scrollbar">
-                      {categoryOrder.map(cat => {
-                        const tools = toolsByCategory[cat];
-                        if (!tools || tools.length === 0) return null;
-                        return (
-                          <div key={cat} className="p-3">
-                             <div className="flex items-center gap-2 px-1 mb-2">
-                              <span className="text-[10px] font-bold text-[#71717a] uppercase tracking-widest">
-                                {SUBCATEGORY_LABELS[cat]}
-                              </span>
-                            </div>
-                            <div className="space-y-0.5">
-                              {tools.map(tool => {
-                                const Icon = tool.icon;
-                                const isPinned = pinnedToolIds.includes(tool.id);
-                                return (
-                                  <div
-                                    key={tool.id}
-                                    className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-white/[0.06] group transition-colors"
-                                  >
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        onToolSelect(tool.id);
-                                        setAddToolsOpen(false);
-                                      }}
-                                      className="flex items-center gap-2 flex-1 min-w-0 text-left cursor-pointer"
-                                    >
-                                      <Icon className="h-3.5 w-3.5 text-[#3b82f6] shrink-0" />
-                                      <span className="text-sm text-[#e4e4e7] flex-1 truncate">{tool.name}</span>
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={(event) => {
-                                        event.stopPropagation();
-                                        togglePin(tool.id);
-                                      }}
-                                      className={cn(
-                                        "shrink-0 p-1 rounded-md transition-all",
-                                        isPinned
-                                          ? "text-[#3b82f6] opacity-100"
-                                          : "text-[#9ca3af] opacity-0 group-hover:opacity-100 hover:text-[#3b82f6]"
-                                      )}
-                                      title={isPinned ? "Unpin from sidebar" : "Pin to sidebar"}
-                                    >
-                                      {isPinned ? <PinOff className="h-3.5 w-3.5" /> : <Pin className="h-3.5 w-3.5" />}
-                                    </button>
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </PopoverContent>
-                </Popover>
-              </div>
+              <nav className="flex-1 overflow-y-auto custom-scrollbar px-1 py-1 space-y-3">
+                {/* CREATION section */}
+                {!collapsed && (
+                  <div className="px-2 pt-1">
+                    <span className="text-[10px] font-bold text-zinc-600 uppercase tracking-[0.15em]">Creation</span>
+                  </div>
+                )}
+                <div className="space-y-0.5">
+                  <DndContext
+                    sensors={sensors}
+                    collisionDetection={closestCenter}
+                    onDragEnd={handleDragEnd}
+                  >
+                    <SortableContext items={pinnedToolIds} strategy={verticalListSortingStrategy}>
+                      {pinnedTools.map(tool => (
+                        <SortableToolItem
+                          key={tool.id}
+                          tool={tool}
+                          isActive={activeTool === tool.id || activeTool === tool.legacyRoute}
+                          collapsed={collapsed}
+                          onToolSelect={onToolSelect}
+                          thumbnail={toolThumbnails[tool.id]}
+                        />
+                      ))}
+                    </SortableContext>
+                  </DndContext>
+                </div>
 
-              <nav className="flex-1 overflow-y-auto custom-scrollbar px-2 py-1 space-y-0.5">
-                <DndContext
-                  sensors={sensors}
-                  collisionDetection={closestCenter}
-                  onDragEnd={handleDragEnd}
-                >
-                  <SortableContext items={pinnedToolIds} strategy={verticalListSortingStrategy}>
-                    {pinnedTools.map(tool => (
-                      <SortableToolItem
-                        key={tool.id}
-                        tool={tool}
-                        isActive={activeTool === tool.id || activeTool === tool.legacyRoute}
-                        collapsed={collapsed}
-                        onToolSelect={onToolSelect}
-                        thumbnail={toolThumbnails[tool.id]}
-                      />
-                    ))}
-                  </SortableContext>
-                </DndContext>
+                {/* Add Tools */}
+                <div className="px-1">
+                  <Popover open={addToolsOpen} onOpenChange={setAddToolsOpen}>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <PopoverTrigger asChild>
+                          <button
+                            className={cn(
+                              "flex items-center gap-2 w-full px-2.5 py-[7px] text-[12px] transition-all duration-150",
+                              "text-zinc-600 hover:text-zinc-300",
+                              collapsed && "justify-center px-1.5"
+                            )}
+                          >
+                            <div className="h-6 w-6 rounded-md border border-dashed border-white/[0.1] flex items-center justify-center shrink-0">
+                              <Plus className="h-3 w-3" />
+                            </div>
+                            {!collapsed && <span>Add Tools</span>}
+                          </button>
+                        </PopoverTrigger>
+                      </TooltipTrigger>
+                      {collapsed && <TooltipContent side="right">Add Tools</TooltipContent>}
+                    </Tooltip>
+                    <PopoverContent side="right" align="start" sideOffset={8} className="w-[540px] p-0 bg-[#0e0e10] border-white/[0.08] rounded-2xl overflow-hidden shadow-2xl shadow-black/60">
+                      <div className="px-4 py-3 border-b border-white/[0.08] flex items-center justify-between bg-[#0e0e10]">
+                        <span className="text-sm font-bold text-white">Add Tools</span>
+                        <button onClick={() => setAddToolsOpen(false)} className="text-zinc-500 hover:text-white transition-colors">
+                          <X className="h-4 w-4" />
+                        </button>
+                      </div>
+                      <div className="grid grid-cols-2 gap-0 divide-x divide-white/[0.08] max-h-[460px] overflow-y-auto custom-scrollbar">
+                        {categoryOrder.map(cat => {
+                          const tools = toolsByCategory[cat];
+                          if (!tools || tools.length === 0) return null;
+                          return (
+                            <div key={cat} className="p-3">
+                              <div className="flex items-center gap-2 px-1 mb-2">
+                                <span className="text-[10px] font-bold text-zinc-600 uppercase tracking-widest">
+                                  {SUBCATEGORY_LABELS[cat]}
+                                </span>
+                              </div>
+                              <div className="space-y-0.5">
+                                {tools.map(tool => {
+                                  const Icon = tool.icon;
+                                  const isPinned = pinnedToolIds.includes(tool.id);
+                                  return (
+                                    <div
+                                      key={tool.id}
+                                      className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-white/[0.06] group transition-colors"
+                                    >
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          onToolSelect(tool.id);
+                                          setAddToolsOpen(false);
+                                        }}
+                                        className="flex items-center gap-2 flex-1 min-w-0 text-left cursor-pointer"
+                                      >
+                                        <Icon className="h-3.5 w-3.5 text-cyan-500 shrink-0" />
+                                        <span className="text-sm text-zinc-300 flex-1 truncate">{tool.name}</span>
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={(event) => {
+                                          event.stopPropagation();
+                                          togglePin(tool.id);
+                                        }}
+                                        className={cn(
+                                          "shrink-0 p-1 rounded-md transition-all",
+                                          isPinned
+                                            ? "text-cyan-500 opacity-100"
+                                            : "text-zinc-600 opacity-0 group-hover:opacity-100 hover:text-cyan-500"
+                                        )}
+                                        title={isPinned ? "Unpin from sidebar" : "Pin to sidebar"}
+                                      >
+                                        {isPinned ? <PinOff className="h-3.5 w-3.5" /> : <Pin className="h-3.5 w-3.5" />}
+                                      </button>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                </div>
+
+                {/* WORKSPACE section */}
+                {!collapsed && (
+                  <div className="px-2 pt-2">
+                    <span className="text-[10px] font-bold text-zinc-600 uppercase tracking-[0.15em]">Workspace</span>
+                  </div>
+                )}
+                {collapsed && <div className="h-px bg-white/[0.06] mx-2 my-1" />}
               </nav>
 
               <div className="shrink-0 border-t border-white/[0.06]">
@@ -405,9 +450,9 @@ export function StudioSidebar({
                     <TooltipTrigger asChild>
                       <button
                         onClick={() => onSectionChange("assets")}
-                         className={cn(
+                        className={cn(
                           "flex items-center gap-2.5 w-full rounded-lg px-2.5 py-2 text-sm transition-colors",
-                          "text-[#a1a1aa] hover:text-[#f4f4f5] hover:bg-white/[0.06]",
+                          "text-zinc-500 hover:text-zinc-200 hover:bg-white/[0.06]",
                           collapsed && "justify-center"
                         )}
                       >
