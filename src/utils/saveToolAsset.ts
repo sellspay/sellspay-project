@@ -10,14 +10,15 @@ interface SaveAssetOptions {
 
 export async function saveToolAsset({ userId, type, storageUrl, filename, metadata }: SaveAssetOptions) {
   try {
-    const { error } = await supabase.from("tool_assets").insert({
+    const row = {
       user_id: userId,
       type,
       storage_url: storageUrl,
       thumbnail_url: type === "image" ? storageUrl : null,
       filename: filename || `${type}-${Date.now()}`,
       metadata: metadata || null,
-    });
+    };
+    const { error } = await supabase.from("tool_assets").insert([row]);
     if (error) console.error("Failed to save asset:", error);
     return !error;
   } catch (e) {
