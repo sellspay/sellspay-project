@@ -57,12 +57,52 @@ export default function StudioLayout() {
   const [showSignUpPromo, setShowSignUpPromo] = useState(false);
   const [pricingOpen, setPricingOpen] = useState(false);
 
+  // Track which tool is currently generating (blocks navigation)
+  const [activeGenTool, setActiveGenTool] = useState<ToolGenDetail | null>(null);
+
   // Listen for auth gate events from tool components
   useEffect(() => {
     const handler = () => setShowSignUpPromo(true);
     window.addEventListener(AUTH_GATE_EVENT, handler);
     return () => window.removeEventListener(AUTH_GATE_EVENT, handler);
   }, []);
+
+  // Listen for tool generation start/end
+  useEffect(() => {
+    const onStart = (e: Event) => {
+      const detail = (e as CustomEvent<ToolGenDetail>).detail;
+      setActiveGenTool(detail);
+    };
+    const onEnd = (e: Event) => {
+      const detail = (e as CustomEvent<ToolGenDetail & { success: boolean }>).detail;
+      setActiveGenTool(null);
+      // If user navigated away from the generating tool, notify them
+      if (detail.success) {
+        const currentTool = activeTool;
+        const entry = toolsRegistry.find(t => t.id === detail.toolId || t.legacyRoute === detail.toolId);
+        const resolvedId = entry?.legacyRoute || detail.toolId;
+        if (currentTool !== resolvedId) {
+          toast.success(`${detail.toolName} finished!`, {
+            description: "Your image is ready to view.",
+            action: {
+              label: "View",
+              onClick: () => {
+                setActiveTool(resolvedId);
+                navigate(`/studio/${resolvedId}`, { replace: true });
+              },
+            },
+            duration: 10000,
+          });
+        }
+      }
+    };
+    window.addEventListener(TOOL_GEN_START, onStart);
+    window.addEventListener(TOOL_GEN_END, onEnd);
+    return () => {
+      window.removeEventListener(TOOL_GEN_START, onStart);
+      window.removeEventListener(TOOL_GEN_END, onEnd);
+    };
+  }, [activeTool, navigate]);
 
   useEffect(() => {
     if (routeToolId) {
