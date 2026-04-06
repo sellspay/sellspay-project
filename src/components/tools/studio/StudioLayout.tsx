@@ -143,6 +143,10 @@ export default function StudioLayout() {
   };
 
   const handleGoHome = () => {
+    if (activeGenTool) {
+      toast.warning(`${activeGenTool.toolName} is still generating. Please wait.`);
+      return;
+    }
     if (hasUnsavedProgress || campaignResult) {
       setPendingSection("home");
       return;
