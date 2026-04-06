@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Loader2,
   Download,
@@ -11,6 +12,7 @@ import {
   Check,
   Sparkles,
   RotateCcw,
+  Play,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -18,6 +20,7 @@ import { useSubscription } from "@/hooks/useSubscription";
 import { useAuth } from "@/lib/auth";
 import { dispatchAuthGate } from "@/utils/authGateEvent";
 import { dispatchToolGenStart, dispatchToolGenEnd } from "@/utils/toolGenerationEvent";
+import { setPendingAnimateImage } from "@/utils/pendingAnimateImage";
 import {
   IMAGE_MODELS,
   MODEL_CATEGORIES,
