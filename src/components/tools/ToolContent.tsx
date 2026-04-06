@@ -113,6 +113,8 @@ export function ToolContent({ toolId }: ToolContentProps) {
       case "image-generator":
       case "nano-banana":
         return <NanoBanana />;
+      case "video-generator":
+        return <ImageAnimator />;
       default:
         return null;
     }
