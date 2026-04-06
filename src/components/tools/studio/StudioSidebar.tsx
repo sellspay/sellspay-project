@@ -30,6 +30,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { CreditSegmentBar } from "@/components/ui/CreditSegmentBar";
 import { useAuth } from "@/lib/auth";
 import { useSubscription } from "@/hooks/useSubscription";
+import { GenerationNotifications } from "./GenerationNotifications";
 import { toolsRegistry, SUBCATEGORY_LABELS, type ToolSubcategory } from "@/components/tools/toolsRegistry";
 import { toolThumbnails } from "./toolThumbnails";
 import sellspayLogo from "@/assets/sellspay-s-logo-new.png";
@@ -419,6 +420,7 @@ export function StudioSidebar({
 
               <div className="shrink-0 border-t border-white/[0.06]">
                 <div className="px-2 py-2">
+                  <GenerationNotifications collapsed={collapsed} onNavigateToTool={onToolSelect} />
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <button
