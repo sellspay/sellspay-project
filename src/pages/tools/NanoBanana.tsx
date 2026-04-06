@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Loader2,
   Download,
@@ -11,6 +12,7 @@ import {
   Check,
   Sparkles,
   RotateCcw,
+  Play,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -18,6 +20,7 @@ import { useSubscription } from "@/hooks/useSubscription";
 import { useAuth } from "@/lib/auth";
 import { dispatchAuthGate } from "@/utils/authGateEvent";
 import { dispatchToolGenStart, dispatchToolGenEnd } from "@/utils/toolGenerationEvent";
+import { setPendingAnimateImage } from "@/utils/pendingAnimateImage";
 import {
   IMAGE_MODELS,
   MODEL_CATEGORIES,
@@ -47,6 +50,7 @@ export default function NanoBanana() {
   const [modelSelectorOpen, setModelSelectorOpen] = useState(false);
   const { deductCredits, credits: creditBalance } = useSubscription();
   const { user } = useAuth();
+  const navigate = useNavigate();
 
   const currentModel = useMemo(() => getModelById(model) ?? IMAGE_MODELS[0], [model]);
   const grouped = useMemo(() => getModelsByCategory(), []);
@@ -322,6 +326,18 @@ export default function NanoBanana() {
                       className="rounded-xl px-3.5 py-2 text-[11px] font-medium text-zinc-300 bg-black/60 backdrop-blur-sm border border-white/[0.08] hover:bg-black/80 transition flex items-center gap-1.5"
                     >
                       <RotateCcw className="h-3 w-3" /> New
+                    </button>
+                    <button
+                      onClick={() => {
+                        if (generatedImage) {
+                          setPendingAnimateImage(generatedImage);
+                          navigate("/studio/video-generator", { replace: true });
+                        }
+                      }}
+                      className="rounded-xl px-3.5 py-2 text-[11px] font-semibold text-white transition flex items-center gap-1.5"
+                      style={{ background: "linear-gradient(135deg, #8b5cf6, #d946ef)" }}
+                    >
+                      <Play className="h-3 w-3" /> Animate
                     </button>
                     <button
                       onClick={handleDownload}

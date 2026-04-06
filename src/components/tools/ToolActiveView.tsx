@@ -38,6 +38,7 @@ const SFXIsolator = lazy(() => import("@/pages/tools/SFXIsolator"));
 const MusicSplitter = lazy(() => import("@/pages/tools/MusicSplitter"));
 const SFXGenerator = lazy(() => import("@/pages/tools/SFXGenerator"));
 const NanoBanana = lazy(() => import("@/pages/tools/NanoBanana"));
+const ImageAnimator = lazy(() => import("@/pages/tools/ImageAnimator"));
 
 interface ToolActiveViewProps {
   toolId: string;
@@ -162,6 +163,17 @@ export function ToolActiveView({
       <div className="h-full">
         <Suspense fallback={<div className="flex items-center justify-center h-full"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>}>
           <NanoBanana />
+        </Suspense>
+      </div>
+    );
+  }
+
+  // Image Animator gets full-bleed layout
+  if (toolId === "video-generator") {
+    return (
+      <div className="h-full">
+        <Suspense fallback={<div className="flex items-center justify-center h-full"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>}>
+          <ImageAnimator />
         </Suspense>
       </div>
     );
