@@ -1,11 +1,12 @@
 import { supabase } from "@/integrations/supabase/client";
+import type { Json } from "@/integrations/supabase/types";
 
 interface SaveAssetOptions {
   userId: string;
   type: "image" | "audio" | "video";
   storageUrl: string;
   filename?: string;
-  metadata?: Record<string, unknown>;
+  metadata?: Json;
 }
 
 export async function saveToolAsset({ userId, type, storageUrl, filename, metadata }: SaveAssetOptions) {
