@@ -25,14 +25,21 @@ import { CreditTopUpDialog } from '@/components/ai-builder/CreditTopUpDialog';
 import { CreditSegmentBar } from '@/components/ui/CreditSegmentBar';
 import { PricingModal } from '@/components/pricing/PricingModal';
 
+import lutsIcon from '@/assets/marketplace/luts-icon.jpg';
+import presetsIcon from '@/assets/marketplace/presets-icon.jpg';
+import sfxIcon from '@/assets/marketplace/sfx-icon.jpg';
+import templatesIcon from '@/assets/marketplace/templates-icon.jpg';
+import overlaysIcon from '@/assets/marketplace/overlays-icon.jpg';
+import tutorialsIcon from '@/assets/marketplace/tutorials-icon.jpg';
+
 // Marketplace product cards — CapCut style with thumbnails
 const marketplaceCards = [
-  { name: 'LUTs', subtitle: 'Color grading presets', path: '/products?type=lut', icon: '🎨', gradient: 'from-violet-500/20 to-indigo-500/20' },
-  { name: 'Presets', subtitle: 'Editing presets', path: '/products?type=preset', icon: '✨', gradient: 'from-pink-500/20 to-rose-500/20' },
-  { name: 'SFX', subtitle: 'Sound effects', path: '/products?type=sfx', icon: '🔊', gradient: 'from-amber-500/20 to-orange-500/20' },
-  { name: 'Templates', subtitle: 'Project files', path: '/products?type=template', icon: '📁', gradient: 'from-sky-500/20 to-blue-500/20' },
-  { name: 'Overlays', subtitle: 'Video overlays', path: '/products?type=overlay', icon: '🎬', gradient: 'from-emerald-500/20 to-teal-500/20' },
-  { name: 'Tutorials', subtitle: 'Learn from pros', path: '/products?type=tutorial', icon: '📚', gradient: 'from-purple-500/20 to-fuchsia-500/20' },
+  { name: 'LUTs', subtitle: 'Color grading presets', path: '/products?type=lut', image: lutsIcon },
+  { name: 'Presets', subtitle: 'Editing presets', path: '/products?type=preset', image: presetsIcon },
+  { name: 'SFX', subtitle: 'Sound effects', path: '/products?type=sfx', image: sfxIcon },
+  { name: 'Templates', subtitle: 'Project files', path: '/products?type=template', image: templatesIcon },
+  { name: 'Overlays', subtitle: 'Video overlays', path: '/products?type=overlay', image: overlaysIcon },
+  { name: 'Tutorials', subtitle: 'Learn from pros', path: '/products?type=tutorial', image: tutorialsIcon },
 ];
 
 // AI Studio tools — all tools organized like CapCut
