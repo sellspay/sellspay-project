@@ -96,7 +96,7 @@ export default function HeroSection() {
   const parallaxFast = scrollY * 0.7;
 
   return (
-    <section ref={sectionRef} className="relative min-h-[50vh] sm:min-h-[55vh] md:min-h-[60vh] lg:min-h-[88vh] flex items-center justify-center overflow-hidden px-4 sm:px-6 md:px-8 lg:px-0 py-6 sm:py-8 md:py-10 lg:py-0">
+    <section ref={sectionRef} className="relative min-h-[50vh] sm:min-h-[55vh] md:min-h-[60vh] lg:min-h-[88vh] flex items-center justify-center overflow-hidden px-4 sm:px-6 md:px-8 lg:px-0 py-6 sm:py-8 md:py-10 lg:py-0 -mt-16">
       {/* Compact video container on mobile, full on desktop */}
       <div 
         className="absolute inset-2 sm:inset-4 md:inset-6 lg:inset-0 z-0 rounded-2xl lg:rounded-none overflow-hidden"
