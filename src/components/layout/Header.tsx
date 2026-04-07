@@ -175,7 +175,7 @@ export default function Header() {
           ? "backdrop-blur-xl border-b border-white/[0.06]"
           : "bg-transparent border-b border-transparent",
         activeDropdown && "border-b border-white/[0.06]"
-      )} style={{ backgroundColor: scrolled || activeDropdown ? 'rgba(8,10,15,0.95)' : 'transparent' }}>
+      )} style={{ backgroundColor: scrolled || activeDropdown ? 'rgba(0,0,0,0.95)' : 'transparent' }}>
         <div className="mx-auto w-full px-4 sm:px-6 lg:px-8">
           <div className="relative flex h-16 items-center justify-between">
             {/* Left spacer for desktop */}
