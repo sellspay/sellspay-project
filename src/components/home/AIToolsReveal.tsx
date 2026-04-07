@@ -183,12 +183,13 @@ export function AIToolsReveal() {
       if (!text || cards.length === 0) return;
 
       const headlineEl = text.querySelector("[data-headline]") as HTMLElement | null;
+      const textContainer = text; // Apply text color to entire container so subtitle inherits
       const totalScrollDistance = ENTRY_BUFFER + (panelCount - 1) * stepDistance + EXIT_BUFFER;
       const animDuration = 1 - HOLD_RATIO; // 0.6
 
       // Set initial states
       gsap.set(section, { backgroundColor: steps[0].bg });
-      if (headlineEl) gsap.set(headlineEl, { color: steps[0].text });
+      gsap.set(textContainer, { color: steps[0].text });
 
       cards.forEach((card, i) => {
         gsap.set(card, {
@@ -217,7 +218,7 @@ export function AIToolsReveal() {
 
       // Step 0 initial state
       mainTl.set(section, { backgroundColor: steps[0].bg }, 0);
-      if (headlineEl) mainTl.set(headlineEl, { color: steps[0].text }, 0);
+      mainTl.set(textContainer, { color: steps[0].text }, 0);
       for (let i = 0; i < panelCount; i++) {
         if (i === 0) {
           mainTl.set(cards[i], { yPercent: 0, y: 0, scale: TOP_CARD_SCALE }, 0);
@@ -232,16 +233,17 @@ export function AIToolsReveal() {
       for (let step = 1; step < panelCount; step++) {
         const pos = (step - 1) + animDuration;
 
-        // Background color - synced with card slide
-        mainTl.to(section, {
-          backgroundColor: steps[step].bg,
-          duration: animDuration,
-          immediateRender: false,
-        }, pos);
+        // Only add color/text tweens when the color actually changes from previous step
+        if (steps[step].bg !== steps[step - 1].bg) {
+          mainTl.to(section, {
+            backgroundColor: steps[step].bg,
+            duration: animDuration,
+            immediateRender: false,
+          }, pos);
+        }
 
-        // Text color - synced with card slide
-        if (headlineEl) {
-          mainTl.to(headlineEl, {
+        if (steps[step].text !== steps[step - 1].text) {
+          mainTl.to(textContainer, {
             color: steps[step].text,
             duration: animDuration,
             immediateRender: false,
