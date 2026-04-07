@@ -205,7 +205,7 @@ export function FeatureTabsBar() {
                   className={`relative px-5 py-2.5 rounded-full text-sm font-semibold transition-all duration-300 cursor-pointer ${
                     isActive
                       ? 'bg-primary text-white shadow-lg shadow-primary/25'
-                      : 'bg-white/[0.06] text-white/60 hover:text-white hover:bg-white/[0.1] border border-white/[0.06]'
+                      : 'bg-[#111] text-white/50 hover:text-white/80 hover:bg-[#1a1a1a] border border-white/[0.08]'
                   }`}
                 >
                   {cat.label}
