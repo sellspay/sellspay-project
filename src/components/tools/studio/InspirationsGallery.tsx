@@ -214,8 +214,8 @@ function VideoCard({
         alt={item.label}
         loading="lazy"
         className={cn(
-          "w-full h-auto object-cover",
-          isPlaying ? "opacity-0 hidden" : "opacity-100 transition-transform duration-500 group-hover:scale-[1.04]"
+          "w-full h-auto object-cover transition-transform duration-500 group-hover:scale-[1.04]",
+          isPlaying && "invisible"
         )}
       />
       {item.videoUrl && (
@@ -225,10 +225,10 @@ function VideoCard({
           muted
           loop
           playsInline
-          preload="none"
+          preload="metadata"
           className={cn(
             "absolute inset-0 w-full h-full object-cover",
-            isPlaying ? "opacity-100" : "opacity-0 pointer-events-none"
+            isPlaying ? "visible" : "invisible"
           )}
         />
       )}
