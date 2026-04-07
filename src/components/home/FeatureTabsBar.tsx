@@ -204,8 +204,8 @@ export function FeatureTabsBar() {
                   onClick={() => setActiveId(cat.id)}
                   className={`relative px-5 py-2.5 rounded-full text-sm font-semibold transition-all duration-300 cursor-pointer ${
                     isActive
-                      ? 'bg-primary text-white shadow-lg shadow-primary/25'
-                      : 'bg-[#111] text-white/50 hover:text-white/80 hover:bg-[#1a1a1a] border border-white/[0.08]'
+                      ? 'btn-premium text-white shadow-lg shadow-primary/25'
+                      : 'btn-premium text-white/70 hover:text-white opacity-60 hover:opacity-90'
                   }`}
                 >
                   {cat.label}
