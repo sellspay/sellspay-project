@@ -1,31 +1,31 @@
- import React, { useLayoutEffect, useRef, useState } from "react";
+import React, { useLayoutEffect, useRef, useState } from "react";
 import { useEffect } from "react";
- import gsap from "gsap";
- import { ScrollTrigger } from "gsap/ScrollTrigger";
+import gsap from "gsap";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { supabase } from "@/integrations/supabase/client";
- 
- gsap.registerPlugin(ScrollTrigger);
- 
- import aiPanel1 from "@/assets/ai-panel-1.png";
- import aiPanel2 from "@/assets/ai-panel-2.png";
- import aiPanel3 from "@/assets/ai-panel-3.png";
- import aiPanel5 from "@/assets/ai-panel-5.png";
- import aiPanel6 from "@/assets/ai-panel-6.png";
- 
+
+gsap.registerPlugin(ScrollTrigger);
+
+import aiPanel1 from "@/assets/ai-panel-1.png";
+import aiPanel2 from "@/assets/ai-panel-2.png";
+import aiPanel3 from "@/assets/ai-panel-3.png";
+import aiPanel5 from "@/assets/ai-panel-5.png";
+import aiPanel6 from "@/assets/ai-panel-6.png";
+
 interface PanelMedia {
   url: string | null;
   type: 'image' | 'video';
 }
 
- type Step = {
-   bg: string;
-   text: string;
-   headline: string[];
-   subtitle?: string;
-   image?: string;
+type Step = {
+  bg: string;
+  text: string;
+  headline: string[];
+  subtitle?: string;
+  image?: string;
   media?: PanelMedia;
- };
- 
+};
+
 const REVEAL_SURFACE = "#000000";
 const REVEAL_FOREGROUND = "hsl(0 0% 95%)";
 const REVEAL_DARK = "#000000";
@@ -85,28 +85,28 @@ const STEP_DISTANCE_MOBILE = 300;
 const STACK_Y = 14;
 const STACK_SCALE = 0.02;
 const TOP_CARD_SCALE = 0.97;
-const HOLD_RATIO = 0.4; // 40% of each step is a "pause" before next panel
-const ENTRY_BUFFER = 200; // Scroll distance for smooth entry transition
-const EXIT_BUFFER = 300; // Scroll distance for smooth exit transition
- 
- export function AIToolsReveal() {
-   const sectionRef = useRef<HTMLDivElement | null>(null);
-   const textRef = useRef<HTMLDivElement | null>(null);
-   const deckRef = useRef<HTMLDivElement | null>(null);
-   const headlineLineRefs = useRef<(HTMLSpanElement | null)[]>([]);
-   const activeHeadlineIndexRef = useRef<number>(-1);
-   const [isMobile, setIsMobile] = useState(false);
+const HOLD_RATIO = 0.4;
+const ENTRY_BUFFER = 200;
+const EXIT_BUFFER = 300;
+
+export function AIToolsReveal() {
+  const sectionRef = useRef<HTMLDivElement | null>(null);
+  const textRef = useRef<HTMLDivElement | null>(null);
+  const deckRef = useRef<HTMLDivElement | null>(null);
+  const headlineLineRefs = useRef<(HTMLSpanElement | null)[]>([]);
+  const activeHeadlineIndexRef = useRef<number>(-1);
+  const [isMobile, setIsMobile] = useState(false);
   const [steps, setSteps] = useState<Step[]>(DEFAULT_STEPS);
   const [panelMediaLoaded, setPanelMediaLoaded] = useState(false);
- 
-   const [headlineLines, setHeadlineLines] = useState<[string, string]>([
+
+  const [headlineLines, setHeadlineLines] = useState<[string, string]>([
     DEFAULT_STEPS[0].headline[0],
     DEFAULT_STEPS[0].headline[1],
-   ]);
-   const [activeSubtitle, setActiveSubtitle] = useState<string | undefined>(DEFAULT_STEPS[0].subtitle);
- 
+  ]);
+  const [activeSubtitle, setActiveSubtitle] = useState<string | undefined>(DEFAULT_STEPS[0].subtitle);
+
   const panelCount = steps.length;
-   const stepDistance = isMobile ? STEP_DISTANCE_MOBILE : STEP_DISTANCE_DESKTOP;
+  const stepDistance = isMobile ? STEP_DISTANCE_MOBILE : STEP_DISTANCE_DESKTOP;
 
   // Fetch panel media from database
   useEffect(() => {
@@ -137,7 +137,6 @@ const EXIT_BUFFER = 300; // Scroll distance for smooth exit transition
           return;
         }
 
-        // Merge database media with default steps
         const updatedSteps = DEFAULT_STEPS.map((step, idx) => {
           const panelNum = idx + 1;
           const urlKey = `reveal_panel_${panelNum}_media_url` as keyof typeof data;
@@ -149,7 +148,6 @@ const EXIT_BUFFER = 300; // Scroll distance for smooth exit transition
             return {
               ...step,
               media: { url: mediaUrl, type: mediaType },
-              // Clear default image if custom media is set
               image: undefined,
             };
           }
@@ -166,342 +164,312 @@ const EXIT_BUFFER = 300; // Scroll distance for smooth exit transition
 
     fetchPanelMedia();
   }, []);
- 
-   useLayoutEffect(() => {
-     const checkMobile = () => setIsMobile(window.innerWidth < 1024);
-     checkMobile();
-     window.addEventListener("resize", checkMobile);
-     return () => window.removeEventListener("resize", checkMobile);
-   }, []);
- 
-   useLayoutEffect(() => {
-     const section = sectionRef.current;
-     const deck = deckRef.current;
+
+  useLayoutEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 1024);
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
+
+  useLayoutEffect(() => {
+    const section = sectionRef.current;
+    const deck = deckRef.current;
     if (!section || !deck || !panelMediaLoaded) return;
- 
-     const ctx = gsap.context(() => {
-       const text = textRef.current;
-       const cards = gsap.utils.toArray<HTMLDivElement>(".deck .card");
-       if (!text || cards.length === 0) return;
- 
-       const headlineEl = text.querySelector("[data-headline]") as HTMLElement | null;
-        const totalScrollDistance = ENTRY_BUFFER + (panelCount - 1) * stepDistance + EXIT_BUFFER;
 
-        // Set initial states
-        gsap.set(section, { backgroundColor: steps[0].bg });
-        if (headlineEl) gsap.set(headlineEl, { color: steps[0].text });
- 
-        // Initial deck state: unrevealed cards live below and slide up as you scroll.
-        // Keep base stacking order, but force the active card above the rest per step.
-        cards.forEach((card, i) => {
-          gsap.set(card, {
-            zIndex: i + 1,
-            yPercent: i === 0 ? 0 : 110,
-            y: 0,
-            scale: i === 0 ? TOP_CARD_SCALE : 1,
-            willChange: "transform",
-          });
+    const ctx = gsap.context(() => {
+      const text = textRef.current;
+      const cards = gsap.utils.toArray<HTMLDivElement>(".deck .card");
+      if (!text || cards.length === 0) return;
+
+      const headlineEl = text.querySelector("[data-headline]") as HTMLElement | null;
+      const totalScrollDistance = ENTRY_BUFFER + (panelCount - 1) * stepDistance + EXIT_BUFFER;
+      const animDuration = 1 - HOLD_RATIO; // 0.6
+
+      // Set initial states
+      gsap.set(section, { backgroundColor: steps[0].bg });
+      if (headlineEl) gsap.set(headlineEl, { color: steps[0].text });
+
+      cards.forEach((card, i) => {
+        gsap.set(card, {
+          zIndex: i + 1,
+          yPercent: i === 0 ? 0 : 110,
+          y: 0,
+          scale: i === 0 ? TOP_CARD_SCALE : 1,
+          willChange: "transform",
         });
-        // Ensure card 0 is on top at start
-        gsap.set(cards[0], { zIndex: panelCount + 10 });
- 
-       const setHeadline = (idx: number) => {
-          const line1 = steps[idx]?.headline?.[0] ?? "";
-          const line2 = steps[idx]?.headline?.[1] ?? "";
-          const sub = steps[idx]?.subtitle;
-         if (activeHeadlineIndexRef.current === idx) return;
-         activeHeadlineIndexRef.current = idx;
-         setHeadlineLines([line1, line2]);
-         setActiveSubtitle(sub);
-       };
-       setHeadline(0);
- 
-       const colorTl = gsap.timeline({ paused: true, defaults: { ease: "none" } });
+      });
+      gsap.set(cards[0], { zIndex: panelCount + 10 });
 
-       // Timeline structure: each step takes 1 unit of time
-       // First 60% is the transition, last 40% is hold
-       for (let i = 0; i < panelCount; i++) {
-         const stepStart = i;
-         const animDuration = 1 - HOLD_RATIO; // 0.6
-         colorTl.to(
-           section,
-           {
-              backgroundColor: steps[i].bg,
-             duration: animDuration,
-             immediateRender: false,
-           },
-           stepStart
-         );
+      const setHeadline = (idx: number) => {
+        const line1 = steps[idx]?.headline?.[0] ?? "";
+        const line2 = steps[idx]?.headline?.[1] ?? "";
+        const sub = steps[idx]?.subtitle;
+        if (activeHeadlineIndexRef.current === idx) return;
+        activeHeadlineIndexRef.current = idx;
+        setHeadlineLines([line1, line2]);
+        setActiveSubtitle(sub);
+      };
+      setHeadline(0);
 
-         if (headlineEl) {
-           colorTl.to(
-             headlineEl,
-             {
-                color: steps[i].text,
-               duration: animDuration,
-               immediateRender: false,
-             },
-             stepStart
-           );
-         }
-       }
- 
-        // Build deterministic “deck stack” timeline.
-        const stackTl = gsap.timeline({ paused: true, defaults: { ease: "none" } });
+      // ── Single unified timeline for cards + colors ──
+      const mainTl = gsap.timeline({ paused: true, defaults: { ease: "none" } });
 
-        // zIndex must be deterministic from scroll progress to make reverse scrubbing layer correctly.
-       const applyZDuringScrub = (p: number) => {
-         const totalSteps = panelCount - 1;
-         const f = p * totalSteps;
-         const rawStep = Math.floor(f);
-         const stepProgress = f - rawStep;
-         
-         // Account for hold period: transition happens in first 60% of each step
-         const animPortion = 1 - HOLD_RATIO;
-         const t = stepProgress <= animPortion ? stepProgress / animPortion : 1;
-
-         const current = Math.max(0, Math.min(panelCount - 1, rawStep));
-         const next = Math.max(0, Math.min(panelCount - 1, rawStep + 1));
-
-         // during transition, the incoming card must be on top
-         const topIdx = t > 0.0001 ? next : current;
-
-         cards.forEach((card, i) => {
-           let z = 0;
-           if (i === topIdx) z = 10000;
-           else if (i <= current) z = 9000 - (current - i);
-           else z = 1000 - i;
-
-           gsap.set(card, { zIndex: z });
-         });
-        };
-
-        const deckTweensAtStep = (activeIdx: number, pos: number, duration: number) => {
-          // 1) Cards ABOVE the active (already revealed, behind it)
-          for (let i = 0; i < activeIdx; i++) {
-            const fromTop = activeIdx - i; // 1,2,3...
-            const y = -fromTop * STACK_Y;
-            const scale = Math.max(0.86, TOP_CARD_SCALE - fromTop * STACK_SCALE);
-            stackTl.to(cards[i], { yPercent: 0, y, scale, duration }, pos);
-          }
-
-          // 2) Active card comes to center
-          stackTl.to(
-            cards[activeIdx],
-            { yPercent: 0, y: 0, scale: TOP_CARD_SCALE, duration },
-            pos
-          );
-
-          // 3) Cards BELOW active stay waiting below
-          for (let i = activeIdx + 1; i < panelCount; i++) {
-            stackTl.to(cards[i], { yPercent: 110, y: 0, scale: 1, duration }, pos);
-          }
-        };
-
-        const animDuration = 1 - HOLD_RATIO; // 0.6
-
-        // Step 0 state (transforms only)
-        deckTweensAtStep(0, 0, animDuration);
-
-        // Build steps 1..N-1 (transforms only)
-        for (let step = 1; step < panelCount; step++) {
-          const pos = (step - 1) + (1 - HOLD_RATIO); // Start after previous hold
-          deckTweensAtStep(step, pos, animDuration);
+      // Step 0 initial state
+      mainTl.set(section, { backgroundColor: steps[0].bg }, 0);
+      if (headlineEl) mainTl.set(headlineEl, { color: steps[0].text }, 0);
+      for (let i = 0; i < panelCount; i++) {
+        if (i === 0) {
+          mainTl.set(cards[i], { yPercent: 0, y: 0, scale: TOP_CARD_SCALE }, 0);
+        } else {
+          mainTl.set(cards[i], { yPercent: 110, y: 0, scale: 1 }, 0);
         }
- 
-        // Drive both the stack + background/text colors from one ScrollTrigger
-        ScrollTrigger.create({
-          trigger: section,
-          start: "top top",
-          end: `+=${totalScrollDistance}`,
-          pin: true,
-          pinSpacing: true,
-          anticipatePin: 0, // Disabled to prevent jarring teleport on entry
-          invalidateOnRefresh: true,
-          scrub: 0.5, // Slight smoothing to prevent jank
-          onUpdate: (self) => {
-            // Map progress to account for entry/exit buffers
-            const coreScrollDistance = (panelCount - 1) * stepDistance;
-            const entryRatio = ENTRY_BUFFER / totalScrollDistance;
-            const exitRatio = EXIT_BUFFER / totalScrollDistance;
-            const coreRatio = coreScrollDistance / totalScrollDistance;
-            
-            // Clamp progress within the core animation range
-            let coreProgress = 0;
-            if (self.progress <= entryRatio) {
-              // Entry buffer: stay at 0
-              coreProgress = 0;
-            } else if (self.progress >= (1 - exitRatio)) {
-              // Exit buffer: stay at 1
-              coreProgress = 1;
-            } else {
-              // Core animation: map to 0-1
-              coreProgress = (self.progress - entryRatio) / coreRatio;
-            }
-            
-            coreProgress = Math.max(0, Math.min(1, coreProgress));
-            
-            stackTl.progress(coreProgress);
-            colorTl.time(coreProgress * panelCount);
+      }
+      // Tiny hold for step 0
+      mainTl.to({}, { duration: animDuration }, 0);
 
-            // Headline updates: sync text change to when the new card is mostly visible
-            const totalTransitions = panelCount - 1;
-            const stepP = 1 / totalTransitions;
-            const clamped = Math.max(0, Math.min(1, coreProgress));
-            const base = Math.min(totalTransitions - 1, Math.floor(clamped / stepP));
-            const local = (clamped - base * stepP) / stepP;
-            // The card animation occupies the first (1-HOLD_RATIO) of each step.
-            // Switch text when the card slide is 70% done (well into view).
-            const switchPoint = (1 - HOLD_RATIO) * 0.7; // ~0.42 of the full step
-            const activeIdx = local >= switchPoint ? Math.min(panelCount - 1, base + 1) : base;
-            setHeadline(activeIdx);
+      // Steps 1..N-1: cards + colors transition together
+      for (let step = 1; step < panelCount; step++) {
+        const pos = (step - 1) + animDuration;
 
-            // Fractional z-index for perfect forward/reverse layering
-            applyZDuringScrub(coreProgress);
-          },
+        // Background color - synced with card slide
+        mainTl.to(section, {
+          backgroundColor: steps[step].bg,
+          duration: animDuration,
+          immediateRender: false,
+        }, pos);
+
+        // Text color - synced with card slide
+        if (headlineEl) {
+          mainTl.to(headlineEl, {
+            color: steps[step].text,
+            duration: animDuration,
+            immediateRender: false,
+          }, pos);
+        }
+
+        // Cards above active stack behind
+        for (let i = 0; i < step; i++) {
+          const fromTop = step - i;
+          const y = -fromTop * STACK_Y;
+          const scale = Math.max(0.86, TOP_CARD_SCALE - fromTop * STACK_SCALE);
+          mainTl.to(cards[i], { yPercent: 0, y, scale, duration: animDuration }, pos);
+        }
+        // Active card slides in
+        mainTl.to(cards[step], { yPercent: 0, y: 0, scale: TOP_CARD_SCALE, duration: animDuration }, pos);
+        // Cards below stay waiting
+        for (let i = step + 1; i < panelCount; i++) {
+          mainTl.to(cards[i], { yPercent: 110, y: 0, scale: 1, duration: animDuration }, pos);
+        }
+      }
+
+      // zIndex helper
+      const applyZDuringScrub = (p: number) => {
+        const totalDur = mainTl.duration();
+        const time = p * totalDur;
+        let currentStep = 0;
+        for (let s = panelCount - 1; s >= 1; s--) {
+          const stepPos = (s - 1) + animDuration;
+          const stepEnd = stepPos + animDuration;
+          if (time >= stepEnd) { currentStep = s; break; }
+          if (time >= stepPos) { currentStep = s - 1; break; }
+        }
+        let topIdx = currentStep;
+        for (let s = 1; s < panelCount; s++) {
+          const stepPos = (s - 1) + animDuration;
+          const stepEnd = stepPos + animDuration;
+          if (time > stepPos && time <= stepEnd) {
+            topIdx = s;
+            break;
+          }
+        }
+
+        cards.forEach((card, i) => {
+          let z = 0;
+          if (i === topIdx) z = 10000;
+          else if (i <= currentStep) z = 9000 - (currentStep - i);
+          else z = 1000 - i;
+          gsap.set(card, { zIndex: z });
         });
+      };
 
-        // Ensure correct stacking on first paint (before ScrollTrigger emits updates)
-        applyZDuringScrub(0);
- 
-       const line1El = headlineLineRefs.current[0];
-       const line2El = headlineLineRefs.current[1];
-       if (line1El && line2El) {
-         gsap.set([line1El, line2El], { willChange: "transform,opacity" });
-       }
- 
-       const onResize = () => ScrollTrigger.refresh();
-       window.addEventListener("resize", onResize);
-       if (document.readyState === "complete") {
-         ScrollTrigger.refresh();
-       } else {
-         window.addEventListener("load", () => ScrollTrigger.refresh(), { once: true });
-       }
- 
-       return () => {
-         window.removeEventListener("resize", onResize);
-       };
-     }, sectionRef);
- 
-     return () => ctx.revert();
+      // Drive everything from one ScrollTrigger
+      ScrollTrigger.create({
+        trigger: section,
+        start: "top top",
+        end: `+=${totalScrollDistance}`,
+        pin: true,
+        pinSpacing: true,
+        anticipatePin: 0,
+        invalidateOnRefresh: true,
+        scrub: 0.5,
+        onUpdate: (self) => {
+          const coreScrollDistance = (panelCount - 1) * stepDistance;
+          const entryRatio = ENTRY_BUFFER / totalScrollDistance;
+          const exitRatio = EXIT_BUFFER / totalScrollDistance;
+          const coreRatio = coreScrollDistance / totalScrollDistance;
+
+          let coreProgress = 0;
+          if (self.progress <= entryRatio) {
+            coreProgress = 0;
+          } else if (self.progress >= (1 - exitRatio)) {
+            coreProgress = 1;
+          } else {
+            coreProgress = (self.progress - entryRatio) / coreRatio;
+          }
+          coreProgress = Math.max(0, Math.min(1, coreProgress));
+
+          // Drive the single unified timeline
+          mainTl.progress(coreProgress);
+
+          // Headline text updates
+          const totalTransitions = panelCount - 1;
+          const stepP = 1 / totalTransitions;
+          const clamped = Math.max(0, Math.min(1, coreProgress));
+          const base = Math.min(totalTransitions - 1, Math.floor(clamped / stepP));
+          const local = (clamped - base * stepP) / stepP;
+          const switchPoint = (1 - HOLD_RATIO) * 0.7;
+          const activeIdx = local >= switchPoint ? Math.min(panelCount - 1, base + 1) : base;
+          setHeadline(activeIdx);
+
+          applyZDuringScrub(coreProgress);
+        },
+      });
+
+      applyZDuringScrub(0);
+
+      const line1El = headlineLineRefs.current[0];
+      const line2El = headlineLineRefs.current[1];
+      if (line1El && line2El) {
+        gsap.set([line1El, line2El], { willChange: "transform,opacity" });
+      }
+
+      const onResize = () => ScrollTrigger.refresh();
+      window.addEventListener("resize", onResize);
+      if (document.readyState === "complete") {
+        ScrollTrigger.refresh();
+      } else {
+        window.addEventListener("load", () => ScrollTrigger.refresh(), { once: true });
+      }
+
+      return () => {
+        window.removeEventListener("resize", onResize);
+      };
+    }, sectionRef);
+
+    return () => ctx.revert();
   }, [panelCount, stepDistance, steps, panelMediaLoaded]);
- 
-   useLayoutEffect(() => {
-     const line1 = headlineLineRefs.current[0];
-     const line2 = headlineLineRefs.current[1];
-     if (!line1 || !line2) return;
-     gsap.killTweensOf([line1, line2]);
-     gsap.fromTo(
-       [line1, line2],
-       { y: 10, opacity: 0 },
-       { y: 0, opacity: 1, duration: 0.25, ease: "power2.out", overwrite: "auto", stagger: 0.03 }
-     );
-   }, [headlineLines[0], headlineLines[1]]);
- 
-    return (
-      <section
-        ref={sectionRef}
-        className="ai-tools-reveal relative w-full will-change-transform overflow-x-clip"
-        style={{ overflowY: "visible" }}
-      >
-        {/*
-          IMPORTANT:
-          Avoid mixing `overflow-x-hidden` with `overflow-y-visible` on the same element.
-          Per CSS overflow rules, that combination can compute to `overflow-y:auto` and create
-          an unintended inner scrollbar during the deck's vertical stacking animation.
-        */}
-        <div className="relative min-h-[100svh] w-full overflow-visible">
-         <div className="absolute inset-0 flex flex-col lg:flex-row items-center justify-center gap-4 sm:gap-6 lg:gap-0 px-4 sm:px-6 lg:px-0 py-8 lg:py-0">
-            <div
-              ref={textRef}
-              className="lg:absolute lg:left-[3%] xl:left-[4%] lg:top-1/2 lg:-translate-y-1/2 z-10 text-center lg:text-left w-full lg:w-auto lg:max-w-[25%] xl:max-w-[28%] order-1 lg:order-none"
-            >
+
+  useLayoutEffect(() => {
+    const line1 = headlineLineRefs.current[0];
+    const line2 = headlineLineRefs.current[1];
+    if (!line1 || !line2) return;
+    gsap.killTweensOf([line1, line2]);
+    gsap.fromTo(
+      [line1, line2],
+      { y: 10, opacity: 0 },
+      { y: 0, opacity: 1, duration: 0.25, ease: "power2.out", overwrite: "auto", stagger: 0.03 }
+    );
+  }, [headlineLines[0], headlineLines[1]]);
+
+  return (
+    <section
+      ref={sectionRef}
+      className="ai-tools-reveal relative w-full will-change-transform overflow-x-clip"
+      style={{ overflowY: "visible" }}
+    >
+      <div className="relative min-h-[100svh] w-full overflow-visible">
+        <div className="absolute inset-0 flex flex-col lg:flex-row items-center justify-center gap-4 sm:gap-6 lg:gap-0 px-4 sm:px-6 lg:px-0 py-8 lg:py-0">
+          <div
+            ref={textRef}
+            className="lg:absolute lg:left-[3%] xl:left-[4%] lg:top-1/2 lg:-translate-y-1/2 z-10 text-center lg:text-left w-full lg:w-auto lg:max-w-[25%] xl:max-w-[28%] order-1 lg:order-none"
+          >
             <h2
-                data-headline
-                className="text-[2.5rem] sm:text-[3rem] md:text-[3.5rem] lg:text-[4.5rem] xl:text-[5.5rem] 2xl:text-[6.5rem] font-bold leading-[1.05] tracking-[-0.02em] opacity-90"
-                style={{ fontFamily: "'Inter', 'SF Pro Display', -apple-system, sans-serif" }}
+              data-headline
+              className="text-[2.5rem] sm:text-[3rem] md:text-[3.5rem] lg:text-[4.5rem] xl:text-[5.5rem] 2xl:text-[6.5rem] font-bold leading-[1.05] tracking-[-0.02em] opacity-90"
+              style={{ fontFamily: "'Inter', 'SF Pro Display', -apple-system, sans-serif" }}
+            >
+              <span ref={(el) => { headlineLineRefs.current[0] = el; }} className="block">
+                {headlineLines[0]}
+              </span>
+              <span ref={(el) => { headlineLineRefs.current[1] = el; }} className="block">
+                {headlineLines[1]}
+              </span>
+            </h2>
+            {activeSubtitle && (
+              <p
+                data-subtitle
+                className="mt-3 sm:mt-4 text-sm sm:text-base lg:text-lg opacity-70 max-w-md leading-relaxed"
+                style={{ fontFamily: "'Inter', -apple-system, sans-serif" }}
               >
-               <span ref={(el) => { headlineLineRefs.current[0] = el; }} className="block">
-                 {headlineLines[0]}
-               </span>
-               <span ref={(el) => { headlineLineRefs.current[1] = el; }} className="block">
-                 {headlineLines[1]}
-               </span>
-             </h2>
-             {activeSubtitle && (
-               <p
-                 data-subtitle
-                 className="mt-3 sm:mt-4 text-sm sm:text-base lg:text-lg opacity-70 max-w-md leading-relaxed"
-                 style={{ fontFamily: "'Inter', -apple-system, sans-serif" }}
-               >
-                 {activeSubtitle}
-               </p>
-             )}
-           </div>
-            <div className="lg:absolute lg:right-[2%] xl:right-[3%] lg:top-1/2 lg:-translate-y-1/2 order-2 lg:order-none w-full lg:w-auto flex justify-center lg:justify-end overflow-x-clip overflow-y-visible">
-              <div
-                ref={deckRef}
-                className="deck relative w-[90vw] sm:w-[85vw] md:w-[80vw] lg:w-[62vw] xl:w-[65vw] max-w-[1100px] aspect-[16/10] overflow-visible"
-              >
-               {steps.map((step, idx) => (
-                 <div
-                   key={idx}
-                   className="card absolute inset-0 will-change-transform"
-                   style={{ 
-                     transform: "translate3d(0,0,0)",
-                     transformOrigin: "center top"
-                   }}
-                 >
-                   <div
-                     className="h-full w-full rounded-[16px] sm:rounded-[20px] md:rounded-[24px] lg:rounded-[28px] border border-white/10 overflow-hidden shadow-2xl"
-                     style={{ backgroundColor: CARD_COLORS[idx] }}
-                   >
-                  {step.media?.url ? (
-                    step.media.type === 'video' ? (
-                      <video
-                        src={step.media.url}
-                        className="h-full w-full object-cover"
-                        autoPlay
-                        muted
-                        loop
-                        playsInline
-                      />
-                    ) : (
+                {activeSubtitle}
+              </p>
+            )}
+          </div>
+          <div className="lg:absolute lg:right-[2%] xl:right-[3%] lg:top-1/2 lg:-translate-y-1/2 order-2 lg:order-none w-full lg:w-auto flex justify-center lg:justify-end overflow-x-clip overflow-y-visible">
+            <div
+              ref={deckRef}
+              className="deck relative w-[90vw] sm:w-[85vw] md:w-[80vw] lg:w-[62vw] xl:w-[65vw] max-w-[1100px] aspect-[16/10] overflow-visible"
+            >
+              {steps.map((step, idx) => (
+                <div
+                  key={idx}
+                  className="card absolute inset-0 will-change-transform"
+                  style={{
+                    transform: "translate3d(0,0,0)",
+                    transformOrigin: "center top"
+                  }}
+                >
+                  <div
+                    className="h-full w-full rounded-[16px] sm:rounded-[20px] md:rounded-[24px] lg:rounded-[28px] border border-white/10 overflow-hidden shadow-2xl"
+                    style={{ backgroundColor: CARD_COLORS[idx] }}
+                  >
+                    {step.media?.url ? (
+                      step.media.type === 'video' ? (
+                        <video
+                          src={step.media.url}
+                          className="h-full w-full object-cover"
+                          autoPlay
+                          muted
+                          loop
+                          playsInline
+                        />
+                      ) : (
+                        <img
+                          src={step.media.url}
+                          alt={step.headline.join(" ")}
+                          className="h-full w-full object-cover"
+                          loading="eager"
+                          decoding="async"
+                        />
+                      )
+                    ) : step.image ? (
                       <img
-                        src={step.media.url}
+                        src={step.image}
                         alt={step.headline.join(" ")}
                         className="h-full w-full object-cover"
                         loading="eager"
                         decoding="async"
                       />
-                    )
-                  ) : step.image ? (
-                       <img
-                         src={step.image}
-                         alt={step.headline.join(" ")}
-                         className="h-full w-full object-cover"
-                         loading="eager"
-                         decoding="async"
-                       />
-                     ) : (
-                       <div className="h-full w-full flex items-center justify-center">
-                         <span
-                           className="text-base sm:text-xl md:text-2xl lg:text-3xl font-medium"
-                           style={{
-                             color: CARD_COLORS[idx] === "#1a1a1a" ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.15)",
-                           }}
-                         >
-                           Panel {idx + 1}
-                         </span>
-                       </div>
-                     )}
-                   </div>
-                 </div>
-               ))}
-             </div>
-           </div>
-         </div>
-       </div>
-     </section>
-   );
- }
+                    ) : (
+                      <div className="h-full w-full flex items-center justify-center">
+                        <span
+                          className="text-base sm:text-xl md:text-2xl lg:text-3xl font-medium"
+                          style={{
+                            color: CARD_COLORS[idx] === "#1a1a1a" ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.15)",
+                          }}
+                        >
+                          Panel {idx + 1}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
