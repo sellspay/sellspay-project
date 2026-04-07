@@ -267,71 +267,67 @@ export function FeatureTabsBar() {
                       className="overflow-hidden"
                     >
                       <div className="rounded-2xl bg-card border border-primary/15 shadow-sm p-5 sm:p-6 lg:p-8 mb-5 sm:mb-7">
-                        <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-6 lg:gap-10 items-start">
-                          {/* Left: Content */}
-                          <div className="flex flex-col justify-start min-h-[200px]">
-                            {/* Active tool header */}
-                            <AnimatePresence mode="wait">
-                              <motion.div
-                                key={activeSub.name}
-                                initial={{ opacity: 0, y: 8 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                exit={{ opacity: 0, y: -8 }}
-                                transition={{ duration: 0.25 }}
-                              >
-                                <div className="flex items-center gap-2.5 mb-3">
-                                  <Sparkles className="h-4 w-4 text-primary" />
-                                  <span className="text-base font-bold text-foreground">
-                                    {activeSub.name}
-                                  </span>
-                                </div>
-                                <p className="text-sm sm:text-[15px] text-muted-foreground leading-relaxed max-w-md mb-4">
-                                  {activeSub.desc}
-                                </p>
-                                <Link
-                                  to={activeSub.link}
-                                  className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline underline-offset-4 mb-6 group/link"
-                                >
-                                  {activeSub.linkText}
-                                  <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover/link:translate-x-0.5" />
-                                </Link>
-                              </motion.div>
-                            </AnimatePresence>
-
-                            {/* Sub-tool selector */}
-                            <div className="flex flex-col gap-1 mt-auto pt-4 border-t border-border/40">
-                              {cat.subTools.map((sub, idx) => (
+                        {/* Sub-tool list with inline expansion */}
+                        <div className="flex flex-col">
+                          {cat.subTools.map((sub, idx) => {
+                            const isActive = idx === subIdx;
+                            return (
+                              <div key={sub.name}>
                                 <button
-                                  key={sub.name}
                                   onClick={() => setSubIndex(cat.id, idx)}
-                                  className={`text-left px-3 py-2 rounded-lg text-sm font-semibold transition-all duration-200 cursor-pointer ${
-                                    idx === subIdx
+                                  className={`w-full text-left px-3 py-2.5 rounded-lg text-sm font-semibold transition-all duration-200 cursor-pointer ${
+                                    isActive
                                       ? 'text-primary bg-primary/8'
                                       : 'text-foreground/80 hover:text-primary hover:bg-primary/5'
                                   }`}
                                 >
                                   {sub.name}
                                 </button>
-                              ))}
-                            </div>
-                          </div>
 
-                          {/* Right: Image */}
-                          <div className="w-full shrink-0">
-                            <AnimatePresence mode="wait">
-                              <motion.img
-                                key={activeSub.image + activeSub.name}
-                                initial={{ opacity: 0, scale: 0.97 }}
-                                animate={{ opacity: 1, scale: 1 }}
-                                exit={{ opacity: 0, scale: 0.97 }}
-                                transition={{ duration: 0.3 }}
-                                src={activeSub.image}
-                                alt={activeSub.name}
-                                className="w-full h-auto rounded-xl object-cover aspect-[4/3] shadow-md"
-                                loading="lazy"
-                              />
-                            </AnimatePresence>
-                          </div>
+                                {/* Expanded content appears directly below the active item */}
+                                <AnimatePresence initial={false}>
+                                  {isActive && (
+                                    <motion.div
+                                      initial={{ height: 0, opacity: 0 }}
+                                      animate={{ height: 'auto', opacity: 1 }}
+                                      exit={{ height: 0, opacity: 0 }}
+                                      transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+                                      className="overflow-hidden"
+                                    >
+                                      <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-6 lg:gap-10 items-start px-3 pt-4 pb-5">
+                                        <div>
+                                          <div className="flex items-center gap-2.5 mb-3">
+                                            <Sparkles className="h-4 w-4 text-primary" />
+                                            <span className="text-base font-bold text-foreground">
+                                              {sub.name}
+                                            </span>
+                                          </div>
+                                          <p className="text-sm sm:text-[15px] text-muted-foreground leading-relaxed max-w-md mb-4">
+                                            {sub.desc}
+                                          </p>
+                                          <Link
+                                            to={sub.link}
+                                            className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline underline-offset-4 group/link"
+                                          >
+                                            {sub.linkText}
+                                            <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover/link:translate-x-0.5" />
+                                          </Link>
+                                        </div>
+                                        <div className="w-full shrink-0">
+                                          <img
+                                            src={sub.image}
+                                            alt={sub.name}
+                                            className="w-full h-auto rounded-xl object-cover aspect-[4/3] shadow-md"
+                                            loading="lazy"
+                                          />
+                                        </div>
+                                      </div>
+                                    </motion.div>
+                                  )}
+                                </AnimatePresence>
+                              </div>
+                            );
+                          })}
                         </div>
                       </div>
                     </motion.div>
