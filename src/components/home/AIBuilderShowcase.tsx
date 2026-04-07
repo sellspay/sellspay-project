@@ -1,191 +1,196 @@
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Sparkles, Wand2, Zap, ArrowRight } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import showcaseHero from '@/assets/showcase-hero-v2.jpg';
 import showcaseCode from '@/assets/showcase-code-preview-v2.jpg';
 import showcaseVibes from '@/assets/showcase-aesthetics-v2.jpg';
 
 export function AIBuilderShowcase() {
   return (
-    <section className="relative py-24 sm:py-32 lg:py-40 overflow-hidden">
-      {/* Ambient glow */}
+    <section className="relative py-32 sm:py-40 lg:py-48 overflow-hidden">
+      {/* Background glow behind the title */}
       <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute top-1/3 left-1/2 -translate-x-1/2 w-[1000px] h-[500px] rounded-full bg-purple-600/[0.04] blur-[150px]" />
+        <div className="absolute top-[30%] left-1/2 -translate-x-1/2 -translate-y-1/2 w-[900px] h-[400px] rounded-full bg-white/[0.04] blur-[180px]" />
       </div>
 
-      <div className="relative z-10 w-full">
-        {/* Header */}
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
+      <div className="relative z-10 w-full max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Top label */}
+        <motion.p
+          initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: '-100px' }}
-          transition={{ duration: 0.7 }}
-          className="text-center mb-14 sm:mb-16 px-6"
+          viewport={{ once: true }}
+          transition={{ duration: 0.6 }}
+          className="text-center text-sm sm:text-base text-white/50 tracking-wide mb-6"
         >
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-white/10 bg-white/[0.03] backdrop-blur-sm mb-6">
-            <Sparkles className="w-3.5 h-3.5 text-purple-400" />
-            <span className="text-xs font-medium tracking-widest uppercase text-white/60">AI-Powered</span>
-          </div>
+          AI-Powered Storefront Builder
+        </motion.p>
 
-          <h2 className="text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-extrabold tracking-tight text-foreground leading-[1.05] mb-5">
-            <span className="block">Vibe Code</span>
-            <span className="block bg-gradient-to-r from-purple-400 via-pink-400 to-cyan-400 bg-clip-text text-transparent">
-              Your Storefront
+        {/* Giant glowing title */}
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          whileInView={{ opacity: 1, scale: 1 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.8, delay: 0.1 }}
+          className="relative text-center mb-16 sm:mb-20"
+        >
+          <h2
+            className="text-[clamp(3.5rem,10vw,10rem)] font-black tracking-tight leading-[0.9] text-transparent"
+            style={{
+              WebkitTextStroke: '1.5px rgba(255,255,255,0.15)',
+              textShadow: '0 0 80px rgba(255,255,255,0.08), 0 0 160px rgba(255,255,255,0.04)',
+            }}
+          >
+            <span
+              className="bg-clip-text text-transparent"
+              style={{
+                backgroundImage: 'linear-gradient(180deg, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0.2) 100%)',
+              }}
+            >
+              AI Builder
             </span>
           </h2>
 
-          <p className="max-w-xl mx-auto text-base text-white/45 leading-relaxed">
-            Describe your dream storefront and our AI Builder generates it instantly.
-            No templates. No limits. Just your vision, brought to life with code.
-          </p>
+          {/* Subtle glow orb behind text */}
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[200px] rounded-full bg-white/[0.03] blur-[100px] pointer-events-none" />
         </motion.div>
 
-        {/* ─── Cinematic Bento Grid ─── */}
-        <div className="px-3 sm:px-5 lg:px-6 max-w-[1600px] mx-auto">
-          {/* Row 1: Large hero card */}
-          <motion.div
-            initial={{ opacity: 0, y: 40 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: '-50px' }}
-            transition={{ duration: 0.7 }}
-            className="group relative rounded-2xl overflow-hidden border border-white/[0.06] mb-4"
-            style={{ background: '#080808' }}
-          >
-            <div className="relative aspect-[21/9] overflow-hidden">
-              <img
-                src={showcaseHero}
-                alt="AI instant generation — describe your vision and watch it materialize"
-                loading="lazy"
-                width={1920}
-                height={1080}
-                className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.02]"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-[#080808] via-transparent to-[#080808]/30" />
-              <div className="absolute inset-0 bg-gradient-to-r from-[#080808]/60 via-transparent to-transparent" />
-            </div>
-
-            {/* Overlay content */}
-            <div className="absolute bottom-0 left-0 right-0 p-6 sm:p-8 lg:p-10">
-              <div className="flex items-center gap-2 mb-3">
-                <div className="w-1.5 h-1.5 rounded-full bg-purple-400 animate-pulse" />
-                <span className="text-[11px] font-bold tracking-widest uppercase text-purple-400">Prompt to Storefront</span>
-              </div>
-              <h3 className="text-xl sm:text-2xl lg:text-3xl font-bold text-white mb-2 max-w-lg">
-                Type a vision. Get a storefront.
-              </h3>
-              <p className="text-sm text-white/40 max-w-md">
-                Our AI transforms plain-English descriptions into fully-functional, production-ready storefronts in seconds.
-              </p>
-            </div>
-          </motion.div>
-
-          {/* Row 2: Two equal cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Floating UI elements around the title area */}
+        <div className="relative">
+          {/* Bento grid of showcase elements */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
+            
+            {/* Left: Prompt mockup card */}
             <motion.div
-              initial={{ opacity: 0, y: 40 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: '-50px' }}
-              transition={{ duration: 0.6, delay: 0.1 }}
-              className="group relative rounded-2xl overflow-hidden border border-white/[0.06]"
-              style={{ background: '#080808' }}
+              initial={{ opacity: 0, x: -40 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.7, delay: 0.2 }}
+              className="lg:col-span-5"
             >
-              <div className="relative aspect-[16/10] overflow-hidden">
-                <img
-                  src={showcaseCode}
-                  alt="Live code editor with real-time storefront preview"
-                  loading="lazy"
-                  width={1920}
-                  height={1080}
-                  className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.03]"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-[#080808] via-[#080808]/20 to-transparent" />
-              </div>
-              <div className="p-5 sm:p-6">
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="w-1.5 h-1.5 rounded-full bg-cyan-400" />
-                  <span className="text-[10px] font-bold tracking-widest uppercase text-cyan-400">Live Code + Preview</span>
+              <div className="rounded-[20px] border border-white/[0.08] bg-white/[0.03] backdrop-blur-md p-5 sm:p-6">
+                {/* Mock toolbar */}
+                <div className="flex items-center gap-3 mb-5">
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white text-xs font-bold">
+                    AI
+                  </div>
+                  <div className="flex gap-2">
+                    <div className="px-3 py-1.5 rounded-full bg-white/10 text-[11px] font-medium text-white/80 border border-white/[0.08]">
+                      Storefront
+                    </div>
+                    <div className="px-3 py-1.5 rounded-full bg-white/[0.04] text-[11px] font-medium text-white/40 border border-white/[0.05]">
+                      Landing Page
+                    </div>
+                  </div>
                 </div>
-                <p className="text-sm text-white/40 leading-relaxed">
-                  Watch AI write production-grade code in real-time with an instant split-screen preview of your storefront.
-                </p>
+
+                {/* Prompt input mockup */}
+                <div className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-4 mb-4">
+                  <p className="text-sm text-white/60 leading-relaxed">
+                    <span className="text-white/90 font-medium">Build me</span> a luxury fashion boutique with dark theme, 
+                    gold accents, hero video section, and a product grid with hover effects...
+                  </p>
+                </div>
+
+                {/* Generation status */}
+                <div className="flex items-center gap-3">
+                  <div className="flex-1 h-1 rounded-full bg-white/[0.06] overflow-hidden">
+                    <motion.div
+                      className="h-full rounded-full bg-gradient-to-r from-purple-500 to-cyan-500"
+                      initial={{ width: '0%' }}
+                      whileInView={{ width: '100%' }}
+                      viewport={{ once: true }}
+                      transition={{ duration: 2.5, delay: 0.8, ease: 'easeInOut' }}
+                    />
+                  </div>
+                  <span className="text-[11px] text-white/40 font-medium">Generating...</span>
+                </div>
+              </div>
+
+              {/* Code preview card below */}
+              <div className="mt-4 rounded-[20px] border border-white/[0.08] overflow-hidden">
+                <div className="relative aspect-[16/10] overflow-hidden">
+                  <img
+                    src={showcaseCode}
+                    alt="Live code editor with real-time storefront preview"
+                    loading="lazy"
+                    width={1280}
+                    height={720}
+                    className="w-full h-full object-cover"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/20" />
+                  <div className="absolute bottom-4 left-4 flex items-center gap-2">
+                    <div className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
+                    <span className="text-[10px] font-bold tracking-widest uppercase text-cyan-400">Live Code + Preview</span>
+                  </div>
+                </div>
               </div>
             </motion.div>
 
+            {/* Center: CTA */}
             <motion.div
-              initial={{ opacity: 0, y: 40 }}
+              initial={{ opacity: 0, y: 30 }}
               whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: '-50px' }}
-              transition={{ duration: 0.6, delay: 0.2 }}
-              className="group relative rounded-2xl overflow-hidden border border-white/[0.06]"
-              style={{ background: '#080808' }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6, delay: 0.4 }}
+              className="lg:col-span-2 flex flex-col items-center justify-center py-8 lg:py-0"
             >
-              <div className="relative aspect-[16/10] overflow-hidden">
-                <img
-                  src={showcaseVibes}
-                  alt="Multiple storefront design styles generated by AI"
-                  loading="lazy"
-                  width={1920}
-                  height={1080}
-                  className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.03]"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-[#080808] via-[#080808]/20 to-transparent" />
-              </div>
-              <div className="p-5 sm:p-6">
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="w-1.5 h-1.5 rounded-full bg-fuchsia-400" />
-                  <span className="text-[10px] font-bold tracking-widest uppercase text-fuchsia-400">Infinite Aesthetics</span>
+              <Button
+                asChild
+                className="h-14 px-8 text-sm font-bold tracking-wider rounded-full bg-gradient-to-r from-blue-500 to-cyan-500 text-white hover:from-blue-400 hover:to-cyan-400 shadow-lg shadow-blue-500/25 transition-all duration-300 group"
+              >
+                <Link to="/ai-builder">
+                  Try it free
+                  <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
+                </Link>
+              </Button>
+              <p className="mt-4 text-[11px] text-white/30 text-center">No code required</p>
+            </motion.div>
+
+            {/* Right: Aesthetics showcase */}
+            <motion.div
+              initial={{ opacity: 0, x: 40 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.7, delay: 0.3 }}
+              className="lg:col-span-5"
+            >
+              {/* Generated sites collage */}
+              <div className="rounded-[20px] border border-white/[0.08] overflow-hidden">
+                <div className="relative aspect-[16/10] overflow-hidden">
+                  <img
+                    src={showcaseVibes}
+                    alt="Multiple storefront design styles generated by AI"
+                    loading="lazy"
+                    width={1280}
+                    height={720}
+                    className="w-full h-full object-cover"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/20" />
+                  <div className="absolute bottom-4 left-4 flex items-center gap-2">
+                    <div className="w-1.5 h-1.5 rounded-full bg-fuchsia-400" />
+                    <span className="text-[10px] font-bold tracking-widest uppercase text-fuchsia-400">Infinite Aesthetics</span>
+                  </div>
                 </div>
-                <p className="text-sm text-white/40 leading-relaxed">
-                  Luxury, cyberpunk, editorial, minimalist — generate any design style with a single prompt.
-                </p>
+              </div>
+
+              {/* Stats row */}
+              <div className="mt-4 grid grid-cols-3 gap-3">
+                {[
+                  { value: '10s', label: 'Avg. build time' },
+                  { value: '∞', label: 'Design styles' },
+                  { value: '0', label: 'Code required' },
+                ].map((stat) => (
+                  <div
+                    key={stat.label}
+                    className="rounded-2xl border border-white/[0.08] bg-white/[0.03] backdrop-blur-sm p-4 text-center"
+                  >
+                    <div className="text-xl sm:text-2xl font-black text-white/90 mb-1">{stat.value}</div>
+                    <div className="text-[10px] text-white/40 font-medium tracking-wide uppercase">{stat.label}</div>
+                  </div>
+                ))}
               </div>
             </motion.div>
           </div>
-        </div>
-
-        {/* Feature pills + CTA */}
-        <div className="mt-14 sm:mt-16 px-6">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.5, delay: 0.3 }}
-            className="flex flex-wrap justify-center gap-3 mb-10"
-          >
-            {[
-              { icon: Wand2, text: 'Prompt-to-Site' },
-              { icon: Zap, text: 'Instant Preview' },
-              { icon: Sparkles, text: 'One-Click Publish' },
-            ].map(({ icon: Icon, text }) => (
-              <div
-                key={text}
-                className="flex items-center gap-2 px-5 py-2.5 rounded-full border border-white/[0.08] bg-white/[0.02] backdrop-blur-sm"
-              >
-                <Icon className="w-3.5 h-3.5 text-purple-400/80" />
-                <span className="text-xs font-medium text-white/50 tracking-wide">{text}</span>
-              </div>
-            ))}
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.5, delay: 0.4 }}
-            className="text-center"
-          >
-            <Button
-              asChild
-              className="h-14 px-10 text-sm font-bold tracking-wider rounded-full bg-gradient-to-r from-purple-600 to-pink-600 text-white hover:from-purple-500 hover:to-pink-500 shadow-lg shadow-purple-500/20 transition-all duration-300 group"
-            >
-              <Link to="/ai-builder">
-                Start Building
-                <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
-              </Link>
-            </Button>
-            <p className="mt-4 text-xs text-white/30">No code required · Free to start</p>
-          </motion.div>
         </div>
       </div>
     </section>
