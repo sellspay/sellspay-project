@@ -6,6 +6,8 @@ export const TOOL_GEN_END = "tool-generation-end";
 export interface ToolGenDetail {
   toolId: string;
   toolName: string;
+  assetUrl?: string;
+  assetType?: "image" | "audio" | "video";
 }
 
 export function dispatchToolGenStart(detail: ToolGenDetail) {

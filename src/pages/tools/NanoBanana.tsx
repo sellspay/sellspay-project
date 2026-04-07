@@ -1,5 +1,5 @@
-import { useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useMemo, useState, useEffect } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import {
   Loader2,
   Download,
@@ -52,6 +52,17 @@ export default function NanoBanana() {
   const { deductCredits, credits: creditBalance } = useSubscription();
   const { user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // If navigated here with a viewAssetUrl (from notification/assets), show it
+  useEffect(() => {
+    const state = location.state as { viewAssetUrl?: string } | null;
+    if (state?.viewAssetUrl) {
+      setGeneratedImage(state.viewAssetUrl);
+      // Clear the state so refresh doesn't re-show
+      window.history.replaceState({}, "");
+    }
+  }, [location.state]);
 
   const currentModel = useMemo(() => getModelById(model) ?? IMAGE_MODELS[0], [model]);
   const grouped = useMemo(() => getModelsByCategory(), []);
@@ -64,6 +75,7 @@ export default function NanoBanana() {
     setGeneratedImage(null);
     dispatchToolGenStart({ toolId: "image-generator", toolName: "Image Generator" });
     let success = false;
+    let resultUrl: string | undefined;
     try {
       const deductResult = await deductCredits("vibecoder_gen");
       if (!deductResult.success) { toast.error("Failed to deduct credit"); return; }
@@ -73,6 +85,7 @@ export default function NanoBanana() {
         setGeneratedImage(data.image_url);
         toast.success(`${currentModel.name} finished generating.`);
         success = true;
+        resultUrl = data.image_url;
         saveToolAsset({ userId: user.id, type: "image", storageUrl: data.image_url, filename: `image-${Date.now()}.png`, metadata: { prompt: prompt.trim(), model } as any });
       }
       else throw new Error("No image returned");
@@ -81,7 +94,7 @@ export default function NanoBanana() {
       toast.error(error instanceof Error ? error.message : "Failed to generate image");
     } finally {
       setIsGenerating(false);
-      dispatchToolGenEnd({ toolId: "image-generator", toolName: "Image Generator", success });
+      dispatchToolGenEnd({ toolId: "image-generator", toolName: "Image Generator", success, assetUrl: resultUrl, assetType: "image" });
     }
   };
 

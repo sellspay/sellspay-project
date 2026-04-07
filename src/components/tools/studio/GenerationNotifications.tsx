@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { Bell, Image, Music, Video, X, ExternalLink } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { useNavigate } from "react-router-dom";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { TOOL_GEN_END, type ToolGenDetail } from "@/utils/toolGenerationEvent";
@@ -13,6 +14,8 @@ interface Notification {
   success: boolean;
   timestamp: number;
   read: boolean;
+  assetUrl?: string;
+  assetType?: string;
 }
 
 interface GenerationNotificationsProps {
@@ -29,12 +32,13 @@ const TYPE_ICON: Record<string, typeof Image> = {
 export function GenerationNotifications({ collapsed, onNavigateToTool }: GenerationNotificationsProps) {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [open, setOpen] = useState(false);
+  const navigate = useNavigate();
 
   const unreadCount = notifications.filter(n => !n.read).length;
 
   useEffect(() => {
     const handler = (e: Event) => {
-      const detail = (e as CustomEvent<ToolGenDetail & { success: boolean }>).detail;
+      const detail = (e as CustomEvent<ToolGenDetail & { success: boolean; assetUrl?: string; assetType?: string }>).detail;
       const n: Notification = {
         id: `${Date.now()}-${Math.random()}`,
         toolId: detail.toolId,
@@ -42,6 +46,8 @@ export function GenerationNotifications({ collapsed, onNavigateToTool }: Generat
         success: detail.success,
         timestamp: Date.now(),
         read: false,
+        assetUrl: detail.assetUrl,
+        assetType: detail.assetType,
       };
       setNotifications(prev => [n, ...prev].slice(0, 50));
     };
@@ -142,7 +148,11 @@ export function GenerationNotifications({ collapsed, onNavigateToTool }: Generat
                 <button
                   key={n.id}
                   onClick={() => {
-                    onNavigateToTool(n.toolId);
+                    if (n.assetUrl) {
+                      navigate(`/studio/${n.toolId}`, { state: { viewAssetUrl: n.assetUrl, viewAssetType: n.assetType } });
+                    } else {
+                      onNavigateToTool(n.toolId);
+                    }
                     setOpen(false);
                   }}
                   className="flex items-start gap-3 w-full px-4 py-3 hover:bg-white/[0.04] transition-colors text-left group"

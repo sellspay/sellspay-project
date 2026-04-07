@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useLocation } from "react-router-dom";
 import {
   Loader2,
   Download,
@@ -19,6 +20,7 @@ import { saveToolAsset } from "@/utils/saveToolAsset";
 import { motion, AnimatePresence } from "framer-motion";
 
 export default function ImageAnimator() {
+  const location = useLocation();
   const [sourceImage, setSourceImage] = useState<string | null>(null);
   const [prompt, setPrompt] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
@@ -26,6 +28,15 @@ export default function ImageAnimator() {
   const [duration, setDuration] = useState<"5" | "10">("5");
   const { deductCredits, credits: creditBalance } = useSubscription();
   const { user } = useAuth();
+
+  // If navigated here with a viewAssetUrl, show it
+  useEffect(() => {
+    const state = location.state as { viewAssetUrl?: string } | null;
+    if (state?.viewAssetUrl) {
+      setGeneratedVideo(state.viewAssetUrl);
+      window.history.replaceState({}, "");
+    }
+  }, [location.state]);
 
   // Consume pending image from Image Generator on mount
   useEffect(() => {
@@ -43,6 +54,7 @@ export default function ImageAnimator() {
     setGeneratedVideo(null);
     dispatchToolGenStart({ toolId: "video-generator", toolName: "Image Animator" });
     let success = false;
+    let resultUrl: string | undefined;
 
     try {
       const { data, error } = await supabase.functions.invoke("generate-video", {
@@ -59,6 +71,7 @@ export default function ImageAnimator() {
         setGeneratedVideo(data.video_url);
         toast.success("Animation complete!");
         success = true;
+        resultUrl = data.video_url;
         saveToolAsset({ userId: user!.id, type: "video", storageUrl: data.video_url, filename: `animation-${Date.now()}.mp4`, metadata: { prompt: prompt.trim(), duration } as any });
       } else {
         throw new Error("No video returned");
@@ -68,7 +81,7 @@ export default function ImageAnimator() {
       toast.error(error instanceof Error ? error.message : "Failed to animate image");
     } finally {
       setIsGenerating(false);
-      dispatchToolGenEnd({ toolId: "video-generator", toolName: "Image Animator", success });
+      dispatchToolGenEnd({ toolId: "video-generator", toolName: "Image Animator", success, assetUrl: resultUrl, assetType: "video" });
     }
   };
 
