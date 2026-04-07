@@ -1,4 +1,6 @@
 import { useState, useRef } from "react";
+import { useEffect } from "react";
+import { useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Slider } from "@/components/ui/slider";
@@ -37,6 +39,7 @@ const C = {
 } as const;
 
 export default function SFXGenerator() {
+  const location = useLocation();
   const [prompt, setPrompt] = useState("");
   const [duration, setDuration] = useState(10);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -49,6 +52,15 @@ export default function SFXGenerator() {
   
   const { deductCredits, credits: creditBalance, canUseFeature } = useSubscription();
   const { user } = useAuth();
+
+  // If navigated here with a viewAssetUrl, show it
+  useEffect(() => {
+    const state = location.state as { viewAssetUrl?: string } | null;
+    if (state?.viewAssetUrl) {
+      setResult({ audio_url: state.viewAssetUrl, filename: "asset.wav" });
+      window.history.replaceState({}, "");
+    }
+  }, [location.state]);
 
   const handleEnhancePrompt = async () => {
     if (!prompt.trim()) { toast.error("Please enter a prompt first"); return; }

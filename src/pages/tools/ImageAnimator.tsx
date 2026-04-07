@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useLocation } from "react-router-dom";
 import {
   Loader2,
   Download,
@@ -19,6 +20,7 @@ import { saveToolAsset } from "@/utils/saveToolAsset";
 import { motion, AnimatePresence } from "framer-motion";
 
 export default function ImageAnimator() {
+  const location = useLocation();
   const [sourceImage, setSourceImage] = useState<string | null>(null);
   const [prompt, setPrompt] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
@@ -26,6 +28,15 @@ export default function ImageAnimator() {
   const [duration, setDuration] = useState<"5" | "10">("5");
   const { deductCredits, credits: creditBalance } = useSubscription();
   const { user } = useAuth();
+
+  // If navigated here with a viewAssetUrl, show it
+  useEffect(() => {
+    const state = location.state as { viewAssetUrl?: string } | null;
+    if (state?.viewAssetUrl) {
+      setGeneratedVideo(state.viewAssetUrl);
+      window.history.replaceState({}, "");
+    }
+  }, [location.state]);
 
   // Consume pending image from Image Generator on mount
   useEffect(() => {
