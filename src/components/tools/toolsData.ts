@@ -8,6 +8,7 @@ import {
   Volume2,
   Sparkles,
   Clapperboard,
+  RefreshCw,
 } from "lucide-react";
 
 import imageGeneratorIcon from "@/assets/tools/image-generator.png";
@@ -291,6 +292,28 @@ export const toolsData: ToolData[] = [
     ],
     gradient: "from-violet-500 via-fuchsia-500 to-pink-500",
     accentColor: "violet",
+  },
+  {
+    id: "motion-transfer",
+    title: "Motion Transfer",
+    tagline: "Move One Video Like Another",
+    description: "Upload a source video and a reference video to transfer motion while keeping the source content intact.",
+    icon: RefreshCw,
+    category: "generators",
+    badge: "Pro",
+    available: true,
+    isPro: true,
+    features: [
+      "Two-video motion transfer workflow",
+      "Source plus reference uploads",
+      "Prompt-guided motion direction",
+      "High-quality MP4 output",
+    ],
+    previewExamples: [
+      { label: "Source Clip", before: "🎞️", after: "Motion-transferred result" },
+    ],
+    gradient: "from-cyan-500 via-blue-500 to-indigo-500",
+    accentColor: "cyan",
   },
 ];
 
