@@ -3,11 +3,32 @@ import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowRight, Sparkles, Send, CheckCircle2, Loader2, Zap, Palette, Code2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import aiBuilderResult from '@/assets/ai-builder-result.jpg';
+import aiBuilderFashion from '@/assets/ai-builder-result.jpg';
+import aiBuilderGaming from '@/assets/ai-builder-gaming.jpg';
+import aiBuilderOrganic from '@/assets/ai-builder-organic.jpg';
 
 type Phase = 'idle' | 'generating' | 'done';
 
-const PROMPT_TEXT = 'Build me a luxury fashion boutique with dark theme, gold accents, hero video section, and a product grid with hover effects';
+const EXAMPLES = [
+  {
+    prompt: 'Build me a luxury fashion boutique with dark theme, gold accents, hero video section, and a product grid with hover effects',
+    image: aiBuilderFashion,
+    title: 'Luxury Fashion Boutique',
+    subtitle: 'Generated from your prompt · Dark & Gold theme',
+  },
+  {
+    prompt: 'Create a gaming gear store with dark purple and neon cyan colors, RGB keyboard hero banner, and product cards for peripherals with discount badges',
+    image: aiBuilderGaming,
+    title: 'Gaming Gear Store',
+    subtitle: 'Generated from your prompt · Neon & Purple theme',
+  },
+  {
+    prompt: 'Design an organic food marketplace with warm earth tones, farm-to-table hero section, and product cards showing artisan foods with pricing',
+    image: aiBuilderOrganic,
+    title: 'Organic Food Market',
+    subtitle: 'Generated from your prompt · Natural & Warm theme',
+  },
+];
 
 const progressSteps = [
   'Analyzing brand direction...',
@@ -22,6 +43,7 @@ export function AIBuilderShowcase() {
   const [typed, setTyped] = useState('');
   const [stepIdx, setStepIdx] = useState(0);
   const [progress, setProgress] = useState(0);
+  const [exampleIdx, setExampleIdx] = useState(0);
   const hasAnimated = useRef(false);
   const sectionRef = useRef<HTMLElement>(null);
 
@@ -53,6 +75,7 @@ export function AIBuilderShowcase() {
       setTyped('');
       setStepIdx(0);
       setProgress(0);
+      setExampleIdx((prev) => (prev + 1) % EXAMPLES.length);
       setTimeout(() => startSequence(), 300);
     }, 10000);
     return () => clearTimeout(timer);
@@ -60,10 +83,11 @@ export function AIBuilderShowcase() {
 
   const startSequence = () => {
     let i = 0;
+    const currentPrompt = EXAMPLES[exampleIdx].prompt;
     const typeInterval = setInterval(() => {
       i++;
-      setTyped(PROMPT_TEXT.slice(0, i));
-      if (i >= PROMPT_TEXT.length) {
+      setTyped(currentPrompt.slice(0, i));
+      if (i >= currentPrompt.length) {
         clearInterval(typeInterval);
         setTimeout(() => {
           setPhase('generating');
@@ -260,7 +284,7 @@ export function AIBuilderShowcase() {
                 {/* Image - clean, no overlays */}
                 <div className="relative overflow-hidden">
                   <img
-                    src={aiBuilderResult}
+                    src={EXAMPLES[exampleIdx].image}
                     alt="AI-generated storefront preview"
                     className="block w-full h-auto"
                     width={1440}
@@ -276,10 +300,10 @@ export function AIBuilderShowcase() {
                     </div>
                     <div>
                       <p className="text-sm font-semibold text-foreground">
-                        Luxury Fashion Boutique
+                        {EXAMPLES[exampleIdx].title}
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        Generated from your prompt · Dark & Gold theme
+                        {EXAMPLES[exampleIdx].subtitle}
                       </p>
                     </div>
                   </div>
