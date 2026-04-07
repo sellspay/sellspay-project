@@ -266,7 +266,7 @@ export function FeatureTabsBar() {
                       transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
                       className="overflow-hidden"
                     >
-                      <div className="rounded-2xl bg-primary/[0.04] border border-primary/15 shadow-sm p-5 sm:p-6 lg:p-8 mb-5 sm:mb-7">
+                      <div className="rounded-2xl bg-white/[0.04] border border-white/10 shadow-sm p-5 sm:p-6 lg:p-8 mb-5 sm:mb-7">
                         {/* Sub-tool list with inline expansion */}
                         <div className="flex flex-col">
                           {cat.subTools.map((sub, idx) => {

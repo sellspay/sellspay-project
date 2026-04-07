@@ -5,7 +5,7 @@ export function FloatingCtaBar() {
     <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50">
       <Link
         to="/login"
-        className="inline-flex items-center gap-3 px-5 py-2.5 rounded-full bg-gradient-to-r from-primary/15 via-accent/10 to-primary/15 border border-border/30 backdrop-blur-md shadow-lg hover:border-primary/40 transition-all"
+        className="inline-flex items-center gap-3 px-5 py-2.5 rounded-full bg-white/10 border border-white/15 backdrop-blur-md shadow-lg hover:border-white/25 transition-all"
       >
         <span className="text-sm font-medium text-foreground whitespace-nowrap">
           Create smarter, build faster
