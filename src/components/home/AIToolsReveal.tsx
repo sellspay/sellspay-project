@@ -232,15 +232,16 @@ export function AIToolsReveal() {
       for (let step = 1; step < panelCount; step++) {
         const pos = (step - 1) + animDuration;
 
-        // Background color - synced with card slide
-        mainTl.to(section, {
-          backgroundColor: steps[step].bg,
-          duration: animDuration,
-          immediateRender: false,
-        }, pos);
+        // Only add color/text tweens when the color actually changes from previous step
+        if (steps[step].bg !== steps[step - 1].bg) {
+          mainTl.to(section, {
+            backgroundColor: steps[step].bg,
+            duration: animDuration,
+            immediateRender: false,
+          }, pos);
+        }
 
-        // Text color - synced with card slide
-        if (headlineEl) {
+        if (headlineEl && steps[step].text !== steps[step - 1].text) {
           mainTl.to(headlineEl, {
             color: steps[step].text,
             duration: animDuration,
