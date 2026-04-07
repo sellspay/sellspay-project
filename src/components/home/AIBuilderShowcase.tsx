@@ -2,9 +2,9 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Sparkles, Wand2, Zap, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import showcaseHero from '@/assets/showcase-hero-storefront.jpg';
-import showcaseCode from '@/assets/showcase-code-preview.jpg';
-import showcaseVibes from '@/assets/showcase-multiple-vibes.jpg';
+import showcaseHero from '@/assets/showcase-hero-v2.jpg';
+import showcaseCode from '@/assets/showcase-code-preview-v2.jpg';
+import showcaseVibes from '@/assets/showcase-aesthetics-v2.jpg';
 
 export function AIBuilderShowcase() {
   return (
