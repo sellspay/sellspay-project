@@ -31,7 +31,7 @@ const socialLinks = [
 
 export default function Footer() {
   return (
-    <footer className="relative border-t border-white/[0.06]" style={{ background: 'hsl(220 15% 7%)' }}>
+    <footer className="relative border-t border-white/[0.06]" style={{ background: '#080a0f' }}>
       {/* Top accent */}
       <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/20 to-transparent" />
 

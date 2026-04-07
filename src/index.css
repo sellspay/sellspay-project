@@ -1005,10 +1005,10 @@ body[style*="margin-right"] {
 }
 .dark ::-webkit-scrollbar {
   width: 10px;
-  background: hsl(220 15% 8%);
+  background: #080a0f;
 }
 .dark ::-webkit-scrollbar-track {
-  background: hsl(220 15% 8%);
+  background: #080a0f;
 }
 .dark ::-webkit-scrollbar-thumb {
   background: hsl(220 10% 20%);
