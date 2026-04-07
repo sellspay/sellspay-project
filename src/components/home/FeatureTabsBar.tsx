@@ -242,15 +242,18 @@ export function FeatureTabsBar() {
                         <button
                           key={sub.name}
                           onClick={() => setActiveSubIndex((prev) => ({ ...prev, [activeId]: idx }))}
-                          className={`group w-full text-left px-4 py-3.5 rounded-xl transition-all duration-200 cursor-pointer ${
+                          className={`group w-full text-left px-5 py-4 rounded-2xl transition-all duration-300 cursor-pointer ${
                             isActive
-                              ? 'bg-white/[0.06] border border-white/[0.1]'
+                              ? 'border border-white/[0.1] shadow-lg shadow-primary/[0.05]'
                               : 'hover:bg-white/[0.03] border border-transparent'
                           }`}
+                          style={isActive ? {
+                            background: 'linear-gradient(135deg, rgba(37,99,235,0.08) 0%, rgba(14,14,14,0.95) 50%, rgba(22,22,26,0.9) 100%)',
+                          } : undefined}
                         >
-                          <div className="flex items-center gap-3">
-                            <div className={`w-1.5 h-1.5 rounded-full transition-colors ${isActive ? 'bg-primary' : 'bg-white/20'}`} />
-                            <span className={`text-sm font-semibold transition-colors ${isActive ? 'text-white' : 'text-white/50 group-hover:text-white/70'}`}>
+                          <div className="flex items-center gap-3.5">
+                            <div className={`w-2 h-2 rounded-full transition-all duration-300 ${isActive ? 'bg-primary shadow-[0_0_8px_rgba(37,99,235,0.6)]' : 'bg-white/20'}`} />
+                            <span className={`text-[15px] font-semibold transition-colors duration-200 ${isActive ? 'text-white' : 'text-white/50 group-hover:text-white/70'}`}>
                               {sub.name}
                             </span>
                           </div>
