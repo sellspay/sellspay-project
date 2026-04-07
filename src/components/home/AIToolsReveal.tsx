@@ -242,8 +242,8 @@ export function AIToolsReveal() {
           }, pos);
         }
 
-        if (headlineEl && steps[step].text !== steps[step - 1].text) {
-          mainTl.to(headlineEl, {
+        if (steps[step].text !== steps[step - 1].text) {
+          mainTl.to(textContainer, {
             color: steps[step].text,
             duration: animDuration,
             immediateRender: false,
