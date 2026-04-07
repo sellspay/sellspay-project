@@ -192,18 +192,18 @@ export function PricingModal({ open, onOpenChange, darkMode = false }: PricingMo
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className={cn(
+       <DialogContent className={cn(
         "max-w-[1400px] w-[98vw] p-0 rounded-2xl overflow-hidden max-h-[95vh] flex flex-col border-0",
         bg,
         darkMode
-          ? "border border-zinc-800 shadow-[0_0_80px_-20px_rgba(6,182,212,0.15)]"
+          ? "border border-zinc-800 shadow-xl"
           : "border-border shadow-2xl"
       )}>
         
         {/* Scrollable content */}
         <div className={cn("overflow-y-auto flex-1", darkMode ? "dark-scrollbar" : "custom-scrollbar")}>
           {/* Header */}
-          <div className={cn("text-center pt-12 pb-6 px-8 sticky top-0 backdrop-blur-xl z-20", headerBg)}>
+          <div className={cn("text-center pt-12 pb-6 px-8 sticky top-0 z-20", darkMode ? "bg-[#0e0e10]" : "bg-background")}>
             <h2 className={cn("text-4xl font-extrabold tracking-tight", textPrimary)}>
               Choose Your Plan
             </h2>
@@ -257,33 +257,24 @@ export function PricingModal({ open, onOpenChange, darkMode = false }: PricingMo
                   <div
                     key={plan.id}
                     className={cn(
-                      "relative rounded-2xl transition-all duration-300 flex flex-col",
+                      "relative rounded-2xl flex flex-col",
                       darkMode
-                        ? cn(
-                            "bg-gradient-to-b from-[#1e1e24] via-[#18181c] to-[#111114]",
-                            "border border-zinc-700/50",
-                            "shadow-[0_8px_32px_-4px_rgba(0,0,0,0.7),0_2px_4px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.07),inset_0_-1px_0_rgba(0,0,0,0.3)]",
-                            "hover:shadow-[0_12px_40px_-4px_rgba(0,0,0,0.8),0_4px_8px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.1),inset_0_-1px_0_rgba(0,0,0,0.3)]",
-                            "hover:translate-y-[-3px]"
-                          )
+                        ? "bg-[#18181c] border border-zinc-700/50 shadow-lg"
                         : "bg-card border overflow-hidden",
                       plan.isPopular
                         ? darkMode
-                          ? "!border-fuchsia-500/60 !shadow-[0_8px_40px_-4px_rgba(192,38,211,0.35),0_2px_4px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.07),inset_0_-1px_0_rgba(0,0,0,0.3)]"
-                          : "border-fuchsia-300 shadow-[0_0_40px_-8px_rgba(192,38,211,0.2)]"
+                          ? "!border-fuchsia-500/60 shadow-fuchsia-500/10"
+                          : "border-fuchsia-300 shadow-md shadow-fuchsia-500/10"
                         : plan.id === "agency"
                           ? darkMode
-                            ? "!border-amber-500/60 !shadow-[0_8px_40px_-4px_rgba(245,158,11,0.3),0_2px_4px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.07),inset_0_-1px_0_rgba(0,0,0,0.3)]"
-                            : "border-amber-300 shadow-[0_0_40px_-8px_rgba(245,158,11,0.15)]"
+                            ? "!border-amber-500/60 shadow-amber-500/10"
+                            : "border-amber-300 shadow-md shadow-amber-500/10"
                           : plan.id === "basic"
                             ? darkMode
-                              ? "!border-cyan-500/40 !shadow-[0_8px_32px_-4px_rgba(6,182,212,0.2),0_2px_4px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.07),inset_0_-1px_0_rgba(0,0,0,0.3)]"
-                              : "border-border hover:shadow-lg"
-                            : darkMode
-                              ? ""
-                              : "border-border hover:shadow-lg"
+                              ? "!border-cyan-500/40"
+                              : "border-border"
+                            : ""
                     )}
-                    style={darkMode ? { transform: 'perspective(800px) rotateX(0deg)' } : undefined}
                   >
                     {/* Top gradient strip */}
                     <div className={cn("h-1.5 w-full bg-gradient-to-r rounded-t-2xl", plan.topBorder)} />
