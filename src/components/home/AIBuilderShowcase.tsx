@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowRight, Sparkles, Send, CheckCircle2, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import showcaseVibes from '@/assets/showcase-aesthetics-v2.jpg';
+import aiBuilderResult from '@/assets/ai-builder-result.jpg';
 
 type Phase = 'idle' | 'generating' | 'done';
 
