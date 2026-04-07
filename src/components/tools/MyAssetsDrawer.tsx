@@ -302,6 +302,21 @@ export function MyAssetsDrawer({ trigger, open: controlledOpen, onOpenChange }: 
                                 <Download className="h-3 w-3 text-muted-foreground" />
                               </a>
                             )}
+                            {asset.storage_url && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  const toolMap: Record<string, string> = { image: "image-generator", video: "video-generator", audio: "sfx-generator" };
+                                  const toolId = toolMap[asset.type] || "image-generator";
+                                  setOpen(false);
+                                  navigate(`/studio/${toolId}`, { state: { viewAssetUrl: asset.storage_url, viewAssetType: asset.type } });
+                                }}
+                                className="p-1 rounded hover:bg-muted"
+                                title="Open in tool"
+                              >
+                                <FolderOpen className="h-3 w-3 text-muted-foreground" />
+                              </button>
+                            )}
                           </div>
                         )}
                       </div>
