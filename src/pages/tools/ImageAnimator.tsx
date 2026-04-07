@@ -9,6 +9,7 @@ import {
   RotateCcw,
   Image as ImageIcon,
 } from "lucide-react";
+import { Film } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useSubscription } from "@/hooks/useSubscription";
@@ -21,7 +22,10 @@ import { motion, AnimatePresence } from "framer-motion";
 
 export default function ImageAnimator() {
   const location = useLocation();
+  const [mode, setMode] = useState<"image" | "video-ref">("image");
   const [sourceImage, setSourceImage] = useState<string | null>(null);
+  const [sourceVideo, setSourceVideo] = useState<string | null>(null);
+  const [sourceVideoName, setSourceVideoName] = useState<string | null>(null);
   const [prompt, setPrompt] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedVideo, setGeneratedVideo] = useState<string | null>(null);
@@ -45,7 +49,8 @@ export default function ImageAnimator() {
   }, []);
 
   const handleGenerate = async () => {
-    if (!sourceImage) { toast.error("Please add a source image"); return; }
+    if (mode === "image" && !sourceImage) { toast.error("Please add a source image"); return; }
+    if (mode === "video-ref" && !sourceVideo) { toast.error("Please upload a reference video"); return; }
     if (!prompt.trim()) { toast.error("Please describe the animation"); return; }
     if (!user) { dispatchAuthGate(); return; }
     if (creditBalance < 50) { toast.error("Insufficient credits. Video generation costs 50 credits."); return; }
@@ -60,7 +65,9 @@ export default function ImageAnimator() {
       const { data, error } = await supabase.functions.invoke("generate-video", {
         body: {
           prompt: prompt.trim(),
-          image_url: sourceImage,
+          image_url: mode === "image" ? sourceImage : undefined,
+          video_url: mode === "video-ref" ? sourceVideo : undefined,
+          mode: mode === "video-ref" ? "video-reference" : "image-to-video",
           duration,
           aspect_ratio: "16:9",
         },
