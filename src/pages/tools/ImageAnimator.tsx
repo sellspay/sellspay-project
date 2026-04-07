@@ -43,6 +43,7 @@ export default function ImageAnimator() {
     setGeneratedVideo(null);
     dispatchToolGenStart({ toolId: "video-generator", toolName: "Image Animator" });
     let success = false;
+    let resultUrl: string | undefined;
 
     try {
       const { data, error } = await supabase.functions.invoke("generate-video", {
@@ -59,6 +60,7 @@ export default function ImageAnimator() {
         setGeneratedVideo(data.video_url);
         toast.success("Animation complete!");
         success = true;
+        resultUrl = data.video_url;
         saveToolAsset({ userId: user!.id, type: "video", storageUrl: data.video_url, filename: `animation-${Date.now()}.mp4`, metadata: { prompt: prompt.trim(), duration } as any });
       } else {
         throw new Error("No video returned");
@@ -68,7 +70,7 @@ export default function ImageAnimator() {
       toast.error(error instanceof Error ? error.message : "Failed to animate image");
     } finally {
       setIsGenerating(false);
-      dispatchToolGenEnd({ toolId: "video-generator", toolName: "Image Animator", success, assetUrl: generatedVideo || undefined, assetType: "video" });
+      dispatchToolGenEnd({ toolId: "video-generator", toolName: "Image Animator", success, assetUrl: resultUrl, assetType: "video" });
     }
   };
 

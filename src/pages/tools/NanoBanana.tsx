@@ -64,6 +64,7 @@ export default function NanoBanana() {
     setGeneratedImage(null);
     dispatchToolGenStart({ toolId: "image-generator", toolName: "Image Generator" });
     let success = false;
+    let resultUrl: string | undefined;
     try {
       const deductResult = await deductCredits("vibecoder_gen");
       if (!deductResult.success) { toast.error("Failed to deduct credit"); return; }
@@ -73,6 +74,7 @@ export default function NanoBanana() {
         setGeneratedImage(data.image_url);
         toast.success(`${currentModel.name} finished generating.`);
         success = true;
+        resultUrl = data.image_url;
         saveToolAsset({ userId: user.id, type: "image", storageUrl: data.image_url, filename: `image-${Date.now()}.png`, metadata: { prompt: prompt.trim(), model } as any });
       }
       else throw new Error("No image returned");
@@ -81,7 +83,7 @@ export default function NanoBanana() {
       toast.error(error instanceof Error ? error.message : "Failed to generate image");
     } finally {
       setIsGenerating(false);
-      dispatchToolGenEnd({ toolId: "image-generator", toolName: "Image Generator", success, assetUrl: data?.image_url || undefined, assetType: "image" });
+      dispatchToolGenEnd({ toolId: "image-generator", toolName: "Image Generator", success, assetUrl: resultUrl, assetType: "image" });
     }
   };
 
