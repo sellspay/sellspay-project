@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
+import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 
 type AssetType = "image" | "video" | "audio" | "text" | "file";
@@ -51,6 +52,7 @@ interface MyAssetsDrawerProps {
 
 export function MyAssetsDrawer({ trigger, open: controlledOpen, onOpenChange }: MyAssetsDrawerProps) {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [internalOpen, setInternalOpen] = useState(false);
   const open = controlledOpen !== undefined ? controlledOpen : internalOpen;
   const setOpen = (v: boolean) => {
@@ -246,6 +248,13 @@ export function MyAssetsDrawer({ trigger, open: controlledOpen, onOpenChange }: 
                       isSelected ? "border-primary ring-1 ring-primary" : "border-border"
                     }`}
                     onClick={bulkMode ? () => toggleSelect(asset.id) : undefined}
+                    onDoubleClick={() => {
+                      if (bulkMode || !asset.storage_url) return;
+                      const toolMap: Record<string, string> = { image: "image-generator", video: "video-generator", audio: "sfx-generator" };
+                      const toolId = toolMap[asset.type] || "image-generator";
+                      setOpen(false);
+                      navigate(`/studio/${toolId}`, { state: { viewAssetUrl: asset.storage_url, viewAssetType: asset.type } });
+                    }}
                   >
                     {/* Bulk select checkbox */}
                     {bulkMode && (
