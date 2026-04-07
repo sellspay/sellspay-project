@@ -299,6 +299,8 @@ export function AIBuilderShowcase() {
           </div>
         </div>
 
+      {/* Stats + CTA in centered container */}
+      <div className="relative mx-auto w-full max-w-[1100px] px-4 sm:px-6 lg:px-8">
         {/* Stats row */}
         <div className="mx-auto mt-6 grid max-w-[720px] grid-cols-3 gap-3">
           {[
