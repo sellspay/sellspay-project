@@ -165,20 +165,12 @@ interface StudioSidebarProps {
 // Default 10 most popular/useful tools shown pinned
 const DEFAULT_PINNED = [
   "image-generator",
-  "sfx-generator",
-  "voice-isolator",
-  "music-splitter",
-  "audio-cutter",
-  "audio-joiner",
-  "audio-recorder",
-  "audio-converter",
-  "video-to-audio",
-  "waveform-generator",
+  "video-generator",
 ];
 
 const PINNED_TOOLS_STORAGE_KEY = "studio-pinned-tools-v2";
 const PINNED_TOOLS_VERSION_KEY = "studio-pinned-tools-version";
-const PINNED_TOOLS_VERSION = "popular-10-v1";
+const PINNED_TOOLS_VERSION = "visual-only-v2";
 
 export function StudioSidebar({
   collapsed, onToggleCollapse, activeSection, onSectionChange,
