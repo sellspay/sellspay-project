@@ -13,7 +13,7 @@ export function ValueProps() {
         transition={{ duration: 1.2, ease: 'easeOut' }}
         className="absolute inset-0"
         style={{
-          background: 'linear-gradient(180deg, hsl(var(--background)) 0%, hsl(200 60% 92%) 30%, hsl(195 70% 88%) 60%, hsl(200 50% 85%) 100%)',
+          background: 'linear-gradient(180deg, hsl(var(--background)) 0%, hsl(220 15% 12%) 30%, hsl(220 18% 10%) 60%, hsl(220 15% 8%) 100%)',
         }}
       />
 
@@ -25,7 +25,7 @@ export function ValueProps() {
         transition={{ duration: 1.5, delay: 0.3 }}
         className="absolute top-1/4 -left-40 w-[600px] h-[600px] rounded-full"
         style={{
-          background: 'radial-gradient(circle, hsl(200 80% 75%) 0%, transparent 70%)',
+          background: 'radial-gradient(circle, hsl(217 60% 30%) 0%, transparent 70%)',
           filter: 'blur(80px)',
         }}
       />
@@ -36,7 +36,7 @@ export function ValueProps() {
         transition={{ duration: 1.5, delay: 0.5 }}
         className="absolute bottom-0 right-0 w-[500px] h-[500px] rounded-full"
         style={{
-          background: 'radial-gradient(circle, hsl(30 80% 75%) 0%, transparent 70%)',
+          background: 'radial-gradient(circle, hsl(30 60% 30%) 0%, transparent 70%)',
           filter: 'blur(80px)',
         }}
       />
