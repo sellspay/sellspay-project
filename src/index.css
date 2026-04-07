@@ -999,6 +999,26 @@ body[style*="margin-right"] {
   z-index: 9998;
 }
 
+/* ─── Dark mode scrollbar ──────────────────────────────────────── */
+.dark {
+  color-scheme: dark;
+}
+.dark ::-webkit-scrollbar {
+  width: 10px;
+  background: hsl(220 15% 8%);
+}
+.dark ::-webkit-scrollbar-track {
+  background: hsl(220 15% 8%);
+}
+.dark ::-webkit-scrollbar-thumb {
+  background: hsl(220 10% 20%);
+  border-radius: 5px;
+  border: 2px solid hsl(220 15% 8%);
+}
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: hsl(220 10% 28%);
+}
+
 /* Radial glow texture (cyberpunk) */
 .vibe-texture-glow::before {
   content: "";
