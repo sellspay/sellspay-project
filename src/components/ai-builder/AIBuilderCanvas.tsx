@@ -35,11 +35,12 @@ import { useCreativeStudio } from './hooks/useCreativeStudio';
 import { useProjectHydration } from './hooks/useProjectHydration';
 
 interface AIBuilderCanvasProps {
-  profileId: string;
+  profileId: string | null;
   hasPremiumAccess?: boolean;
+  isGuest?: boolean;
 }
 
-export function AIBuilderCanvas({ profileId, hasPremiumAccess = false }: AIBuilderCanvasProps) {
+export function AIBuilderCanvas({ profileId, hasPremiumAccess = false, isGuest = false }: AIBuilderCanvasProps) {
   const navigate = useNavigate();
   const location = useLocation();
   const [isPublished, setIsPublished] = useState(false);
