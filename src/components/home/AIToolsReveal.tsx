@@ -40,24 +40,28 @@ const DEFAULT_STEPS: Step[] = [
     bg: REVEAL_SURFACE,
     text: REVEAL_FOREGROUND,
     headline: ["Building Made", "Simple"],
+    subtitle: "Design and launch your storefront in minutes with our AI-powered builder. No coding required — just describe your vision and watch it come to life.",
     image: aiPanel1,
   },
   {
     bg: REVEAL_SURFACE,
     text: REVEAL_FOREGROUND,
     headline: ["Sell", "products"],
+    subtitle: "List digital products, set your pricing, and start earning. From presets to sound packs — sell anything to a global audience instantly.",
     image: aiPanel2,
   },
   {
     bg: REVEAL_DARK,
     text: REVEAL_DARK_TEXT,
     headline: ["Audio Made", "Simple"],
+    subtitle: "Isolate vocals, split stems, and generate sound effects with studio-grade AI tools. Professional audio processing at the click of a button.",
     image: aiPanel3,
   },
   {
     bg: REVEAL_VIDEO,
     text: REVEAL_VIDEO_TEXT,
     headline: ["Generate", "Videos"],
+    subtitle: "Turn text prompts into cinematic videos. Create product demos, social content, and promotional clips powered by cutting-edge AI models.",
   },
   {
     bg: REVEAL_IMAGE,
@@ -70,6 +74,7 @@ const DEFAULT_STEPS: Step[] = [
     bg: REVEAL_SURFACE,
     text: REVEAL_FOREGROUND,
     headline: ["All in", "one"],
+    subtitle: "One platform for everything — storefronts, AI tools, marketplace, and community. Stop juggling apps and build your entire creative business here.",
     image: aiPanel6,
   },
 ];
