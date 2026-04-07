@@ -43,6 +43,7 @@ export function AIBuilderShowcase() {
   const [typed, setTyped] = useState('');
   const [stepIdx, setStepIdx] = useState(0);
   const [progress, setProgress] = useState(0);
+  const [exampleIdx, setExampleIdx] = useState(0);
   const hasAnimated = useRef(false);
   const sectionRef = useRef<HTMLElement>(null);
 
