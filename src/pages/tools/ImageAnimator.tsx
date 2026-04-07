@@ -19,6 +19,8 @@ import { dispatchToolGenStart, dispatchToolGenEnd } from "@/utils/toolGeneration
 import { consumePendingAnimateImage } from "@/utils/pendingAnimateImage";
 import { saveToolAsset } from "@/utils/saveToolAsset";
 import { motion, AnimatePresence } from "framer-motion";
+import { VIDEO_MODELS, VIDEO_MODEL_CATEGORIES, getVideoModelsByCategory, getVideoModelById, type VideoModelCategory } from "@/models/videoModels";
+import { ChevronDown } from "lucide-react";
 
 export default function ImageAnimator() {
   const location = useLocation();
@@ -30,6 +32,8 @@ export default function ImageAnimator() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedVideo, setGeneratedVideo] = useState<string | null>(null);
   const [duration, setDuration] = useState<"5" | "10">("5");
+  const [videoModel, setVideoModel] = useState("kling-2.6-pro");
+  const [modelSelectorOpen, setModelSelectorOpen] = useState(false);
   const { deductCredits, credits: creditBalance } = useSubscription();
   const { user } = useAuth();
 
