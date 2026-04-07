@@ -20,14 +20,15 @@
  
  const STORAGE_KEY = 'ai-builder-onboarded';
  
- export function useAIBuilderOnboarding(profileId: string) {
+ export function useAIBuilderOnboarding(profileId: string | null) {
    const [needsOnboarding, setNeedsOnboarding] = useState(false);
  
-   useEffect(() => {
-     const key = `${STORAGE_KEY}:${profileId}`;
-     const hasOnboarded = localStorage.getItem(key) === 'true';
-     setNeedsOnboarding(!hasOnboarded);
-   }, [profileId]);
+    useEffect(() => {
+      if (!profileId) { setNeedsOnboarding(false); return; }
+      const key = `${STORAGE_KEY}:${profileId}`;
+      const hasOnboarded = localStorage.getItem(key) === 'true';
+      setNeedsOnboarding(!hasOnboarded);
+    }, [profileId]);
  
    const completeOnboarding = () => {
      const key = `${STORAGE_KEY}:${profileId}`;
