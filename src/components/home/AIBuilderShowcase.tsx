@@ -144,9 +144,10 @@ export function AIBuilderShowcase() {
               {phase !== 'done' && (
                 <motion.div
                   key="prompt-phase"
-                  initial={{ opacity: 1 }}
-                  exit={{ opacity: 0, scale: 0.97 }}
-                  transition={{ duration: 0.4 }}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -30, scale: 0.96, filter: 'blur(6px)' }}
+                  transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
                   className="p-6 sm:p-8 lg:p-10"
                 >
                   {/* Fake chat input */}
@@ -252,9 +253,9 @@ export function AIBuilderShowcase() {
               {phase === 'done' && (
                 <motion.div
                   key="result-phase"
-                  initial={{ opacity: 0, scale: 1.02 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ duration: 0.5 }}
+                  initial={{ opacity: 0, y: 30, scale: 0.97, filter: 'blur(6px)' }}
+                  animate={{ opacity: 1, y: 0, scale: 1, filter: 'blur(0px)' }}
+                  transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
                 >
                   {/* Success badge */}
                   <div className="flex items-center justify-center border-b border-border/70 bg-background/60 px-5 py-3 sm:px-7">
@@ -266,16 +267,16 @@ export function AIBuilderShowcase() {
                     </div>
                   </div>
 
-                  {/* Single large preview */}
+                  {/* Full-width preview */}
                   <div className="relative">
                     <img
                       src={aiBuilderResult}
                       alt="AI-generated luxury fashion storefront"
-                      className="w-full object-cover"
+                      className="block w-full"
                       width={1440}
                       height={600}
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-background/90 via-transparent to-transparent" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-background/80 via-transparent to-transparent" />
 
                     {/* Overlay info */}
                     <div className="absolute inset-x-0 bottom-0 p-5 sm:p-7">
