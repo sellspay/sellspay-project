@@ -39,7 +39,7 @@ serve(async (req) => {
       });
     }
 
-    const { prompt, image_url, duration = "5", aspect_ratio = "16:9", model = "kling-v2" } = await req.json();
+    const { prompt, image_url, video_url, duration = "5", aspect_ratio = "16:9", mode = "image-to-video" } = await req.json();
 
     if (!prompt || typeof prompt !== "string" || prompt.trim().length === 0) {
       return new Response(JSON.stringify({ error: "Prompt is required" }), {
@@ -81,10 +81,14 @@ serve(async (req) => {
     }
 
     // Choose fal endpoint based on mode
-    const isImageToVideo = !!image_url;
-    const falModel = isImageToVideo
-      ? "fal-ai/kling-video/v2/master/image-to-video"
-      : "fal-ai/kling-video/v2/master/text-to-video";
+    let falModel: string;
+    if (mode === "video-reference" && video_url) {
+      falModel = "fal-ai/kling-video/o1/video-to-video/reference";
+    } else if (image_url) {
+      falModel = "fal-ai/kling-video/v2/master/image-to-video";
+    } else {
+      falModel = "fal-ai/kling-video/v2/master/text-to-video";
+    }
 
     const requestBody: Record<string, unknown> = {
       prompt: prompt.trim(),
@@ -92,7 +96,9 @@ serve(async (req) => {
       aspect_ratio,
     };
 
-    if (isImageToVideo) {
+    if (mode === "video-reference" && video_url) {
+      requestBody.video_url = video_url;
+    } else if (image_url) {
       requestBody.image_url = image_url;
     }
 
