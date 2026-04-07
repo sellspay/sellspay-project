@@ -68,7 +68,7 @@ export default function ImageAnimator() {
       toast.error(error instanceof Error ? error.message : "Failed to animate image");
     } finally {
       setIsGenerating(false);
-      dispatchToolGenEnd({ toolId: "video-generator", toolName: "Image Animator", success });
+      dispatchToolGenEnd({ toolId: "video-generator", toolName: "Image Animator", success, assetUrl: generatedVideo || undefined, assetType: "video" });
     }
   };
 

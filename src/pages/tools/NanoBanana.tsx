@@ -81,7 +81,7 @@ export default function NanoBanana() {
       toast.error(error instanceof Error ? error.message : "Failed to generate image");
     } finally {
       setIsGenerating(false);
-      dispatchToolGenEnd({ toolId: "image-generator", toolName: "Image Generator", success });
+      dispatchToolGenEnd({ toolId: "image-generator", toolName: "Image Generator", success, assetUrl: data?.image_url || undefined, assetType: "image" });
     }
   };
 
