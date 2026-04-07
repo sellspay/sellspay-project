@@ -103,6 +103,8 @@ export function AIToolsReveal() {
   const [activeSubtitle, setActiveSubtitle] = useState<string | undefined>(DEFAULT_STEPS[0].subtitle);
   const [activeStepIndex, setActiveStepIndex] = useState(0);
 
+  const isDarkBg = steps[activeStepIndex]?.text === TEXT_LIGHT;
+
   const panelCount = steps.length;
   const stepDistance = isMobile ? STEP_DISTANCE_MOBILE : STEP_DISTANCE_DESKTOP;
 
@@ -392,13 +394,13 @@ export function AIToolsReveal() {
             <div className="mb-4 sm:mb-6 flex items-center gap-3 justify-center lg:justify-start">
               <span
                 className="text-xs sm:text-sm font-mono tracking-[0.2em] uppercase"
-                style={{ color: "rgba(255,255,255,0.35)" }}
+                style={{ color: isDarkBg ? "rgba(255,255,255,0.35)" : "rgba(0,0,0,0.35)" }}
               >
                 {String(activeStepIndex + 1).padStart(2, "0")} / {String(panelCount).padStart(2, "0")}
               </span>
               <span
                 className="hidden sm:block h-px flex-1 max-w-[60px]"
-                style={{ backgroundColor: "rgba(255,255,255,0.12)" }}
+                style={{ backgroundColor: isDarkBg ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.12)" }}
               />
             </div>
             <h2
@@ -420,7 +422,7 @@ export function AIToolsReveal() {
                 className="mt-4 sm:mt-6 text-[13px] sm:text-sm lg:text-[15px] max-w-sm leading-[1.7] font-normal"
                 style={{
                   fontFamily: "'Inter', -apple-system, sans-serif",
-                  color: "rgba(255,255,255,0.5)",
+                  color: isDarkBg ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.5)",
                   animation: "subtitleFadeIn 0.5s ease-out both",
                 }}
               >
@@ -436,7 +438,9 @@ export function AIToolsReveal() {
                   style={{
                     width: activeStepIndex === i ? 24 : 6,
                     height: 6,
-                    backgroundColor: activeStepIndex === i ? "rgba(255,255,255,0.8)" : "rgba(255,255,255,0.15)",
+                    backgroundColor: activeStepIndex === i
+                      ? (isDarkBg ? "rgba(255,255,255,0.8)" : "rgba(0,0,0,0.7)")
+                      : (isDarkBg ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.15)"),
                   }}
                 />
               ))}
