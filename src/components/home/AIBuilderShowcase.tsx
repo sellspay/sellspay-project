@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowRight, Sparkles, Send, CheckCircle2, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import showcaseVibes from '@/assets/showcase-aesthetics-v2.jpg';
+import aiBuilderResult from '@/assets/ai-builder-result.jpg';
 
 type Phase = 'idle' | 'generating' | 'done';
 
@@ -260,8 +260,8 @@ export function AIBuilderShowcase() {
                   {/* Success badge */}
                   <div className="flex items-center justify-between border-b border-border/70 bg-background/60 px-5 py-3 sm:px-7">
                     <div className="flex items-center gap-2">
-                      <CheckCircle2 className="h-4 w-4 text-emerald-400" />
-                      <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-emerald-400">
+                      <CheckCircle2 className="h-4 w-4 text-primary" />
+                      <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-primary">
                         Storefront Generated
                       </span>
                     </div>
@@ -273,30 +273,28 @@ export function AIBuilderShowcase() {
                     </button>
                   </div>
 
-                  {/* Generated storefront preview */}
-                  <div className="relative aspect-[16/10] overflow-hidden sm:aspect-[16/9]">
+                  {/* Single large preview */}
+                  <div className="relative">
                     <img
-                      src={showcaseVibes}
-                      alt="AI-generated storefront showcase with multiple design styles"
-                      className="h-full w-full object-cover"
+                      src={aiBuilderResult}
+                      alt="AI-generated luxury fashion storefront"
+                      className="w-full object-cover"
                       width={1280}
                       height={720}
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-background via-transparent to-transparent" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-background/90 via-transparent to-transparent" />
 
                     {/* Overlay info */}
                     <div className="absolute inset-x-0 bottom-0 p-5 sm:p-7">
-                      <div className="rounded-[22px] border border-border/70 bg-background/80 p-5 backdrop-blur-xl">
-                        <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-primary">
-                          Your storefront is ready
-                        </p>
-                        <h3 className="mt-2 text-xl font-semibold tracking-[-0.02em] text-foreground sm:text-2xl">
-                          Luxury Fashion Boutique — Dark & Gold
-                        </h3>
-                        <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                          Hero video, product grid, hover effects — all generated from your prompt.
-                        </p>
-                      </div>
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-primary">
+                        Your storefront is ready
+                      </p>
+                      <h3 className="mt-2 text-xl font-semibold tracking-[-0.02em] text-foreground sm:text-2xl">
+                        Luxury Fashion Boutique — Dark & Gold
+                      </h3>
+                      <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                        Hero video, product grid, hover effects — all generated from your prompt.
+                      </p>
                     </div>
                   </div>
                 </motion.div>
