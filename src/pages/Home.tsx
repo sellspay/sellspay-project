@@ -154,7 +154,7 @@ export default function Home() {
 
   // Guests see the landing page
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background dark">
       <FloatingCtaBar />
       <HeroSection />
       <SlidingBanner />
