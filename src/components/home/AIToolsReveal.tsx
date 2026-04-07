@@ -386,7 +386,7 @@ export function AIToolsReveal() {
           <div
             ref={textRef}
             className="lg:absolute lg:left-[3%] xl:left-[4%] lg:top-1/2 lg:-translate-y-1/2 z-10 text-center lg:text-left w-full lg:w-auto lg:max-w-[28%] xl:max-w-[30%] order-1 lg:order-none"
-            style={{ color: REVEAL_FOREGROUND }}
+            style={{ color: TEXT_LIGHT }}
           >
             {/* Step counter */}
             <div className="mb-4 sm:mb-6 flex items-center gap-3 justify-center lg:justify-start">
