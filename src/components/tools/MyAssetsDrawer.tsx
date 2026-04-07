@@ -7,8 +7,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import {
   FolderOpen, Star, Image, Music, Video, FileText, File, Download,
-  Heart, Search, Trash2, CheckSquare, Square, Link2, X
+  Heart, Search, Trash2, CheckSquare, Square, Link2, X, Eye, ExternalLink, Play
 } from "lucide-react";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { useNavigate } from "react-router-dom";
@@ -66,6 +67,7 @@ export function MyAssetsDrawer({ trigger, open: controlledOpen, onOpenChange }: 
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkMode, setBulkMode] = useState(false);
+  const [previewAsset, setPreviewAsset] = useState<Asset | null>(null);
 
   useEffect(() => {
     if (!open || !user) return;
@@ -140,6 +142,7 @@ export function MyAssetsDrawer({ trigger, open: controlledOpen, onOpenChange }: 
   };
 
   return (
+    <>
     <Sheet open={open} onOpenChange={(v) => { setOpen(v); if (!v) exitBulkMode(); }}>
       <SheetTrigger asChild>
         {trigger || (
@@ -248,13 +251,6 @@ export function MyAssetsDrawer({ trigger, open: controlledOpen, onOpenChange }: 
                       isSelected ? "border-primary ring-1 ring-primary" : "border-border"
                     }`}
                     onClick={bulkMode ? () => toggleSelect(asset.id) : undefined}
-                    onDoubleClick={() => {
-                      if (bulkMode || !asset.storage_url) return;
-                      const toolMap: Record<string, string> = { image: "image-generator", video: "video-generator", audio: "sfx-generator" };
-                      const toolId = toolMap[asset.type] || "image-generator";
-                      setOpen(false);
-                      navigate(`/studio/${toolId}`, { state: { viewAssetUrl: asset.storage_url, viewAssetType: asset.type } });
-                    }}
                   >
                     {/* Bulk select checkbox */}
                     {bulkMode && (
@@ -269,10 +265,31 @@ export function MyAssetsDrawer({ trigger, open: controlledOpen, onOpenChange }: 
 
                     {/* Preview */}
                     {asset.type === "image" && (asset.thumbnail_url || asset.storage_url) ? (
-                      <img src={asset.thumbnail_url || asset.storage_url!} alt="" className="w-full h-24 object-cover" />
+                      <div className="relative cursor-pointer" onClick={() => !bulkMode && setPreviewAsset(asset)}>
+                        <img src={asset.thumbnail_url || asset.storage_url!} alt="" className="w-full h-24 object-cover" />
+                        {!bulkMode && (
+                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                            <Eye className="h-5 w-5 text-white" />
+                          </div>
+                        )}
+                      </div>
+                    ) : asset.type === "video" && asset.storage_url ? (
+                      <div className="relative cursor-pointer w-full h-24 bg-muted flex items-center justify-center" onClick={() => !bulkMode && setPreviewAsset(asset)}>
+                        <Play className="h-8 w-8 text-muted-foreground" />
+                        {!bulkMode && (
+                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                            <Eye className="h-5 w-5 text-white" />
+                          </div>
+                        )}
+                      </div>
                     ) : (
-                      <div className="w-full h-24 bg-muted flex items-center justify-center">
+                      <div className="w-full h-24 bg-muted flex items-center justify-center cursor-pointer" onClick={() => !bulkMode && asset.storage_url && setPreviewAsset(asset)}>
                         <TypeIcon className="h-8 w-8 text-muted-foreground" />
+                        {!bulkMode && asset.storage_url && (
+                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                            <Eye className="h-5 w-5 text-white" />
+                          </div>
+                        )}
                       </div>
                     )}
 
@@ -302,21 +319,6 @@ export function MyAssetsDrawer({ trigger, open: controlledOpen, onOpenChange }: 
                                 <Download className="h-3 w-3 text-muted-foreground" />
                               </a>
                             )}
-                            {asset.storage_url && (
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  const toolMap: Record<string, string> = { image: "image-generator", video: "video-generator", audio: "sfx-generator" };
-                                  const toolId = toolMap[asset.type] || "image-generator";
-                                  setOpen(false);
-                                  navigate(`/studio/${toolId}`, { state: { viewAssetUrl: asset.storage_url, viewAssetType: asset.type } });
-                                }}
-                                className="p-1 rounded hover:bg-muted"
-                                title="Open in tool"
-                              >
-                                <FolderOpen className="h-3 w-3 text-muted-foreground" />
-                              </button>
-                            )}
                           </div>
                         )}
                       </div>
@@ -329,5 +331,93 @@ export function MyAssetsDrawer({ trigger, open: controlledOpen, onOpenChange }: 
         </ScrollArea>
       </SheetContent>
     </Sheet>
+
+    {/* Asset Preview Dialog */}
+    <Dialog open={!!previewAsset} onOpenChange={(v) => !v && setPreviewAsset(null)}>
+      <DialogContent className="sm:max-w-2xl max-h-[90vh] p-0 overflow-hidden bg-background border-border">
+        {previewAsset && (
+          <div className="flex flex-col">
+            {/* Preview content */}
+            <div className="relative bg-black flex items-center justify-center min-h-[300px] max-h-[60vh]">
+              {previewAsset.type === "image" && previewAsset.storage_url && (
+                <img
+                  src={previewAsset.storage_url}
+                  alt={previewAsset.filename || "Image"}
+                  className="max-w-full max-h-[60vh] object-contain"
+                />
+              )}
+              {previewAsset.type === "video" && previewAsset.storage_url && (
+                <video
+                  src={previewAsset.storage_url}
+                  controls
+                  autoPlay
+                  className="max-w-full max-h-[60vh]"
+                />
+              )}
+              {previewAsset.type === "audio" && previewAsset.storage_url && (
+                <div className="flex flex-col items-center gap-4 p-8">
+                  <div className="w-24 h-24 rounded-full bg-primary/10 flex items-center justify-center">
+                    <Music className="h-10 w-10 text-primary" />
+                  </div>
+                  <audio src={previewAsset.storage_url} controls autoPlay className="w-full max-w-md" />
+                </div>
+              )}
+              {(previewAsset.type === "text" || previewAsset.type === "file") && (
+                <div className="p-8 text-center">
+                  <FileText className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+                  <p className="text-sm text-muted-foreground">Preview not available for this file type</p>
+                </div>
+              )}
+            </div>
+
+            {/* Info bar */}
+            <div className="p-4 border-t border-border flex items-center justify-between">
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-foreground truncate">
+                  {previewAsset.filename || `${previewAsset.type} asset`}
+                </p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {new Date(previewAsset.created_at).toLocaleDateString()} · {previewAsset.type}
+                </p>
+              </div>
+              <div className="flex gap-2 shrink-0">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5 text-xs"
+                  onClick={() => toggleFavorite(previewAsset)}
+                >
+                  <Heart className={`h-3.5 w-3.5 ${previewAsset.is_favorite ? "fill-amber-500 text-amber-500" : ""}`} />
+                  {previewAsset.is_favorite ? "Unfavorite" : "Favorite"}
+                </Button>
+                {previewAsset.storage_url && (
+                  <Button variant="outline" size="sm" className="gap-1.5 text-xs" asChild>
+                    <a href={previewAsset.storage_url} download>
+                      <Download className="h-3.5 w-3.5" /> Download
+                    </a>
+                  </Button>
+                )}
+                {previewAsset.storage_url && (
+                  <Button
+                    size="sm"
+                    className="gap-1.5 text-xs"
+                    onClick={() => {
+                      const toolMap: Record<string, string> = { image: "image-generator", video: "video-generator", audio: "sfx-generator" };
+                      const toolId = toolMap[previewAsset.type] || "image-generator";
+                      setPreviewAsset(null);
+                      setOpen(false);
+                      navigate(`/studio/${toolId}`, { state: { viewAssetUrl: previewAsset.storage_url, viewAssetType: previewAsset.type } });
+                    }}
+                  >
+                    <ExternalLink className="h-3.5 w-3.5" /> Open in Tool
+                  </Button>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+    </>
   );
 }
