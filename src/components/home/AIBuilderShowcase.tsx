@@ -75,6 +75,7 @@ export function AIBuilderShowcase() {
       setTyped('');
       setStepIdx(0);
       setProgress(0);
+      setExampleIdx((prev) => (prev + 1) % EXAMPLES.length);
       setTimeout(() => startSequence(), 300);
     }, 10000);
     return () => clearTimeout(timer);
