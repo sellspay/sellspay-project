@@ -134,9 +134,12 @@ export function AIBuilderShowcase() {
         </motion.div>
 
         {/* Central showcase card */}
-        <div className="mx-auto mt-12 sm:mt-14">
-          <div
-            className="relative overflow-hidden rounded-[32px] border border-border/70 bg-card/80 backdrop-blur-xl"
+        {/* Break out of container for full-width card */}
+        <div className="relative mt-12 sm:mt-14 -mx-4 sm:-mx-6 lg:-mx-8">
+          <div className="relative mx-4 sm:mx-6 lg:mx-8 overflow-hidden rounded-[32px] border border-border/70 bg-card/80 backdrop-blur-xl" style={{ marginLeft: `calc(-50vw + 50%)`, marginRight: `calc(-50vw + 50%)`, boxShadow: '0 40px 120px -56px hsl(var(--primary) / 0.4)' }}>
+        </div>
+        <div
+            className="relative overflow-hidden rounded-[20px] sm:rounded-[32px] border border-border/70 bg-card/80 backdrop-blur-xl mx-4 sm:mx-8 lg:mx-12"
             style={{ boxShadow: '0 40px 120px -56px hsl(var(--primary) / 0.4)' }}
           >
             <AnimatePresence mode="wait">
