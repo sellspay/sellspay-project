@@ -228,8 +228,8 @@ export default function ImageAnimator() {
               </div>
             </div>
 
-            {/* Source image */}
-            {mode === "image" && <div>
+            {/* Source image — always shown in both modes */}
+            <div>
               <label className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500 mb-1.5 block">Source Image</label>
               {sourceImage ? (
                 <div className="relative rounded-xl overflow-hidden border border-white/[0.06]">
@@ -244,16 +244,17 @@ export default function ImageAnimator() {
               ) : (
                 <label className="flex flex-col items-center gap-2 rounded-xl p-6 cursor-pointer border border-dashed border-white/[0.1] bg-white/[0.02] hover:bg-white/[0.04] transition">
                   <Upload className="h-6 w-6 text-zinc-500" />
-                  <span className="text-[12px] text-zinc-400">Upload an image to animate</span>
+                  <span className="text-[12px] text-zinc-400">Upload the image to animate</span>
                   <span className="text-[10px] text-zinc-600">JPEG/PNG/WEBP, 20MB max</span>
                   <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
                 </label>
               )}
-            </div>}
+            </div>
 
-            {/* Source video */}
+            {/* Reference video — only in video-ref mode */}
             {mode === "video-ref" && <div>
-              <label className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500 mb-1.5 block">Reference Video</label>
+              <label className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500 mb-1.5 block">Motion Reference Video</label>
+              <p className="text-[10px] text-zinc-600 mb-1.5">Upload a video to guide the motion style</p>
               {sourceVideo ? (
                 <div className="relative rounded-xl overflow-hidden border border-white/[0.06]">
                   <video src={sourceVideo} className="w-full h-40 object-cover" muted />
@@ -275,7 +276,7 @@ export default function ImageAnimator() {
               ) : (
                 <label className="flex flex-col items-center gap-2 rounded-xl p-6 cursor-pointer border border-dashed border-white/[0.1] bg-white/[0.02] hover:bg-white/[0.04] transition">
                   <Film className="h-6 w-6 text-zinc-500" />
-                  <span className="text-[12px] text-zinc-400">Upload a reference video</span>
+                  <span className="text-[12px] text-zinc-400">Upload a motion reference video</span>
                   <span className="text-[10px] text-zinc-600">MP4/MOV, 3-10s, max 200MB</span>
                   <input type="file" accept="video/mp4,video/quicktime,video/*" className="hidden" onChange={handleVideoUpload} />
                 </label>
