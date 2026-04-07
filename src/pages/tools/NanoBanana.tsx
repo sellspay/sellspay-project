@@ -1,5 +1,5 @@
-import { useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useMemo, useState, useEffect } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import {
   Loader2,
   Download,
@@ -52,6 +52,17 @@ export default function NanoBanana() {
   const { deductCredits, credits: creditBalance } = useSubscription();
   const { user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // If navigated here with a viewAssetUrl (from notification/assets), show it
+  useEffect(() => {
+    const state = location.state as { viewAssetUrl?: string } | null;
+    if (state?.viewAssetUrl) {
+      setGeneratedImage(state.viewAssetUrl);
+      // Clear the state so refresh doesn't re-show
+      window.history.replaceState({}, "");
+    }
+  }, [location.state]);
 
   const currentModel = useMemo(() => getModelById(model) ?? IMAGE_MODELS[0], [model]);
   const grouped = useMemo(() => getModelsByCategory(), []);
