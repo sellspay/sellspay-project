@@ -205,15 +205,21 @@ serve(async (req) => {
 
         if (statusResult.status === "COMPLETED") {
           // Fetch the result
-          const resultUrl = responseUrl || `https://queue.fal.run/${falModel}/requests/${falRequestId}`;
-          const resultResponse = await fetch(resultUrl, {
+          const resultFetchUrl = responseUrl || `https://queue.fal.run/${falModel}/requests/${falRequestId}`;
+          console.log("Fetching result from:", resultFetchUrl);
+          const resultResponse = await fetch(resultFetchUrl, {
             method: "GET",
             headers: { Authorization: `Key ${FAL_KEY}` },
           });
 
           if (resultResponse.ok) {
             const resultData = await resultResponse.json();
+            console.log("Result data keys:", Object.keys(resultData));
             videoUrl = resultData.video?.url;
+            console.log("Video URL:", videoUrl);
+          } else {
+            const errTxt = await resultResponse.text();
+            console.error("Result fetch error:", resultResponse.status, errTxt);
           }
           break;
         } else if (statusResult.status === "FAILED") {
