@@ -257,19 +257,13 @@ export function AIBuilderShowcase() {
                   transition={{ duration: 0.5 }}
                 >
                   {/* Success badge */}
-                  <div className="flex items-center justify-between border-b border-border/70 bg-background/60 px-5 py-3 sm:px-7">
+                  <div className="flex items-center justify-center border-b border-border/70 bg-background/60 px-5 py-3 sm:px-7">
                     <div className="flex items-center gap-2">
                       <CheckCircle2 className="h-4 w-4 text-primary" />
                       <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-primary">
                         Storefront Generated
                       </span>
                     </div>
-                    <button
-                      onClick={handleReplay}
-                      className="rounded-full border border-border/70 bg-card/60 px-3 py-1 text-[11px] font-medium text-muted-foreground transition-colors hover:text-foreground"
-                    >
-                      Replay ↻
-                    </button>
                   </div>
 
                   {/* Single large preview */}
