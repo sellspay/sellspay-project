@@ -9,6 +9,7 @@ import { AIToolsReveal } from '@/components/home/AIToolsReveal';
 import { AIStudioPromo } from '@/components/home/AIStudioPromo';
 import { FloatingCtaBar } from '@/components/home/FloatingCtaBar';
 import { ValueProps } from '@/components/home/ValueProps';
+import { AIBuilderShowcase } from '@/components/home/AIBuilderShowcase';
 import { FeaturedCreators } from '@/components/home/FeaturedCreators';
 import { Reveal } from '@/components/home/Reveal';
 import ProductCard from '@/components/ProductCard';
