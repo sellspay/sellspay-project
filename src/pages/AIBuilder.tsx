@@ -19,8 +19,9 @@ export default function AIBuilder() {
   useEffect(() => {
     if (authLoading) return;
     
+    // Allow guests to browse — no redirect
     if (!user) {
-      navigate('/login?redirect=/ai-builder');
+      setLoading(false);
       return;
     }
 
@@ -56,13 +57,13 @@ export default function AIBuilder() {
     );
   }
 
-  if (!user || !profile) {
-    return null;
-  }
-
   return (
     <ThemeProvider projectId={projectId}>
-      <AIBuilderCanvas profileId={profile.id} hasPremiumAccess={hasAccess} />
+      <AIBuilderCanvas
+        profileId={profile?.id || null}
+        hasPremiumAccess={hasAccess}
+        isGuest={!user}
+      />
     </ThemeProvider>
   );
 }
