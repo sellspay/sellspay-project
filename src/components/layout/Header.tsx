@@ -178,7 +178,7 @@ export default function Header() {
 
       <header className={cn(
         "fixed top-0 z-50 w-full transition-all duration-300 backdrop-blur-md",
-        activeDropdown ? "border-b border-white/[0.06]" : "border-b border-transparent"
+        "border-b border-transparent"
       )} style={{ backgroundColor: 'transparent' }}>
         <div className="mx-auto w-full px-4 sm:px-6 lg:px-8">
           <div className="relative flex h-16 items-center justify-between">
@@ -524,7 +524,7 @@ export default function Header() {
           onMouseEnter={handleEnterPanel}
           onMouseLeave={handleLeavePanel}
         >
-          <div className="backdrop-blur-xl bg-white/[0.04] border-t border-white/[0.06]">
+          <div className="backdrop-blur-xl bg-white/[0.04]">
             <div className="mx-auto max-w-6xl px-8 py-8">
               {activeDropdown === 'marketplace' && (
                 <div className="grid grid-cols-6 gap-5">
