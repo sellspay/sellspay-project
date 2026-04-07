@@ -58,7 +58,7 @@ export function AIBuilderShowcase() {
       ([entry]) => {
         if (entry.isIntersecting && !hasAnimated.current) {
           hasAnimated.current = true;
-          startSequence();
+          startSequence(0);
           obs.disconnect();
         }
       },
@@ -84,9 +84,9 @@ export function AIBuilderShowcase() {
     return () => clearTimeout(timer);
   }, [phase]);
 
-  const startSequence = () => {
+  const startSequence = (idx: number) => {
     let i = 0;
-    const currentPrompt = EXAMPLES[exampleIdx].prompt;
+    const currentPrompt = EXAMPLES[idx].prompt;
     const typeInterval = setInterval(() => {
       i++;
       setTyped(currentPrompt.slice(0, i));
