@@ -257,7 +257,7 @@ export default function Header() {
 
               {/* AI Builder */}
               <Link 
-                to="/vibecoder"
+                to="/ai-builder"
                 className={cn(
                   "inline-flex h-10 items-center px-3 text-sm font-bold tracking-wide",
                   "text-foreground/90 transition-all duration-300",
