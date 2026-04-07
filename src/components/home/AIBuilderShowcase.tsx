@@ -44,6 +44,7 @@ export function AIBuilderShowcase() {
   const [stepIdx, setStepIdx] = useState(0);
   const [progress, setProgress] = useState(0);
   const [exampleIdx, setExampleIdx] = useState(0);
+  const exampleIdxRef = useRef(0);
   const hasAnimated = useRef(false);
   const sectionRef = useRef<HTMLElement>(null);
 
@@ -57,7 +58,7 @@ export function AIBuilderShowcase() {
       ([entry]) => {
         if (entry.isIntersecting && !hasAnimated.current) {
           hasAnimated.current = true;
-          startSequence();
+          startSequence(0);
           obs.disconnect();
         }
       },
@@ -71,19 +72,21 @@ export function AIBuilderShowcase() {
   useEffect(() => {
     if (phase !== 'done') return;
     const timer = setTimeout(() => {
+      const nextIdx = (exampleIdxRef.current + 1) % EXAMPLES.length;
+      exampleIdxRef.current = nextIdx;
+      setExampleIdx(nextIdx);
       setPhase('idle');
       setTyped('');
       setStepIdx(0);
       setProgress(0);
-      setExampleIdx((prev) => (prev + 1) % EXAMPLES.length);
-      setTimeout(() => startSequence(), 300);
+      setTimeout(() => startSequence(nextIdx), 300);
     }, 10000);
     return () => clearTimeout(timer);
   }, [phase]);
 
-  const startSequence = () => {
+  const startSequence = (idx: number) => {
     let i = 0;
-    const currentPrompt = EXAMPLES[exampleIdx].prompt;
+    const currentPrompt = EXAMPLES[idx].prompt;
     const typeInterval = setInterval(() => {
       i++;
       setTyped(currentPrompt.slice(0, i));
@@ -293,27 +296,40 @@ export function AIBuilderShowcase() {
                 </div>
 
                 {/* Bottom info bar */}
-                <div className="flex items-center justify-between px-6 py-4 sm:px-8 sm:py-5 border-t border-border/40">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/15">
-                      <CheckCircle2 className="h-4 w-4 text-primary" />
+                <div className="flex items-center justify-between bg-gradient-to-r from-card/90 to-card/70 px-6 py-4 sm:px-8 sm:py-5 border-t border-border/30">
+                  <div className="flex items-center gap-4">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/15 ring-1 ring-primary/20">
+                      <CheckCircle2 className="h-5 w-5 text-primary" />
                     </div>
                     <div>
-                      <p className="text-sm font-semibold text-foreground">
+                      <p className="text-sm font-bold tracking-tight text-foreground">
                         {EXAMPLES[exampleIdx].title}
                       </p>
-                      <p className="text-xs text-muted-foreground">
+                      <p className="text-xs text-muted-foreground mt-0.5">
                         {EXAMPLES[exampleIdx].subtitle}
                       </p>
                     </div>
                   </div>
-                  <Link
-                    to="/ai-builder"
-                    className="hidden sm:inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-4 py-2 text-xs font-semibold text-primary transition-colors hover:bg-primary/20"
-                  >
-                    Customize
-                    <ArrowRight className="h-3 w-3" />
-                  </Link>
+                  <div className="flex items-center gap-3">
+                    {/* Dot indicators */}
+                    <div className="hidden sm:flex items-center gap-1.5">
+                      {EXAMPLES.map((_, i) => (
+                        <div
+                          key={i}
+                          className={`h-1.5 rounded-full transition-all duration-500 ${
+                            i === exampleIdx ? 'w-6 bg-primary' : 'w-1.5 bg-muted-foreground/30'
+                          }`}
+                        />
+                      ))}
+                    </div>
+                    <Link
+                      to="/ai-builder"
+                      className="inline-flex items-center gap-1.5 rounded-xl bg-primary px-5 py-2.5 text-xs font-bold uppercase tracking-wider text-primary-foreground shadow-lg shadow-primary/20 transition-all hover:shadow-primary/30 hover:brightness-110"
+                    >
+                      Try It
+                      <ArrowRight className="h-3.5 w-3.5" />
+                    </Link>
+                  </div>
                 </div>
               </div>
             </motion.div>
