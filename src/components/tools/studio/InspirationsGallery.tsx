@@ -106,6 +106,41 @@ interface GalleryItem {
   toolId: string;
 }
 
+type ImageCardShape = "square" | "portrait" | "portraitTall" | "landscape";
+
+const IMAGE_CARD_LAYOUT: ImageCardShape[] = [
+  "landscape",
+  "portraitTall",
+  "portrait",
+  "square",
+  "portraitTall",
+  "portrait",
+  "square",
+  "landscape",
+  "portraitTall",
+  "square",
+  "portrait",
+  "portraitTall",
+  "landscape",
+  "portrait",
+  "square",
+  "portraitTall",
+  "portrait",
+  "landscape",
+  "square",
+  "portraitTall",
+];
+
+const IMAGE_CARD_CLASS_MAP: Record<ImageCardShape, string> = {
+  square: "aspect-square",
+  portrait: "aspect-[4/5]",
+  portraitTall: "aspect-[3/4]",
+  landscape: "aspect-[4/3]",
+};
+
+const getImageCardClassName = (index: number) =>
+  IMAGE_CARD_CLASS_MAP[IMAGE_CARD_LAYOUT[index % IMAGE_CARD_LAYOUT.length]];
+
 const IMAGE_ITEMS: GalleryItem[] = [
   { src: insp1, label: "Sushi chef cat", prompt: "Style & Lighting: Hyper-realistic editorial food photography with a comedic twist. Shot with a shallow depth of field on a full-frame mirrorless camera at f/1.8, creating a creamy bokeh background. Natural warm afternoon sunlight streams from the upper left, casting soft golden highlights across the subject's fur. The overall tone is warm and saturated with slight orange-teal color grading reminiscent of a Wes Anderson film still.\n\nSubject & Pose: A plump orange tabby cat sitting upright on a pristine white marble kitchen countertop, wearing a tiny white chef's hat (toque blanche) that tilts slightly to one side. The cat's expression is one of dignified seriousness — half-closed eyes, slightly raised chin — as it holds a single perfectly formed sushi roll between both front paws.\n\nDetails: The sushi roll features vibrant orange salmon, white rice, dark nori wrapper, and a tiny dollop of wasabi on top. Beside the cat sits a small ceramic sake cup and a pair of lacquered red chopsticks resting on a bamboo mat. The chef's hat has a subtle golden embroidered star.\n\nBackground: A softly blurred professional kitchen with stainless steel surfaces, hanging copper pots, and warm pendant lighting creating golden bokeh circles.", toolId: "image-generator" },
   { src: insp2, label: "Lavender storm phone booth", prompt: "Style & Lighting: Cinematic wide-angle landscape photography with dramatic chiaroscuro lighting. The scene is captured during the fleeting moments of blue hour, just after sunset, with the last traces of amber light on the horizon contrasting against deep indigo storm clouds rolling in from the east. Filmic grain structure reminiscent of Kodak Portra 800, with slightly lifted blacks and rich midtone contrast. Rain is beginning to fall, creating a silvery veil in the distance.\n\nSubject & Composition: A solitary vintage red telephone box (classic British K6 design) standing in the middle of an impossibly vast lavender field in Provence, France. The lavender rows create dramatic leading lines converging toward the phone box. The booth's interior light is on, casting a warm golden glow through its glass panels.\n\nDetails: The phone box paint is slightly weathered with small chips revealing black primer beneath. Condensation beads on the glass panels. A handwritten 'OUT OF ORDER' sign hangs inside. A lone crow perches on top of the booth. Lightning flickers silently in the distant clouds.", toolId: "image-generator" },
@@ -375,32 +410,39 @@ export function InspirationsGallery() {
         </div>
       </div>
 
-      <div className="columns-2 sm:columns-3 lg:columns-4 xl:columns-5 gap-3 [column-fill:_balance]">
+      <div className="columns-2 sm:columns-3 lg:columns-4 xl:columns-5 gap-4 [column-fill:_balance]">
         {items.map((item, i) => (
           <motion.div
             key={`${tab}-${i}`}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.35, delay: Math.min(i * 0.03, 0.5) }}
-            className="mb-3 break-inside-avoid"
+            className="mb-4 break-inside-avoid"
           >
             {tab === "video" ? (
               <VideoCard item={item} onSelect={() => setSelected(item)} />
             ) : (
               <button
                 onClick={() => setSelected(item)}
-                className="group relative overflow-hidden rounded-[14px] bg-[#111] cursor-pointer w-full text-left"
+                className="group block w-full cursor-pointer text-left"
               >
-                <img
-                  src={item.src}
-                  alt={item.label}
-                  loading="lazy"
-                  className="w-full h-auto object-cover transition-transform duration-500 group-hover:scale-[1.04]"
-                />
-                <div className="absolute inset-x-0 bottom-0 p-3 bg-gradient-to-t from-black/80 via-black/40 to-transparent">
-                  <p className="text-[11px] text-white/80 font-medium leading-snug">{item.label}</p>
+                <div
+                  className={cn(
+                    "relative overflow-hidden rounded-[18px] border border-white/[0.06] bg-[#111]",
+                    getImageCardClassName(i)
+                  )}
+                >
+                  <img
+                    src={item.src}
+                    alt={item.label}
+                    loading="lazy"
+                    className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.04]"
+                  />
+                  <div className="absolute inset-x-0 bottom-0 p-3 bg-gradient-to-t from-black/80 via-black/40 to-transparent">
+                    <p className="text-[11px] text-white/80 font-medium leading-snug">{item.label}</p>
+                  </div>
+                  <div className="absolute inset-0 rounded-[18px] border border-white/[0.04] transition-all duration-300 group-hover:border-[#3b82f6]/40 group-hover:shadow-[0_0_20px_-4px_rgba(59,130,246,0.25)]" />
                 </div>
-                <div className="absolute inset-0 rounded-[14px] border border-white/[0.04] transition-all duration-300 group-hover:border-[#3b82f6]/40 group-hover:shadow-[0_0_20px_-4px_rgba(59,130,246,0.25)]" />
               </button>
             )}
           </motion.div>
