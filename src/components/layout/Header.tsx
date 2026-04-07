@@ -255,8 +255,21 @@ export default function Header() {
                 </button>
               </div>
 
-              {/* Spacer between nav groups */}
-              <div className="w-3" />
+              {/* Separator */}
+              <div className="h-5 w-px bg-white/20 mx-1" />
+
+              {/* AI Builder */}
+              <Link 
+                to="/vibecoder"
+                className={cn(
+                  "inline-flex h-10 items-center gap-1.5 px-3 text-sm font-semibold tracking-wide",
+                  "bg-white/[0.06] backdrop-blur-sm rounded-full border border-white/[0.1]",
+                  "text-foreground/90 hover:text-foreground hover:bg-white/[0.1] transition-all duration-200",
+                  isActive('/vibecoder') && "text-foreground bg-white/[0.1]"
+                )}
+              >
+                AI Builder
+              </Link>
 
               {/* Hire Professionals */}
               {user && (
