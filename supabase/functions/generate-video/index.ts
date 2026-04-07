@@ -168,9 +168,11 @@ serve(async (req) => {
 
     const queueResult = await queueResponse.json();
     const falRequestId = queueResult.request_id;
-    console.log("fal.ai queued, request_id:", falRequestId);
+    const statusUrl = queueResult.status_url;
+    const responseUrl = queueResult.response_url;
+    console.log("fal.ai queued, request_id:", falRequestId, "status_url:", statusUrl, "response_url:", responseUrl);
 
-    // Store the fal request ID for polling
+    // Store the fal request ID and URLs for polling
     await supabase.from("video_generation_queue").update({
       fal_request_id: falRequestId,
     }).eq("id", requestId);
