@@ -278,7 +278,7 @@ export const toolsData: ToolData[] = [
     description: "Transform any static image into a smooth, cinematic video clip using AI-powered animation.",
     icon: Clapperboard,
     category: "generators",
-    badge: "Pro · 50 Credits",
+    badge: "Pro",
     available: true,
     features: [
       "AI-powered animation",
