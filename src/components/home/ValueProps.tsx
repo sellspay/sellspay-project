@@ -214,9 +214,10 @@ export function ValueProps() {
             </div>
           </motion.div>
         </Reveal>
+      </div>
 
-      {/* Trust Badges — back in container */}
-      <div className="relative z-10 max-w-[1100px] mx-auto px-6 sm:px-8">
+      {/* Trust Badges */}
+      <div className="relative z-10 max-w-[1200px] mx-auto px-6 sm:px-8 mt-20">
         <Reveal>
           <div className="text-center">
             <div className="w-full h-px mb-12" style={{ background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent)' }} />
