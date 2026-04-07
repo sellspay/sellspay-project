@@ -324,11 +324,11 @@ export default function ImageAnimator() {
           <div className="px-4 pb-4 pt-2 border-t border-white/[0.04]">
             <button
               onClick={handleGenerate}
-              disabled={isGenerating || (mode === "image" ? !sourceImage : !sourceVideo) || !prompt.trim()}
+              disabled={isGenerating || !sourceImage || (mode === "video-ref" && !sourceVideo) || !prompt.trim()}
               className="w-full inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-30 transition-all"
               style={{
                 background: "linear-gradient(135deg, #8b5cf6, #d946ef)",
-                boxShadow: isGenerating || (mode === "image" ? !sourceImage : !sourceVideo) || !prompt.trim() ? "none" : "0 4px 20px rgba(139,92,246,0.3), 0 0 0 1px rgba(139,92,246,0.2)",
+                boxShadow: isGenerating || !sourceImage || (mode === "video-ref" && !sourceVideo) || !prompt.trim() ? "none" : "0 4px 20px rgba(139,92,246,0.3), 0 0 0 1px rgba(139,92,246,0.2)",
               }}
             >
               {isGenerating ? (
