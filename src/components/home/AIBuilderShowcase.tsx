@@ -26,14 +26,14 @@ const examples = [
 
 export function AIBuilderShowcase() {
   return (
-    <section className="relative py-24 sm:py-32 lg:py-40 overflow-hidden">
+    <section className="relative py-28 sm:py-36 lg:py-44 overflow-hidden">
       {/* Ambient background effects */}
       <div className="absolute inset-0 pointer-events-none">
         <div className="absolute top-1/4 left-1/4 w-[600px] h-[600px] rounded-full bg-purple-500/[0.04] blur-[120px]" />
         <div className="absolute bottom-1/4 right-1/4 w-[500px] h-[500px] rounded-full bg-cyan-500/[0.03] blur-[100px]" />
       </div>
 
-      <div className="relative z-10 max-w-7xl mx-auto px-6 sm:px-8 lg:px-12">
+      <div className="relative z-10 w-full px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: 30 }}
@@ -60,8 +60,8 @@ export function AIBuilderShowcase() {
           </p>
         </motion.div>
 
-        {/* Showcase Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 lg:gap-6 mb-16 sm:mb-20">
+        {/* Showcase Grid — full width */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 lg:gap-5 mb-16 sm:mb-20">
           {examples.map((ex, i) => (
             <motion.div
               key={ex.label}
@@ -81,7 +81,6 @@ export function AIBuilderShowcase() {
                   height={800}
                   className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                 />
-                {/* Gradient overlay */}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
 
                 {/* Label badge */}
