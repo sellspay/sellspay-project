@@ -1003,20 +1003,25 @@ body[style*="margin-right"] {
 .dark {
   color-scheme: dark;
 }
-.dark ::-webkit-scrollbar {
+
+/* Global dark scrollbar — applied to html so it works everywhere */
+::-webkit-scrollbar {
   width: 10px;
   background: #000;
 }
-.dark ::-webkit-scrollbar-track {
+::-webkit-scrollbar-track {
   background: #000;
 }
-.dark ::-webkit-scrollbar-thumb {
-  background: hsl(220 10% 20%);
+::-webkit-scrollbar-thumb {
+  background: #1a1a1a;
   border-radius: 5px;
-  border: 2px solid hsl(220 15% 8%);
+  border: 2px solid #000;
 }
-.dark ::-webkit-scrollbar-thumb:hover {
-  background: hsl(220 10% 28%);
+::-webkit-scrollbar-thumb:hover {
+  background: #2a2a2a;
+}
+html {
+  scrollbar-color: #1a1a1a #000;
 }
 
 /* Radial glow texture (cyberpunk) */
