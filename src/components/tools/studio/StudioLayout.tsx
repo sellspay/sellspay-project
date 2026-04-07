@@ -77,18 +77,19 @@ export default function StudioLayout() {
       const detail = (e as CustomEvent<ToolGenDetail & { success: boolean }>).detail;
       setActiveGenTool(null);
       // If user navigated away from the generating tool, notify them
-      if (detail.success) {
+      const fullDetail = detail as ToolGenDetail & { success: boolean; assetUrl?: string; assetType?: string };
+      if (fullDetail.success) {
         const currentTool = activeTool;
-        const entry = toolsRegistry.find(t => t.id === detail.toolId || t.legacyRoute === detail.toolId);
-        const resolvedId = entry?.legacyRoute || detail.toolId;
+        const entry = toolsRegistry.find(t => t.id === fullDetail.toolId || t.legacyRoute === fullDetail.toolId);
+        const resolvedId = entry?.legacyRoute || fullDetail.toolId;
         if (currentTool !== resolvedId) {
           toast.success(`${detail.toolName} finished!`, {
-            description: "Your image is ready to view.",
+            description: "Your content is ready to view.",
             action: {
               label: "View",
               onClick: () => {
                 setActiveTool(resolvedId);
-                navigate(`/studio/${resolvedId}`, { replace: true });
+                navigate(`/studio/${resolvedId}`, { replace: true, state: { viewAssetUrl: fullDetail.assetUrl, viewAssetType: fullDetail.assetType } });
               },
             },
             duration: 10000,
