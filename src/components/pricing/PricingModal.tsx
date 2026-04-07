@@ -1,157 +1,110 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/lib/auth";
-import { Check, X, Plus, Minus, Sparkles, Zap, Diamond } from "lucide-react";
+import { Check, X, Plus, Minus, Sparkles, Zap, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Dialog, DialogPortal, DialogOverlay, DialogTitle } from "@/components/ui/dialog";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 
-/* ─────────────── Plan data (from DB) ─────────────── */
+/* ─────────────── AI Models row ─────────────── */
+const AI_MODELS = [
+  "Sora", "Veo", "Gemini Pro", "Kling", "GPT-5", "GPT-5.2", "Flux.2", "Grok",
+];
+
+/* ─────────────── Credit options per plan ─────────────── */
+const STARTER_CREDITS = [
+  { credits: "500", images: "~250", videos: "—", voiceovers: "—" },
+  { credits: "1,000", images: "~500", videos: "~6", voiceovers: "~2 hrs" },
+  { credits: "2,500", images: "~1,250", videos: "~16", voiceovers: "~5 hrs" },
+];
+
+const PRO_CREDITS = [
+  { credits: "2,500", images: "~1,250", videos: "~35", voiceovers: "~5 hrs", savings: "" },
+  { credits: "6,000", images: "~3,000", videos: "~75", voiceovers: "~12 hrs", savings: "40% less per credit" },
+  { credits: "12,000", images: "~6,000", videos: "~150", voiceovers: "~24 hrs", savings: "55% less per credit" },
+];
+
+/* ─────────────── Plan data ─────────────── */
 const PLAN_CARDS = [
   {
     id: "starter",
-    name: "Starter",
-    monthlyPrice: 0,
-    yearlyPrice: 0,
+    name: "AI Starter",
+    originalPrice: 39,
+    price: 25,
+    perMonth: true,
     badge: null,
-    credits: "0",
-    modelTier: "—",
-    features: [
-      "Create & Customize Storefront",
-      "Sell Digital Products & Subs",
-      "Buy from Marketplace",
-      "Community Access",
-    ],
-    feeNote: "10% Transaction Fee",
-    highlights: [],
-  },
-  {
-    id: "basic",
-    name: "Basic",
-    monthlyPrice: 25,
-    yearlyPrice: 25,
-    badge: null,
-    credits: "500",
-    modelTier: "Flash",
+    creditOptions: STARTER_CREDITS,
+    defaultCreditIdx: 0,
     features: [
       "VibeCoder AI Builder",
-      "All Audio Tools",
+      "AI Images",
       "AI Storefront Editor",
-      "Flash Models (Gemini Flash, GPT-5 Nano)",
-      "~250 images / mo",
-      "4 parallel generations",
+      "Flash Models",
     ],
-    feeNote: "8% Transaction Fee",
-    highlights: [],
+    cta: "Get Started",
+    enterprise: false,
   },
   {
     id: "creator",
-    name: "Creator",
-    monthlyPrice: 69,
-    yearlyPrice: 69,
-    badge: "MOST POPULAR",
-    credits: "2,500",
-    modelTier: "Pro",
+    name: "AI Professional",
+    originalPrice: 149,
+    price: 69,
+    perMonth: true,
+    badge: "✦ Best Value",
+    creditOptions: PRO_CREDITS,
+    defaultCreditIdx: 0,
     features: [
-      "Everything in Basic, plus:",
-      "Pro Models (GPT-5, Gemini Pro)",
-      "AI Image Generation (Flux, Grok, Gemini)",
-      "Auto-Model Selection",
-      "Advanced Analytics",
-      "~1,250 images / mo",
-      "~35 videos / mo",
-      "8 parallel generations",
-      "Verified Badge (Grey)",
-      "Commercial Use Rights",
+      { text: "Includes up to 5 members", icon: "users" },
+      "AI Videos",
+      "AI Images",
+      "AI Voiceovers",
+      "AI Music",
+      "Priority generation speed",
     ],
-    feeNote: "5% Transaction Fee",
-    highlights: [],
+    cta: "Get Started",
+    enterprise: false,
   },
   {
     id: "agency",
-    name: "Agency",
-    monthlyPrice: 199,
-    yearlyPrice: 199,
-    badge: "BEST VALUE",
-    credits: "6,000",
-    modelTier: "Flagship",
+    name: "Enterprise",
+    originalPrice: null,
+    price: null,
+    perMonth: false,
+    badge: null,
+    creditOptions: null,
+    defaultCreditIdx: 0,
+    description: "Tailored plan designed to scale with your organization's creative needs",
+    customCredits: true,
     features: [
-      "Everything in Creator, plus:",
-      "Flagship Models (GPT-5.2)",
-      "AI Video Generation (Sora 2, Veo 3.1)",
-      "~3,000 images / mo",
-      "~75 videos / mo",
-      "16 parallel generations",
-      "Verified Badge (Gold)",
-      "Priority Processing",
-      "Priority Support",
+      { text: "Unlimited team members", icon: "users" },
+      "AI Videos",
+      "AI Images",
+      "AI Voiceovers",
+      "AI Music",
+      "Stock Catalog – Business License",
     ],
-    feeNote: "0% Transaction Fee",
-    highlights: [],
+    businessFeatures: [
+      "Legal indemnification",
+      "Guaranteed SLA",
+      "Enterprise-grade security & compliance",
+      "SSO authentication",
+      "Curation service & AI creative support",
+      "Dedicated account manager",
+    ],
+    cta: "Contact Sales",
+    enterprise: true,
   },
-];
-
-const AI_MODELS = [
-  { name: "GPT-5" },
-  { name: "GPT-5.2" },
-  { name: "Gemini Pro" },
-  { name: "Sora 2" },
-  { name: "Veo 3.1" },
-  { name: "Flux.2" },
-  { name: "Kling" },
-  { name: "Grok" },
-];
-
-/* ─────────────── Credit cost reference ─────────────── */
-const CREDIT_COSTS = [
-  { category: "Text / Code", items: [
-    { name: "Flash models", cost: "~0.2–0.6 credits / 1K tokens" },
-    { name: "Pro models", cost: "~2.5–4 credits / 1K tokens" },
-    { name: "Flagship (GPT-5.2)", cost: "~6 credits / 1K tokens" },
-  ]},
-  { category: "Images", items: [
-    { name: "Standard (Flux Dev, Seedream)", cost: "1–2 credits" },
-    { name: "Pro (Flux Pro, Grok Imagine)", cost: "3–8 credits" },
-  ]},
-  { category: "Video", items: [
-    { name: "Standard (Kling 3.0)", cost: "50 credits" },
-    { name: "Pro (Kling O3, Grok Video)", cost: "60–70 credits" },
-    { name: "Flagship (Sora 2, Veo 3.1)", cost: "80 credits" },
-  ]},
 ];
 
 /* ─────────────── FAQ ─────────────── */
 const FAQS = [
   { q: "Can I cancel my subscription any time?", a: "Yes. You can cancel anytime from your billing settings. Your credits remain active until the end of your billing cycle." },
   { q: "Do my monthly credits roll over?", a: "Unused credits roll over for one billing cycle. After that, unspent credits expire." },
-  { q: "What happens when I run out of credits?", a: "You can purchase add-on Credit Packs: 25 credits for $5, 100 for $15, or 300 for $35." },
+  { q: "What happens when I run out of credits?", a: "You can purchase add-on Credit Packs at any time." },
   { q: "What are the model tiers?", a: "Flash = fast & affordable models. Pro = high-quality models for images & code. Flagship = the most powerful AI models available." },
-  { q: "What happens when I upgrade?", a: "You'll immediately get access to the new plan's features and a pro-rated credit allocation." },
   { q: "How does the 0% fee work?", a: "On the Agency plan, SellsPay takes $0 from your sales. You keep 100% of your revenue (minus standard Stripe processing fees)." },
 ];
-
-/* ─────────────── Comparison rows ─────────────── */
-const COMPARISON_ROWS = [
-  { label: "Monthly Credits", values: ["0", "500", "2,500", "6,000"] },
-  { label: "Model Tier", values: ["—", "Flash", "Pro", "Flagship"] },
-  { label: "Images / mo", values: ["—", "~250", "~1,250", "~3,000"] },
-  { label: "Videos / mo", values: ["—", "—", "~35", "~75"] },
-  { label: "Parallel Generations", values: ["1", "4", "8", "16"] },
-  { label: "Transaction Fee", values: ["10%", "8%", "5%", "0%"] },
-] as { label: string; values: string[] }[];
-
-const FEATURE_ROWS = [
-  { label: "VibeCoder AI Builder", values: [false, true, true, true] },
-  { label: "AI Image Generation", values: [false, false, true, true] },
-  { label: "AI Video Generation", values: [false, false, false, true] },
-  { label: "Auto-Model Selection", values: [false, false, true, true] },
-  { label: "Advanced Analytics", values: [false, false, true, true] },
-  { label: "Verified Badge", values: [false, false, "Grey", "Gold"] },
-  { label: "Priority Processing", values: [false, false, false, true] },
-  { label: "Priority Support", values: [false, false, false, true] },
-  { label: "Commercial Use Rights", values: [false, false, true, true] },
-] as { label: string; values: (string | boolean)[] }[];
 
 /* ─────────────── Component ─────────────── */
 
@@ -161,8 +114,13 @@ interface PricingModalProps {
   darkMode?: boolean;
 }
 
-export function PricingModal({ open, onOpenChange, darkMode = false }: PricingModalProps) {
+export function PricingModal({ open, onOpenChange }: PricingModalProps) {
   const [openFaq, setOpenFaq] = useState<number | null>(null);
+  const [billingYearly, setBillingYearly] = useState(true);
+  const [creditSelections, setCreditSelections] = useState<Record<string, number>>({
+    starter: 0,
+    creator: 0,
+  });
   const navigate = useNavigate();
   const { user } = useAuth();
 
@@ -171,27 +129,8 @@ export function PricingModal({ open, onOpenChange, darkMode = false }: PricingMo
     navigate(user ? "/billing" : "/signup");
   };
 
-  const ACCENT: Record<string, { border: string; check: string; btn: string }> = {
-    starter: {
-      border: "border-white/[0.06]",
-      check: "text-zinc-400",
-      btn: "bg-white/[0.06] hover:bg-white/[0.1] text-white/80 border border-white/[0.08]",
-    },
-    basic: {
-      border: "border-cyan-500/20",
-      check: "text-cyan-400",
-      btn: "bg-gradient-to-r from-blue-600 to-cyan-500 text-white hover:brightness-110",
-    },
-    creator: {
-      border: "border-blue-500/30",
-      check: "text-blue-400",
-      btn: "bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:brightness-110",
-    },
-    agency: {
-      border: "border-indigo-500/25",
-      check: "text-indigo-400",
-      btn: "bg-gradient-to-r from-indigo-600 to-violet-600 text-white hover:brightness-110",
-    },
+  const setCreditIdx = (planId: string, idx: number) => {
+    setCreditSelections(prev => ({ ...prev, [planId]: idx }));
   };
 
   return (
@@ -200,7 +139,7 @@ export function PricingModal({ open, onOpenChange, darkMode = false }: PricingMo
         <DialogOverlay />
         <DialogPrimitive.Content
           className="fixed left-[50%] top-[50%] z-50 w-[98vw] max-w-[1400px] max-h-[95vh] translate-x-[-50%] translate-y-[-50%] rounded-2xl overflow-hidden flex flex-col border border-white/[0.06] shadow-2xl duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95"
-          style={{ background: '#0c0c0c' }}
+          style={{ background: '#0a0a0a' }}
         >
           <VisuallyHidden><DialogTitle>Pricing Plans</DialogTitle></VisuallyHidden>
 
@@ -214,185 +153,204 @@ export function PricingModal({ open, onOpenChange, darkMode = false }: PricingMo
           <div className="overflow-y-auto flex-1 pricing-scroll">
 
             {/* Header */}
-            <div className="text-center pt-14 pb-6 px-8">
+            <div className="text-center pt-14 pb-4 px-8">
               <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight text-white">
-                Get the perfect plan for you
+                Get the perfect AI plan for you
               </h2>
-              <p className="mt-3 text-base text-white/40 max-w-lg mx-auto">
-                Scale your creative business with AI-powered tools.
-              </p>
+
+              {/* AI Suite tab */}
+              <div className="flex justify-center mt-6">
+                <div className="inline-flex rounded-full border border-white/[0.1] bg-white/[0.04] p-1">
+                  <button className="px-5 py-2 rounded-full text-sm font-medium bg-white/[0.1] text-white">
+                    ✦ AI Suite
+                  </button>
+                </div>
+              </div>
 
               {/* AI Model icons row */}
-              <div className="flex justify-center items-center gap-5 sm:gap-7 mt-6 flex-wrap">
+              <div className="flex justify-center items-center gap-5 sm:gap-7 mt-5 flex-wrap">
                 {AI_MODELS.map((model) => (
-                  <div key={model.name} className="flex items-center gap-1.5 text-white/40">
+                  <div key={model} className="flex items-center gap-1.5 text-white/40">
                     <Sparkles className="w-3 h-3" />
-                    <span className="text-xs font-medium">{model.name}</span>
+                    <span className="text-xs font-medium">{model}</span>
                   </div>
                 ))}
+              </div>
+
+              {/* Billing toggle */}
+              <div className="flex justify-center items-center gap-3 mt-5">
+                <span className={cn("text-sm", !billingYearly ? "text-white" : "text-white/40")}>Monthly</span>
+                <button
+                  onClick={() => setBillingYearly(!billingYearly)}
+                  className={cn(
+                    "relative w-11 h-6 rounded-full transition-colors",
+                    billingYearly ? "bg-emerald-500" : "bg-white/20"
+                  )}
+                >
+                  <div className={cn(
+                    "absolute top-0.5 w-5 h-5 rounded-full bg-white transition-transform",
+                    billingYearly ? "left-[22px]" : "left-0.5"
+                  )} />
+                </button>
+                <span className={cn("text-sm", billingYearly ? "text-white" : "text-white/40")}>Yearly</span>
+                {billingYearly && (
+                  <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                    Save 40%
+                  </span>
+                )}
               </div>
             </div>
 
             {/* ─── Plan Cards ─── */}
-            <div className="px-4 sm:px-6 lg:px-8 pb-12">
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 max-w-[1300px] mx-auto">
+            <div className="px-4 sm:px-6 lg:px-8 pb-12 pt-6">
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 max-w-[1200px] mx-auto items-start">
                 {PLAN_CARDS.map((plan) => {
-                  const a = ACCENT[plan.id];
+                  const selectedIdx = creditSelections[plan.id] || 0;
+                  const selectedCredit = plan.creditOptions?.[selectedIdx];
 
                   return (
                     <div
                       key={plan.id}
                       className={cn(
                         "relative rounded-xl flex flex-col border transition-colors",
-                        a.border,
-                        plan.badge === "MOST POPULAR" && "shadow-[0_0_40px_-12px_rgba(59,130,246,0.25)]",
+                        plan.badge
+                          ? "border-white/[0.12] shadow-[0_0_50px_-12px_rgba(255,215,0,0.15)]"
+                          : "border-white/[0.06]",
                       )}
                       style={{ background: '#111111' }}
                     >
                       {/* Badge */}
                       {plan.badge && (
                         <div className="flex justify-center -mt-3.5">
-                          <span className={cn(
-                            "px-4 py-1 rounded-full text-xs font-bold border",
-                            plan.badge === "MOST POPULAR"
-                              ? "text-blue-400 bg-blue-500/10 border-blue-500/20"
-                              : "text-indigo-400 bg-indigo-500/10 border-indigo-500/20"
-                          )}>
-                            ✦ {plan.badge}
+                          <span className="px-5 py-1 rounded-full text-xs font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20">
+                            {plan.badge}
                           </span>
                         </div>
                       )}
 
-                      <div className={cn("p-6 pb-0", plan.badge ? "pt-3" : "pt-6")}>
+                      <div className={cn("p-6", plan.badge ? "pt-3" : "pt-6")}>
                         <h3 className="text-lg font-bold text-white">{plan.name}</h3>
 
+                        {/* Enterprise description */}
+                        {plan.enterprise && (
+                          <p className="mt-3 text-sm text-white/50 leading-relaxed">
+                            {(plan as any).description}
+                          </p>
+                        )}
+
                         {/* Price */}
-                        <div className="mt-3 flex items-baseline gap-0.5">
-                          {plan.monthlyPrice === 0 ? (
-                            <span className="text-3xl font-extrabold text-white">Free</span>
-                          ) : (
-                            <>
-                              <span className="text-3xl font-extrabold text-white">${plan.monthlyPrice}</span>
+                        {plan.price !== null && (
+                          <div className="mt-3">
+                            {plan.originalPrice && (
+                              <span className="text-sm text-white/30 line-through mr-2">
+                                ${plan.originalPrice.toFixed(2)}
+                              </span>
+                            )}
+                            <div className="flex items-baseline gap-0.5 mt-1">
+                              <span className="text-4xl font-extrabold text-white">${plan.price}</span>
+                              <span className="text-lg font-bold text-white/60 relative -top-3">.99</span>
                               <span className="text-sm text-white/35 ml-1">/month</span>
-                            </>
-                          )}
-                        </div>
+                            </div>
+                            {billingYearly && (
+                              <p className="text-xs text-white/30 mt-1">Billed annually</p>
+                            )}
+                          </div>
+                        )}
 
-                        {/* Credits pill */}
-                        <div className="mt-4 px-3 py-2.5 rounded-lg border border-white/[0.08] bg-white/[0.03] flex items-center gap-2">
-                          <Diamond className="h-4 w-4 text-blue-400/70" />
-                          <span className="text-sm font-semibold text-white/70">{plan.credits} credits / mo</span>
-                        </div>
+                        {/* Enterprise custom credits label */}
+                        {plan.enterprise && (
+                          <p className="mt-6 text-sm font-semibold text-white/70">Custom credits</p>
+                        )}
 
-                        {/* Model tier */}
-                        <p className="text-[11px] text-white/30 mt-2">
-                          Model tier: <span className="text-white/50 font-medium">{plan.modelTier}</span>
-                        </p>
+                        {/* Credit selector dropdown */}
+                        {plan.creditOptions && (
+                          <div className="mt-5">
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="text-xs text-white/40">Select your monthly credits:</span>
+                              {selectedCredit && (selectedCredit as any).savings && (
+                                <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full">
+                                  {(selectedCredit as any).savings}
+                                </span>
+                              )}
+                            </div>
+                            <div className="relative">
+                              <select
+                                value={selectedIdx}
+                                onChange={(e) => setCreditIdx(plan.id, Number(e.target.value))}
+                                className="w-full appearance-none px-4 py-3 rounded-lg border border-white/[0.1] bg-white/[0.03] text-white text-sm font-medium cursor-pointer focus:outline-none focus:border-white/20"
+                                style={{ background: '#0d0d0d' }}
+                              >
+                                {plan.creditOptions.map((opt, i) => (
+                                  <option key={i} value={i} className="bg-[#111] text-white">
+                                    {opt.credits} credits / ~{opt.images} images / ~{opt.videos} videos
+                                  </option>
+                                ))}
+                              </select>
+                              <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-white/30">
+                                <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor"><path d="M2.5 4.5L6 8L9.5 4.5" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round"/></svg>
+                              </div>
+                            </div>
+                          </div>
+                        )}
 
-                        {/* CTA */}
+                        {/* CTA Button - 3D gold style */}
                         <button
                           onClick={() => handleGetStarted(plan.id)}
-                          className={cn(
-                            "mt-4 w-full py-3.5 rounded-full text-sm font-bold transition-all cursor-pointer",
-                            a.btn
-                          )}
+                          className="mt-5 w-full py-3.5 rounded-full text-sm font-bold cursor-pointer transition-all active:scale-[0.98]"
+                          style={plan.enterprise ? {
+                            background: 'linear-gradient(180deg, #2a2a2a 0%, #1a1a1a 100%)',
+                            border: '1px solid rgba(255,255,255,0.1)',
+                            color: 'rgba(255,255,255,0.8)',
+                            boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.06), 0 2px 8px rgba(0,0,0,0.3)',
+                          } : {
+                            background: 'linear-gradient(180deg, #ffe066 0%, #f5c200 30%, #d4a000 100%)',
+                            color: '#1a1200',
+                            boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.35), inset 0 -2px 0 rgba(0,0,0,0.15), 0 2px 12px rgba(245,194,0,0.3), 0 4px 20px rgba(245,194,0,0.15)',
+                            textShadow: '0 1px 0 rgba(255,255,255,0.2)',
+                          }}
                         >
-                          Get Started
+                          {plan.cta}
                         </button>
-
-                        <p className="text-[11px] text-white/25 mt-2 text-center">{plan.feeNote}</p>
                       </div>
 
                       {/* Features */}
-                      <div className="p-5 pt-4 flex-1">
-                        <ul className="space-y-2.5">
-                          {plan.features.map((feature, i) => (
-                            <li key={i} className="flex items-start gap-2.5">
-                              <Check className={cn("h-4 w-4 shrink-0 mt-0.5", a.check)} />
-                              <span className="text-[12px] leading-relaxed text-white/50">{feature}</span>
-                            </li>
-                          ))}
+                      <div className="px-6 pb-6 flex-1">
+                        <ul className="space-y-3">
+                          {plan.features.map((feature, i) => {
+                            const isObj = typeof feature === 'object';
+                            const text = isObj ? (feature as any).text : feature;
+                            const hasUsers = isObj && (feature as any).icon === 'users';
+                            return (
+                              <li key={i} className="flex items-start gap-2.5">
+                                {hasUsers ? (
+                                  <Users className="h-4 w-4 shrink-0 mt-0.5 text-white/40" />
+                                ) : (
+                                  <Check className="h-4 w-4 shrink-0 mt-0.5 text-emerald-400" />
+                                )}
+                                <span className="text-[13px] leading-relaxed text-white/55">{text}</span>
+                              </li>
+                            );
+                          })}
                         </ul>
+
+                        {/* Business features for Enterprise */}
+                        {(plan as any).businessFeatures && (
+                          <div className="mt-6">
+                            <p className="text-xs font-bold text-white/70 mb-3">Business features:</p>
+                            <ul className="space-y-2">
+                              {(plan as any).businessFeatures.map((f: string, i: number) => (
+                                <li key={i} className="flex items-start gap-2.5">
+                                  <span className="text-white/20 mt-0.5">•</span>
+                                  <span className="text-[12px] text-white/45">{f}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
                       </div>
                     </div>
                   );
                 })}
-              </div>
-            </div>
-
-            {/* ─── Credit Cost Reference ─── */}
-            <div className="px-6 sm:px-8 pb-12">
-              <div className="max-w-[1300px] mx-auto">
-                <div className="flex items-center gap-2 mb-6">
-                  <Zap className="h-4 w-4 text-blue-400" />
-                  <span className="text-sm font-bold text-white">Credit Usage Guide</span>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  {CREDIT_COSTS.map((cat) => (
-                    <div key={cat.category} className="rounded-xl border border-white/[0.06] p-5" style={{ background: '#111' }}>
-                      <h4 className="text-xs font-bold uppercase tracking-wider text-white/50 mb-3">{cat.category}</h4>
-                      <ul className="space-y-2">
-                        {cat.items.map((item) => (
-                          <li key={item.name} className="flex justify-between items-baseline">
-                            <span className="text-[12px] text-white/40">{item.name}</span>
-                            <span className="text-[12px] font-semibold text-white/60">{item.cost}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* ─── Comparison Table ─── */}
-            <div className="px-6 sm:px-8 pb-12">
-              <div className="max-w-[1300px] mx-auto overflow-x-auto">
-                <table className="w-full border-collapse min-w-[800px]">
-                  <thead>
-                    <tr>
-                      <th className="w-[220px]" />
-                      {PLAN_CARDS.map((p) => (
-                        <th key={p.id} className="text-center px-4 pb-4 min-w-[160px]">
-                          <span className="text-sm font-bold text-white">{p.name}</span>
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {COMPARISON_ROWS.map((row, i) => (
-                      <tr key={`cr-${i}`} className="border-t border-white/[0.05]">
-                        <td className="py-3.5 px-1 text-sm text-white/40">{row.label}</td>
-                        {row.values.map((val, j) => (
-                          <td key={j} className="py-3.5 px-4 text-center">
-                            <span className="text-sm font-medium text-white">{val}</span>
-                          </td>
-                        ))}
-                      </tr>
-                    ))}
-
-                    <tr>
-                      <td colSpan={5} className="pt-8 pb-4 px-1">
-                        <div className="flex items-center gap-2">
-                          <Sparkles className="h-4 w-4 text-blue-400" />
-                          <span className="text-sm font-bold text-white">Features</span>
-                        </div>
-                      </td>
-                    </tr>
-                    {FEATURE_ROWS.map((row, i) => (
-                      <tr key={`ft-${i}`} className="border-t border-white/[0.05]">
-                        <td className="py-3.5 px-1 text-sm text-white/40">{row.label}</td>
-                        {row.values.map((val, j) => (
-                          <td key={j} className="py-3.5 px-4 text-center">
-                            {val === true ? <Check className="h-4 w-4 text-emerald-400 mx-auto" />
-                              : val === false ? <span className="text-white/15">—</span>
-                              : <span className="text-sm font-medium text-white">{val}</span>}
-                          </td>
-                        ))}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
               </div>
             </div>
 
@@ -413,7 +371,7 @@ export function PricingModal({ open, onOpenChange, darkMode = false }: PricingMo
                           </span>
                           <div className={cn(
                             "w-6 h-6 rounded-full flex items-center justify-center shrink-0 ml-4 transition-colors",
-                            openFaq === idx ? "bg-blue-500/20 text-blue-400" : "bg-white/[0.06] text-white/40"
+                            openFaq === idx ? "bg-yellow-500/20 text-yellow-400" : "bg-white/[0.06] text-white/40"
                           )}>
                             {openFaq === idx ? <Minus className="h-3 w-3" /> : <Plus className="h-3 w-3" />}
                           </div>
