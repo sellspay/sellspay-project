@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Reveal } from './Reveal';
-import { Plus, Minus, Sparkles } from 'lucide-react';
+import { Plus, Minus, Sparkles, ArrowRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import everythingYouNeedImg from '@/assets/everything-you-need.jpg';
 import toolImageImg from '@/assets/tool-image-gen.jpg';
@@ -9,86 +9,183 @@ import toolStemImg from '@/assets/tool-stem-splitter.jpg';
 import toolVocalImg from '@/assets/tool-vocal-isolator.jpg';
 import toolSfxImg from '@/assets/tool-sfx-gen.jpg';
 
-const categories = [
+interface SubTool {
+  name: string;
+  desc: string;
+  link: string;
+  linkText: string;
+  image: string;
+}
+
+interface Category {
+  id: string;
+  number: string;
+  label: string;
+  subTools: SubTool[];
+}
+
+const categories: Category[] = [
   {
     id: 'marketplace',
     number: '01',
     label: 'Marketplace',
-    featured: {
-      title: 'Browse & Sell Digital Assets',
-      desc: 'Discover thousands of premium digital products from top creators worldwide. From LUTs to presets, sound effects to templates — find everything you need.',
-      link: '/products',
-      linkText: 'Explore Marketplace',
-      image: everythingYouNeedImg,
-    },
-    tools: ['LUTs & Presets', 'Sound Packs', 'Templates & Themes'],
+    subTools: [
+      {
+        name: 'LUTs & Presets',
+        desc: 'Professional color grading LUTs and editing presets crafted by top creators. Instantly transform your photos and videos with cinema-quality looks.',
+        link: '/products',
+        linkText: 'Browse LUTs & Presets',
+        image: everythingYouNeedImg,
+      },
+      {
+        name: 'Sound Packs',
+        desc: 'Royalty-free sound effects, ambient packs, and audio loops for video editors, podcasters, and music producers. Studio-quality audio, instantly downloadable.',
+        link: '/products',
+        linkText: 'Browse Sound Packs',
+        image: toolVocalImg,
+      },
+      {
+        name: 'Templates & Themes',
+        desc: 'Ready-made design templates for social media, storefronts, and portfolios. Skip the blank canvas and start with a polished foundation.',
+        link: '/products',
+        linkText: 'Browse Templates',
+        image: toolSfxImg,
+      },
+    ],
   },
   {
     id: 'image',
     number: '02',
     label: 'Image Generation',
-    featured: {
-      title: 'AI Image Generator',
-      desc: 'Turn text prompts into stunning visuals. Create product mockups, thumbnails, banners, and art in seconds — no design skills needed.',
-      link: '/tools',
-      linkText: 'Try Image Generator',
-      image: toolImageImg,
-    },
-    tools: ['Background Remover', 'Image Enhancer', 'Photo Editor'],
+    subTools: [
+      {
+        name: 'AI Image Generator',
+        desc: 'Turn text prompts into stunning visuals. Create product mockups, thumbnails, banners, and art in seconds — no design skills needed.',
+        link: '/tools',
+        linkText: 'Try Image Generator',
+        image: toolImageImg,
+      },
+      {
+        name: 'Background Remover',
+        desc: 'Remove backgrounds from any image with one click. Perfect for product photos, profile pictures, and transparent overlays.',
+        link: '/tools',
+        linkText: 'Try Background Remover',
+        image: toolImageImg,
+      },
+      {
+        name: 'Image Enhancer',
+        desc: 'Upscale and enhance image quality with AI. Fix low-res images, sharpen details, and make every pixel count.',
+        link: '/tools',
+        linkText: 'Try Image Enhancer',
+        image: toolImageImg,
+      },
+    ],
   },
   {
     id: 'video',
     number: '03',
     label: 'Video Generation',
-    featured: {
-      title: 'AI Video Generator',
-      desc: 'Generate stunning videos from text prompts or images. Create product demos, social content, and promo reels — no filming required.',
-      link: '/tools',
-      linkText: 'Try Video Generator',
-      image: toolStemImg,
-    },
-    tools: ['Text-to-Video', 'Image-to-Video', 'Promo Video Builder'],
+    subTools: [
+      {
+        name: 'Text-to-Video',
+        desc: 'Generate stunning videos from text prompts. Describe a scene and watch AI bring it to life with cinematic quality.',
+        link: '/tools',
+        linkText: 'Try Text-to-Video',
+        image: toolStemImg,
+      },
+      {
+        name: 'Image-to-Video',
+        desc: 'Animate any still image into a dynamic video. Add camera movement, character motion, and environmental effects.',
+        link: '/tools',
+        linkText: 'Try Image-to-Video',
+        image: toolStemImg,
+      },
+      {
+        name: 'Motion Transfer',
+        desc: 'Transfer motion from one video to another. Sync dance moves, actions, and expressions across different subjects.',
+        link: '/tools/motion-transfer',
+        linkText: 'Try Motion Transfer',
+        image: toolStemImg,
+      },
+    ],
   },
   {
     id: 'audio',
     number: '04',
     label: 'Audio Tools',
-    featured: {
-      title: 'Vocal Isolator',
-      desc: 'Extract clean vocals from any track instantly with AI-powered source separation. Perfect for remixes, karaoke, and content creation.',
-      link: '/studio/voice-isolator',
-      linkText: 'Try Vocal Isolator',
-      image: toolVocalImg,
-    },
-    tools: ['Stem Splitter', 'AI SFX Generator', 'Audio Converter'],
+    subTools: [
+      {
+        name: 'Vocal Isolator',
+        desc: 'Extract clean vocals from any track instantly with AI-powered source separation. Perfect for remixes, karaoke, and content creation.',
+        link: '/studio/voice-isolator',
+        linkText: 'Try Vocal Isolator',
+        image: toolVocalImg,
+      },
+      {
+        name: 'Stem Splitter',
+        desc: 'Separate any song into individual stems — vocals, drums, bass, and instruments. Full creative control over every layer.',
+        link: '/studio/voice-isolator',
+        linkText: 'Try Stem Splitter',
+        image: toolVocalImg,
+      },
+      {
+        name: 'AI SFX Generator',
+        desc: 'Generate custom sound effects from text descriptions. Footsteps, explosions, ambience — create any sound you can imagine.',
+        link: '/tools',
+        linkText: 'Try SFX Generator',
+        image: toolSfxImg,
+      },
+    ],
   },
   {
     id: 'storefront',
     number: '05',
     label: 'AI Storefront',
-    featured: {
-      title: 'VibeCoder',
-      desc: 'Describe your storefront idea and watch AI build it live — layouts, styles, and content. No coding needed, fully customizable.',
-      link: '/ai-builder',
-      linkText: 'Try VibeCoder',
-      image: toolSfxImg,
-    },
-    tools: ['Storefront Builder', 'Landing Pages', 'Brand Kit'],
+    subTools: [
+      {
+        name: 'VibeCoder',
+        desc: 'Describe your storefront idea and watch AI build it live — layouts, styles, and content. No coding needed, fully customizable.',
+        link: '/ai-builder',
+        linkText: 'Try VibeCoder',
+        image: toolSfxImg,
+      },
+      {
+        name: 'Brand Kit',
+        desc: 'Define your colors, fonts, and visual identity in one place. Every page and product you create stays perfectly on-brand.',
+        link: '/ai-builder',
+        linkText: 'Set Up Brand Kit',
+        image: toolSfxImg,
+      },
+      {
+        name: 'Landing Pages',
+        desc: 'Generate high-converting landing pages for product launches, promotions, and lead capture — all AI-powered.',
+        link: '/ai-builder',
+        linkText: 'Build Landing Page',
+        image: toolSfxImg,
+      },
+    ],
   },
 ];
 
 export function FeatureTabsBar() {
   const [openId, setOpenId] = useState<string>('marketplace');
+  const [activeSubIndex, setActiveSubIndex] = useState<Record<string, number>>({});
 
   const toggle = (id: string) => {
     setOpenId(id);
+  };
+
+  const getSubIndex = (catId: string) => activeSubIndex[catId] ?? 0;
+
+  const setSubIndex = (catId: string, idx: number) => {
+    setActiveSubIndex((prev) => ({ ...prev, [catId]: idx }));
   };
 
   return (
     <Reveal>
       <section className="px-6 sm:px-8 lg:px-10 pt-20 sm:pt-28 pb-16 sm:pb-20 max-w-5xl mx-auto">
         {/* Header */}
-        <div className="text-center mb-12 sm:mb-16">
+        <div className="text-center mb-14 sm:mb-20">
           <motion.h2
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -112,11 +209,11 @@ export function FeatureTabsBar() {
             whileInView={{ opacity: 1, scale: 1 }}
             viewport={{ once: true }}
             transition={{ duration: 0.4, delay: 0.3 }}
-            className="mt-5"
+            className="mt-6"
           >
             <Link
               to="/login"
-              className="inline-flex h-10 px-6 items-center justify-center rounded-full bg-foreground text-background text-sm font-semibold hover:bg-foreground/90 transition-colors"
+              className="inline-flex h-11 px-7 items-center justify-center rounded-full bg-foreground text-background text-sm font-semibold hover:bg-foreground/90 transition-colors"
             >
               Try online
             </Link>
@@ -124,27 +221,37 @@ export function FeatureTabsBar() {
         </div>
 
         {/* Accordion rows */}
-        <div className="space-y-0">
-          {categories.map((cat) => {
+        <div>
+          {categories.map((cat, catIdx) => {
             const isOpen = openId === cat.id;
+            const subIdx = getSubIndex(cat.id);
+            const activeSub = cat.subTools[subIdx];
+
             return (
-              <div key={cat.id} className="border-b border-border/40">
+              <div
+                key={cat.id}
+                className={`border-b border-primary/20 ${catIdx === 0 ? 'border-t' : ''}`}
+              >
                 {/* Row header */}
                 <button
                   onClick={() => toggle(cat.id)}
-                  className="w-full flex items-center gap-4 sm:gap-8 py-4 sm:py-5 group text-left"
+                  className="w-full flex items-center gap-4 sm:gap-8 py-5 sm:py-6 group text-left cursor-pointer"
                 >
-                  <span className="text-lg sm:text-xl lg:text-2xl font-medium text-muted-foreground/70 tabular-nums w-10 sm:w-12 shrink-0">
+                  <span className="text-lg sm:text-xl lg:text-2xl font-light text-muted-foreground/50 tabular-nums w-10 sm:w-12 shrink-0 transition-colors group-hover:text-primary/60">
                     {cat.number}
                   </span>
-                  <span className="text-base sm:text-lg lg:text-xl font-semibold text-foreground flex-1 group-hover:text-primary transition-colors">
+                  <span
+                    className={`text-base sm:text-lg lg:text-xl font-semibold flex-1 transition-colors duration-300 ${
+                      isOpen ? 'text-primary' : 'text-foreground group-hover:text-primary'
+                    }`}
+                  >
                     {cat.label}
                   </span>
                   <div className="p-1">
                     {isOpen ? (
-                      <Minus className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground" />
+                      <Minus className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
                     ) : (
-                      <Plus className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground" />
+                      <Plus className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground group-hover:text-primary transition-colors" />
                     )}
                   </div>
                 </button>
@@ -156,47 +263,74 @@ export function FeatureTabsBar() {
                       initial={{ height: 0, opacity: 0 }}
                       animate={{ height: 'auto', opacity: 1 }}
                       exit={{ height: 0, opacity: 0 }}
-                      transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+                      transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
                       className="overflow-hidden"
                     >
-                      <div className="rounded-2xl bg-secondary/30 border border-border/10 p-5 sm:p-6 lg:p-8 mb-4 sm:mb-6 max-w-4xl mx-auto">
-                        <div className="grid grid-cols-1 lg:grid-cols-[1fr_240px] gap-6 lg:gap-8 items-center">
+                      <div className="rounded-2xl bg-card border border-primary/15 shadow-sm p-5 sm:p-6 lg:p-8 mb-5 sm:mb-7">
+                        <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-6 lg:gap-10 items-start">
                           {/* Left: Content */}
-                          <div className="flex flex-col justify-center">
-                            <div className="flex items-center gap-2 mb-2">
-                              <Sparkles className="h-3.5 w-3.5 text-primary" />
-                              <span className="text-sm font-semibold text-foreground">
-                                {cat.featured.title}
-                              </span>
-                            </div>
-                            <p className="text-sm text-muted-foreground leading-relaxed max-w-sm mb-5">
-                              <Link
-                                to={cat.featured.link}
-                                className="text-primary hover:underline"
+                          <div className="flex flex-col justify-start min-h-[200px]">
+                            {/* Active tool header */}
+                            <AnimatePresence mode="wait">
+                              <motion.div
+                                key={activeSub.name}
+                                initial={{ opacity: 0, y: 8 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -8 }}
+                                transition={{ duration: 0.25 }}
                               >
-                                {cat.featured.linkText}
-                              </Link>
-                              {' — '}
-                              {cat.featured.desc}
-                            </p>
-
-                            <div className="space-y-2">
-                              {cat.tools.map((tool) => (
-                                <p key={tool} className="text-sm font-semibold text-foreground">
-                                  {tool}
+                                <div className="flex items-center gap-2.5 mb-3">
+                                  <Sparkles className="h-4 w-4 text-primary" />
+                                  <span className="text-base font-bold text-foreground">
+                                    {activeSub.name}
+                                  </span>
+                                </div>
+                                <p className="text-sm sm:text-[15px] text-muted-foreground leading-relaxed max-w-md mb-4">
+                                  {activeSub.desc}
                                 </p>
+                                <Link
+                                  to={activeSub.link}
+                                  className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline underline-offset-4 mb-6 group/link"
+                                >
+                                  {activeSub.linkText}
+                                  <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover/link:translate-x-0.5" />
+                                </Link>
+                              </motion.div>
+                            </AnimatePresence>
+
+                            {/* Sub-tool selector */}
+                            <div className="flex flex-col gap-1 mt-auto pt-4 border-t border-border/40">
+                              {cat.subTools.map((sub, idx) => (
+                                <button
+                                  key={sub.name}
+                                  onClick={() => setSubIndex(cat.id, idx)}
+                                  className={`text-left px-3 py-2 rounded-lg text-sm font-semibold transition-all duration-200 cursor-pointer ${
+                                    idx === subIdx
+                                      ? 'text-primary bg-primary/8'
+                                      : 'text-foreground/80 hover:text-primary hover:bg-primary/5'
+                                  }`}
+                                >
+                                  {sub.name}
+                                </button>
                               ))}
                             </div>
                           </div>
 
                           {/* Right: Image */}
                           <div className="w-full shrink-0">
-                            <img
-                              src={cat.featured.image}
-                              alt={cat.featured.title}
-                              className="w-full h-auto rounded-xl object-cover aspect-[4/3]"
-                              loading="lazy"
-                            />
+                            <AnimatePresence mode="wait">
+                              <motion.img
+                                key={activeSub.image + activeSub.name}
+                                initial={{ opacity: 0, scale: 0.97 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                exit={{ opacity: 0, scale: 0.97 }}
+                                transition={{ duration: 0.3 }}
+                                src={activeSub.image}
+                                alt={activeSub.name}
+                                className="w-full h-auto rounded-xl object-cover aspect-[4/3] shadow-md"
+                                loading="lazy"
+                              />
+                            </AnimatePresence>
                           </div>
                         </div>
                       </div>
@@ -207,7 +341,6 @@ export function FeatureTabsBar() {
             );
           })}
         </div>
-
       </section>
     </Reveal>
   );
