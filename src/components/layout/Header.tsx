@@ -141,7 +141,7 @@ export default function Header() {
 
   // Render a mega menu column group
   const renderColumns = (categories: Record<string, { name: string; path: string }[]>) => (
-    <div className="flex gap-10">
+    <div className="flex justify-center gap-16">
       {Object.entries(categories).map(([heading, items]) => (
         <div key={heading} className="min-w-[160px]">
           <h4 className="text-xs font-medium text-muted-foreground/60 uppercase tracking-wider mb-3">{heading}</h4>
