@@ -168,9 +168,11 @@ serve(async (req) => {
 
     const queueResult = await queueResponse.json();
     const falRequestId = queueResult.request_id;
-    console.log("fal.ai queued, request_id:", falRequestId);
+    const statusUrl = queueResult.status_url;
+    const responseUrl = queueResult.response_url;
+    console.log("fal.ai queued, request_id:", falRequestId, "status_url:", statusUrl, "response_url:", responseUrl);
 
-    // Store the fal request ID for polling
+    // Store the fal request ID and URLs for polling
     await supabase.from("video_generation_queue").update({
       fal_request_id: falRequestId,
     }).eq("id", requestId);
@@ -186,7 +188,9 @@ serve(async (req) => {
       await new Promise(r => setTimeout(r, pollInterval));
 
       try {
-        const statusResponse = await fetch(`https://queue.fal.run/${falModel}/requests/${falRequestId}/status`, {
+        const pollUrl = statusUrl || `https://queue.fal.run/${falModel}/requests/${falRequestId}/status`;
+        const statusResponse = await fetch(pollUrl, {
+          method: "GET",
           headers: { Authorization: `Key ${FAL_KEY}` },
         });
 
@@ -201,13 +205,21 @@ serve(async (req) => {
 
         if (statusResult.status === "COMPLETED") {
           // Fetch the result
-          const resultResponse = await fetch(`https://queue.fal.run/${falModel}/requests/${falRequestId}`, {
+          const resultFetchUrl = responseUrl || `https://queue.fal.run/${falModel}/requests/${falRequestId}`;
+          console.log("Fetching result from:", resultFetchUrl);
+          const resultResponse = await fetch(resultFetchUrl, {
+            method: "GET",
             headers: { Authorization: `Key ${FAL_KEY}` },
           });
 
           if (resultResponse.ok) {
             const resultData = await resultResponse.json();
+            console.log("Result data keys:", Object.keys(resultData));
             videoUrl = resultData.video?.url;
+            console.log("Video URL:", videoUrl);
+          } else {
+            const errTxt = await resultResponse.text();
+            console.error("Result fetch error:", resultResponse.status, errTxt);
           }
           break;
         } else if (statusResult.status === "FAILED") {
