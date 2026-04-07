@@ -188,7 +188,9 @@ serve(async (req) => {
       await new Promise(r => setTimeout(r, pollInterval));
 
       try {
-        const statusResponse = await fetch(`https://queue.fal.run/${falModel}/requests/${falRequestId}/status`, {
+        const pollUrl = statusUrl || `https://queue.fal.run/${falModel}/requests/${falRequestId}/status`;
+        const statusResponse = await fetch(pollUrl, {
+          method: "GET",
           headers: { Authorization: `Key ${FAL_KEY}` },
         });
 
@@ -203,7 +205,9 @@ serve(async (req) => {
 
         if (statusResult.status === "COMPLETED") {
           // Fetch the result
-          const resultResponse = await fetch(`https://queue.fal.run/${falModel}/requests/${falRequestId}`, {
+          const resultUrl = responseUrl || `https://queue.fal.run/${falModel}/requests/${falRequestId}`;
+          const resultResponse = await fetch(resultUrl, {
+            method: "GET",
             headers: { Authorization: `Key ${FAL_KEY}` },
           });
 
