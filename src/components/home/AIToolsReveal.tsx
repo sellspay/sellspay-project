@@ -25,47 +25,52 @@ type Step = {
   media?: PanelMedia;
 };
 
-const REVEAL_SURFACE = "hsl(0 0% 0%)";
-const REVEAL_FOREGROUND = "hsl(0 0% 95%)";
+const BG_BLACK = "#000000";
+const BG_WHITE = "#f5f5f5";
+const BG_BLUE = "#d0e8f7";
+const BG_GREEN = "#c8f0d4";
+const BG_RED = "#f5c6c6";
+const TEXT_LIGHT = "#f0f0f0";
+const TEXT_DARK = "#0a0a0a";
 
 const DEFAULT_STEPS: Step[] = [
   {
-    bg: REVEAL_SURFACE,
-    text: REVEAL_FOREGROUND,
+    bg: BG_BLACK,
+    text: TEXT_LIGHT,
     headline: ["Building Made", "Simple"],
     subtitle: "Design and launch your storefront in minutes with our AI-powered builder. No coding required — just describe your vision and watch it come to life.",
     image: aiPanel1,
   },
   {
-    bg: REVEAL_SURFACE,
-    text: REVEAL_FOREGROUND,
+    bg: BG_WHITE,
+    text: TEXT_DARK,
     headline: ["Sell", "products"],
     subtitle: "List digital products, set your pricing, and start earning. From presets to sound packs — sell anything to a global audience instantly.",
     image: aiPanel2,
   },
   {
-    bg: REVEAL_SURFACE,
-    text: REVEAL_FOREGROUND,
+    bg: BG_BLUE,
+    text: TEXT_DARK,
     headline: ["Audio Made", "Simple"],
     subtitle: "Isolate vocals, split stems, and generate sound effects with studio-grade AI tools. Professional audio processing at the click of a button.",
     image: aiPanel3,
   },
   {
-    bg: REVEAL_SURFACE,
-    text: REVEAL_FOREGROUND,
+    bg: BG_GREEN,
+    text: TEXT_DARK,
     headline: ["Generate", "Videos"],
     subtitle: "Turn text prompts into cinematic videos. Create product demos, social content, and promotional clips powered by cutting-edge AI models.",
   },
   {
-    bg: REVEAL_SURFACE,
-    text: REVEAL_FOREGROUND,
+    bg: BG_RED,
+    text: TEXT_DARK,
     headline: ["Generate", "images"],
     subtitle: "Build your store's hero in seconds with our AI image generation models. Create stunning product visuals, banners, and promotional art — no design skills needed.",
     image: aiPanel5,
   },
   {
-    bg: REVEAL_SURFACE,
-    text: REVEAL_FOREGROUND,
+    bg: BG_BLACK,
+    text: TEXT_LIGHT,
     headline: ["All in", "one"],
     subtitle: "One platform for everything — storefronts, AI tools, marketplace, and community. Stop juggling apps and build your entire creative business here.",
     image: aiPanel6,
@@ -207,10 +212,12 @@ export function AIToolsReveal() {
       };
       setHeadline(0);
 
-      // ── Single unified timeline for cards ──
+      // ── Single unified timeline for cards + colors ──
       const mainTl = gsap.timeline({ paused: true, defaults: { ease: "none" } });
 
       // Step 0 initial state
+      mainTl.set(section, { backgroundColor: steps[0].bg }, 0);
+      mainTl.set(textContainer, { color: steps[0].text }, 0);
       for (let i = 0; i < panelCount; i++) {
         if (i === 0) {
           mainTl.set(cards[i], { yPercent: 0, y: 0, scale: TOP_CARD_SCALE }, 0);
@@ -224,6 +231,18 @@ export function AIToolsReveal() {
       // Steps 1..N-1: cards + colors transition together
       for (let step = 1; step < panelCount; step++) {
         const pos = (step - 1) + animDuration;
+
+        // Background & text color transitions
+        mainTl.to(section, {
+          backgroundColor: steps[step].bg,
+          duration: animDuration,
+          immediateRender: false,
+        }, pos);
+        mainTl.to(textContainer, {
+          color: steps[step].text,
+          duration: animDuration,
+          immediateRender: false,
+        }, pos);
 
         // Cards above active stack behind
         for (let i = 0; i < step; i++) {
@@ -353,7 +372,7 @@ export function AIToolsReveal() {
     <section
       ref={sectionRef}
       className="ai-tools-reveal relative w-full will-change-transform overflow-x-clip"
-      style={{ overflowY: "visible", backgroundColor: "#000000" }}
+      style={{ overflowY: "visible", backgroundColor: steps[0].bg }}
     >
       {/* Subtle radial glow behind active card area */}
       <div
@@ -384,8 +403,8 @@ export function AIToolsReveal() {
             </div>
             <h2
               data-headline
-              className="text-[2.5rem] sm:text-[3.2rem] md:text-[3.8rem] lg:text-[5rem] xl:text-[6rem] 2xl:text-[7rem] font-extrabold leading-[0.95] tracking-[-0.03em]"
-              style={{ fontFamily: "'Inter', 'SF Pro Display', -apple-system, sans-serif", color: "#ffffff" }}
+              className="text-[2.5rem] sm:text-[3.2rem] md:text-[3.8rem] lg:text-[5rem] xl:text-[6rem] 2xl:text-[7rem] font-extrabold leading-[0.95] tracking-[-0.03em] transition-colors duration-300"
+              style={{ fontFamily: "'Inter', 'SF Pro Display', -apple-system, sans-serif" }}
             >
               <span ref={(el) => { headlineLineRefs.current[0] = el; }} className="block will-change-transform">
                 {headlineLines[0]}
