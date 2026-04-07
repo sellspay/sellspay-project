@@ -330,5 +330,92 @@ export function MyAssetsDrawer({ trigger, open: controlledOpen, onOpenChange }: 
         </ScrollArea>
       </SheetContent>
     </Sheet>
+
+    {/* Asset Preview Dialog */}
+    <Dialog open={!!previewAsset} onOpenChange={(v) => !v && setPreviewAsset(null)}>
+      <DialogContent className="sm:max-w-2xl max-h-[90vh] p-0 overflow-hidden bg-background border-border">
+        {previewAsset && (
+          <div className="flex flex-col">
+            {/* Preview content */}
+            <div className="relative bg-black flex items-center justify-center min-h-[300px] max-h-[60vh]">
+              {previewAsset.type === "image" && previewAsset.storage_url && (
+                <img
+                  src={previewAsset.storage_url}
+                  alt={previewAsset.filename || "Image"}
+                  className="max-w-full max-h-[60vh] object-contain"
+                />
+              )}
+              {previewAsset.type === "video" && previewAsset.storage_url && (
+                <video
+                  src={previewAsset.storage_url}
+                  controls
+                  autoPlay
+                  className="max-w-full max-h-[60vh]"
+                />
+              )}
+              {previewAsset.type === "audio" && previewAsset.storage_url && (
+                <div className="flex flex-col items-center gap-4 p-8">
+                  <div className="w-24 h-24 rounded-full bg-primary/10 flex items-center justify-center">
+                    <Music className="h-10 w-10 text-primary" />
+                  </div>
+                  <audio src={previewAsset.storage_url} controls autoPlay className="w-full max-w-md" />
+                </div>
+              )}
+              {(previewAsset.type === "text" || previewAsset.type === "file") && (
+                <div className="p-8 text-center">
+                  <FileText className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+                  <p className="text-sm text-muted-foreground">Preview not available for this file type</p>
+                </div>
+              )}
+            </div>
+
+            {/* Info bar */}
+            <div className="p-4 border-t border-border flex items-center justify-between">
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-foreground truncate">
+                  {previewAsset.filename || `${previewAsset.type} asset`}
+                </p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {new Date(previewAsset.created_at).toLocaleDateString()} · {previewAsset.type}
+                </p>
+              </div>
+              <div className="flex gap-2 shrink-0">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5 text-xs"
+                  onClick={() => toggleFavorite(previewAsset)}
+                >
+                  <Heart className={`h-3.5 w-3.5 ${previewAsset.is_favorite ? "fill-amber-500 text-amber-500" : ""}`} />
+                  {previewAsset.is_favorite ? "Unfavorite" : "Favorite"}
+                </Button>
+                {previewAsset.storage_url && (
+                  <Button variant="outline" size="sm" className="gap-1.5 text-xs" asChild>
+                    <a href={previewAsset.storage_url} download>
+                      <Download className="h-3.5 w-3.5" /> Download
+                    </a>
+                  </Button>
+                )}
+                {previewAsset.storage_url && (
+                  <Button
+                    size="sm"
+                    className="gap-1.5 text-xs"
+                    onClick={() => {
+                      const toolMap: Record<string, string> = { image: "image-generator", video: "video-generator", audio: "sfx-generator" };
+                      const toolId = toolMap[previewAsset.type] || "image-generator";
+                      setPreviewAsset(null);
+                      setOpen(false);
+                      navigate(`/studio/${toolId}`, { state: { viewAssetUrl: previewAsset.storage_url, viewAssetType: previewAsset.type } });
+                    }}
+                  >
+                    <ExternalLink className="h-3.5 w-3.5" /> Open in Tool
+                  </Button>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
   );
 }
