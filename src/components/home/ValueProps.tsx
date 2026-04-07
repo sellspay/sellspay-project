@@ -205,60 +205,69 @@ export function ValueProps() {
         </Reveal>
       </div>
 
-      {/* AI Studio Banner — full bleed */}
+      {/* AI Studio Banner — full bleed with soft edges */}
       <Reveal>
-        <motion.div
-          whileHover={{ y: -4 }}
-          transition={{ duration: 0.4, ease: 'easeOut' }}
-          className="relative z-10 mt-20 mb-20 overflow-hidden"
-          style={{ background: 'linear-gradient(135deg, #080d1a, #0a0810, #060812)', borderTop: '1px solid rgba(59,130,246,0.2)', borderBottom: '1px solid rgba(139,92,246,0.15)' }}
-        >
-          <div className="relative overflow-hidden">
-              <div className="absolute -top-24 -left-24 w-72 h-72 pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(59,130,246,0.18), transparent 60%)', filter: 'blur(40px)' }} />
-              <div className="absolute -bottom-20 -right-20 w-64 h-64 pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(139,92,246,0.14), transparent 60%)', filter: 'blur(40px)' }} />
-              <div className="relative z-10 flex flex-col lg:flex-row items-center gap-10 px-10 py-12 sm:px-14 sm:py-16">
-                <div className="flex-1 text-center lg:text-left">
-                  <div className="flex items-center gap-2.5 mb-5 justify-center lg:justify-start">
-                    <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #3b82f6, #8b5cf6)', boxShadow: '0 4px 16px rgba(59,130,246,0.35)' }}>
-                      <Sparkles className="w-4 h-4 text-white" />
-                    </div>
-                    <span className="text-xs font-bold uppercase tracking-[0.15em]" style={{ color: 'rgba(255,255,255,0.55)' }}>AI Studio</span>
+        <div className="relative z-10 mt-20 mb-20">
+          {/* Top fade edge */}
+          <div className="h-20 pointer-events-none" style={{ background: 'linear-gradient(to bottom, #000000, #080d1a)' }} />
+          
+          <div className="relative overflow-hidden" style={{ background: 'linear-gradient(135deg, #080d1a, #0a0810, #060812)' }}>
+            {/* Ambient glows */}
+            <div className="absolute -top-24 -left-24 w-96 h-96 pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(59,130,246,0.15), transparent 60%)', filter: 'blur(60px)' }} />
+            <div className="absolute -bottom-20 -right-20 w-80 h-80 pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(139,92,246,0.12), transparent 60%)', filter: 'blur(60px)' }} />
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[300px] pointer-events-none" style={{ background: 'radial-gradient(ellipse, rgba(59,130,246,0.06), transparent 60%)', filter: 'blur(40px)' }} />
+
+            {/* Content */}
+            <div className="relative z-10 max-w-[1100px] mx-auto flex flex-col lg:flex-row items-center gap-12 px-8 sm:px-14 py-20 sm:py-24">
+              <div className="flex-1 text-center lg:text-left">
+                <div className="flex items-center gap-2.5 mb-6 justify-center lg:justify-start">
+                  <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #3b82f6, #8b5cf6)', boxShadow: '0 4px 20px rgba(59,130,246,0.3)' }}>
+                    <Sparkles className="w-4.5 h-4.5 text-white" />
                   </div>
-                  <h3 className="text-4xl sm:text-5xl font-bold tracking-tight mb-3" style={{ color: '#f0f0f0' }}>Create with AI.</h3>
-                  <p className="text-xl sm:text-2xl font-light mb-5" style={{ color: 'rgba(255,255,255,0.3)' }}>Sell instantly.</p>
-                  <p className="text-sm sm:text-base leading-relaxed max-w-lg mb-8" style={{ color: 'rgba(255,255,255,0.45)' }}>
-                    Generate images, videos, audio & SFX — everything you need to build and sell digital products, powered by cutting-edge AI.
-                  </p>
-                  <Link to="/studio" className="btn-premium inline-flex items-center gap-2 px-7 py-3 rounded-full text-sm font-semibold text-white">
-                    Explore AI Studio
-                    <ArrowRight className="w-4 h-4" />
-                  </Link>
+                  <span className="text-xs font-bold uppercase tracking-[0.18em]" style={{ color: 'rgba(255,255,255,0.5)' }}>AI Studio</span>
                 </div>
-                <div className="grid grid-cols-2 gap-3 flex-shrink-0 w-full lg:w-auto lg:max-w-[280px]">
-                  {AI_TOOLS.map((tool, i) => (
-                    <motion.div
-                      key={tool.label}
-                      initial={{ opacity: 0, scale: 0.9 }}
-                      whileInView={{ opacity: 1, scale: 1 }}
-                      viewport={{ once: true }}
-                      transition={{ duration: 0.4, delay: 0.2 + i * 0.08 }}
-                      whileHover={{ scale: 1.05 }}
-                      className="flex flex-col items-center justify-center gap-2.5 py-6 px-4 rounded-2xl text-center"
-                      style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}
+                <h3 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight mb-4" style={{ color: '#f0f0f0' }}>
+                  Create with AI.
+                </h3>
+                <p className="text-xl sm:text-2xl font-light mb-6" style={{ color: 'rgba(255,255,255,0.3)' }}>
+                  Sell instantly.
+                </p>
+                <p className="text-base leading-relaxed max-w-lg mb-10 mx-auto lg:mx-0" style={{ color: 'rgba(255,255,255,0.42)' }}>
+                  Generate images, videos, audio & SFX — everything you need to build and sell digital products, powered by cutting-edge AI models.
+                </p>
+                <Link to="/studio" className="btn-premium inline-flex items-center gap-2.5 px-8 py-3.5 rounded-full text-sm font-semibold text-white">
+                  Explore AI Studio
+                  <ArrowRight className="w-4 h-4" />
+                </Link>
+              </div>
+              <div className="grid grid-cols-2 gap-4 flex-shrink-0 w-full lg:w-auto lg:max-w-[300px]">
+                {AI_TOOLS.map((tool, i) => (
+                  <motion.div
+                    key={tool.label}
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    whileInView={{ opacity: 1, scale: 1 }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 0.4, delay: 0.2 + i * 0.08 }}
+                    whileHover={{ scale: 1.04, y: -2 }}
+                    className="flex flex-col items-center justify-center gap-3 py-7 px-5 rounded-2xl text-center"
+                    style={{ background: 'rgba(255,255,255,0.035)', border: '1px solid rgba(255,255,255,0.06)' }}
+                  >
+                    <div className="w-11 h-11 rounded-xl flex items-center justify-center"
+                      style={{ background: 'linear-gradient(135deg, rgba(59,130,246,0.15), rgba(139,92,246,0.1))', border: '1px solid rgba(255,255,255,0.08)' }}
                     >
-                      <div className="w-10 h-10 rounded-xl flex items-center justify-center"
-                        style={{ background: 'linear-gradient(135deg, rgba(59,130,246,0.15), rgba(139,92,246,0.1))', border: '1px solid rgba(255,255,255,0.08)' }}
-                      >
-                        <tool.icon className="w-5 h-5" style={{ color: '#818cf8' }} />
-                      </div>
-                      <p className="text-xs font-semibold" style={{ color: 'rgba(255,255,255,0.65)' }}>{tool.label}</p>
-                    </motion.div>
-                  ))}
-                </div>
+                      <tool.icon className="w-5 h-5" style={{ color: '#818cf8' }} />
+                    </div>
+                    <p className="text-xs font-semibold" style={{ color: 'rgba(255,255,255,0.6)' }}>{tool.label}</p>
+                  </motion.div>
+                ))}
               </div>
             </div>
-          </motion.div>
-        </Reveal>
+          </div>
+
+          {/* Bottom fade edge */}
+          <div className="h-20 pointer-events-none" style={{ background: 'linear-gradient(to top, #000000, #080d1a)' }} />
+        </div>
+      </Reveal>
 
       {/* Trust Badges — back in container */}
       <div className="relative z-10 max-w-[1100px] mx-auto px-6 sm:px-8">
