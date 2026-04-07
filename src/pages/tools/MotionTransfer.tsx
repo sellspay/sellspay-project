@@ -549,6 +549,129 @@ export default function MotionTransfer() {
                   </div>
                 </div>
 
+                {/* Example Wall */}
+                <div className="px-8 pb-8">
+                  {!user && (
+                    <button
+                      onClick={() => dispatchAuthGate()}
+                      className="mb-5 w-full rounded-2xl px-5 py-4 text-sm font-bold text-white transition-all hover:-translate-y-0.5"
+                      style={{
+                        background: "linear-gradient(135deg, rgba(124,58,237,0.95), rgba(168,85,247,0.95) 55%, rgba(236,72,153,0.9))",
+                        boxShadow: "0 18px 40px rgba(168,85,247,0.22)",
+                      }}
+                    >
+                      Sign up to create for FREE
+                    </button>
+                  )}
+
+                  <div className="mb-4 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+                    <div>
+                      <h3 className="text-[15px] font-semibold text-white">
+                        {user ? "Example Creations" : "Browse motion transfer examples"}
+                      </h3>
+                      <p className="mt-1 text-[12px] text-zinc-500">
+                        {user
+                          ? "Tap a card to drop its transfer idea into the prompt box."
+                          : "Preview how source footage can inherit motion, rhythm, and camera energy."}
+                      </p>
+                    </div>
+                    {user && (
+                      <span className="inline-flex w-fit items-center gap-1.5 rounded-full border border-white/[0.08] bg-white/[0.03] px-3 py-1 text-[10px] font-medium text-zinc-400">
+                        <Play className="h-3 w-3" /> Click any example to preload the prompt
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="grid auto-rows-[180px] grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                    {[
+                      {
+                        title: "Street Dance Swap",
+                        source: "3D heroine",
+                        motion: "Club choreography",
+                        prompt: "Transfer energetic street dance choreography onto the source subject while preserving the original style, framing, and lighting.",
+                        className: "sm:col-span-2 xl:col-span-2 xl:row-span-2",
+                        background:
+                          "radial-gradient(circle at 20% 20%, rgba(236,72,153,0.32), transparent 28%), radial-gradient(circle at 80% 24%, rgba(59,130,246,0.26), transparent 30%), linear-gradient(135deg, rgba(17,24,39,1), rgba(76,29,149,0.92))",
+                      },
+                      {
+                        title: "Cinematic Walk",
+                        source: "Fashion portrait",
+                        motion: "Runway pace",
+                        prompt: "Apply a confident runway walk with smooth body motion while keeping the scene elegant and editorial.",
+                        background:
+                          "radial-gradient(circle at 75% 20%, rgba(245,158,11,0.28), transparent 30%), linear-gradient(135deg, rgba(39,39,42,1), rgba(113,63,18,0.92))",
+                      },
+                      {
+                        title: "Facial Emotion",
+                        source: "Close-up character",
+                        motion: "Expressive face acting",
+                        prompt: "Transfer subtle facial expressions and lip motion onto the source subject without changing the camera angle.",
+                        background:
+                          "radial-gradient(circle at 25% 25%, rgba(168,85,247,0.34), transparent 30%), linear-gradient(160deg, rgba(15,23,42,1), rgba(67,56,202,0.92))",
+                      },
+                      {
+                        title: "Action Burst",
+                        source: "Fantasy warrior",
+                        motion: "Combat movement",
+                        prompt: "Map aggressive action movement and weight shifts onto the source subject while keeping the original environment intact.",
+                        className: "xl:row-span-2",
+                        background:
+                          "radial-gradient(circle at 50% 15%, rgba(239,68,68,0.26), transparent 28%), radial-gradient(circle at 80% 78%, rgba(168,85,247,0.22), transparent 30%), linear-gradient(145deg, rgba(24,24,27,1), rgba(63,28,48,0.96))",
+                      },
+                      {
+                        title: "Camera Drift",
+                        source: "Static shot",
+                        motion: "Floating handheld",
+                        prompt: "Add smooth handheld camera drift and gentle parallax motion from the reference video while preserving composition.",
+                        background:
+                          "radial-gradient(circle at 20% 25%, rgba(34,211,238,0.24), transparent 30%), linear-gradient(145deg, rgba(12,10,9,1), rgba(22,78,99,0.9))",
+                      },
+                      {
+                        title: "Performance Sync",
+                        source: "Music clip",
+                        motion: "Stage energy",
+                        prompt: "Transfer high-energy performance motion and timing onto the source clip while preserving the original visual identity.",
+                        className: "sm:col-span-2",
+                        background:
+                          "radial-gradient(circle at 15% 20%, rgba(244,114,182,0.28), transparent 30%), radial-gradient(circle at 85% 30%, rgba(168,85,247,0.28), transparent 30%), linear-gradient(135deg, rgba(9,9,11,1), rgba(88,28,135,0.94))",
+                      },
+                    ].map((example, index) => (
+                      <button
+                        key={example.title}
+                        onClick={() => setPrompt(example.prompt)}
+                        className={`group relative overflow-hidden rounded-[28px] border border-white/[0.06] p-5 text-left transition-all hover:-translate-y-0.5 hover:border-purple-500/20 ${example.className ?? ""}`}
+                        style={{ background: example.background }}
+                      >
+                        <div className="absolute inset-0 bg-gradient-to-b from-white/[0.08] via-transparent to-black/55" />
+                        <div className="absolute -right-8 -top-8 h-24 w-24 rounded-full bg-white/10 blur-3xl" />
+                        <div className="relative flex h-full flex-col justify-between">
+                          <div className="flex items-start justify-between gap-3">
+                            <span className="inline-flex items-center rounded-full border border-white/10 bg-black/25 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-white/70 backdrop-blur-sm">
+                              Example 0{index + 1}
+                            </span>
+                            <div className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-black/30 backdrop-blur-sm transition-transform duration-300 group-hover:scale-105">
+                              <Play className="h-4 w-4 text-white ml-0.5" />
+                            </div>
+                          </div>
+
+                          <div>
+                            <p className="text-[10px] font-medium uppercase tracking-[0.22em] text-white/45">Source + Motion</p>
+                            <h4 className="mt-2 text-lg font-semibold text-white sm:text-xl">{example.title}</h4>
+                            <div className="mt-4 flex flex-wrap gap-2">
+                              <span className="rounded-full border border-white/10 bg-black/25 px-2.5 py-1 text-[10px] font-medium text-white/75 backdrop-blur-sm">
+                                Source: {example.source}
+                              </span>
+                              <span className="rounded-full border border-white/10 bg-black/25 px-2.5 py-1 text-[10px] font-medium text-white/75 backdrop-blur-sm">
+                                Motion: {example.motion}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
                 {/* How it works: 3-step visual */}
                 <div className="px-8 pb-6">
                   <div className="grid grid-cols-3 gap-3">
@@ -618,65 +741,6 @@ export default function MotionTransfer() {
             )}
           </AnimatePresence>
         </main>
-      </div>
-
-      {/* Showcase Gallery */}
-      <div className="w-full px-6 pb-16 pt-4">
-        {!user && (
-          <button
-            onClick={() => dispatchAuthGate()}
-            className="w-full mb-8 py-4 rounded-2xl text-base font-bold text-white transition-all hover:scale-[1.01] active:scale-[0.99]"
-            style={{
-              background: 'linear-gradient(135deg, #7c3aed 0%, #a855f7 50%, #c084fc 100%)',
-              boxShadow: '0 4px 30px rgba(168,85,247,0.35)',
-            }}
-          >
-            Sign up to create for FREE
-          </button>
-        )}
-
-        <h3 className="text-lg font-semibold text-white mb-1">
-          {user ? 'Example Creations' : 'See what\'s possible'}
-        </h3>
-        <p className="text-sm text-zinc-500 mb-6">Motion transferred videos created with Motion-Sync</p>
-
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-          {[
-            { src: "https://images.unsplash.com/photo-1547153760-18fc86c0dbba?w=400&h=300&fit=crop", label: "Dance Sync" },
-            { src: "https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?w=400&h=300&fit=crop", label: "Performance Transfer" },
-            { src: "https://images.unsplash.com/photo-1518834107812-67b0b7c58434?w=400&h=300&fit=crop", label: "Athletic Motion" },
-            { src: "https://images.unsplash.com/photo-1504703395950-b89145a5425b?w=400&h=300&fit=crop", label: "Fashion Walk" },
-            { src: "https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?w=400&h=300&fit=crop", label: "Festival Moves" },
-            { src: "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=400&h=300&fit=crop", label: "Stage Motion" },
-            { src: "https://images.unsplash.com/photo-1551244072-5d12893278ab?w=400&h=300&fit=crop", label: "Camera Pan" },
-            { src: "https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=400&h=300&fit=crop", label: "Yoga Flow" },
-          ].map((item) => (
-            <div
-              key={item.label}
-              className="group relative aspect-[4/3] rounded-2xl overflow-hidden border border-white/[0.04] hover:border-purple-500/20 transition-all cursor-pointer"
-            >
-              <img
-                src={item.src}
-                alt={item.label}
-                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                loading="lazy"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-              <div className="absolute bottom-0 left-0 right-0 p-3 translate-y-2 group-hover:translate-y-0 opacity-0 group-hover:opacity-100 transition-all">
-                <div className="flex items-center gap-1.5">
-                  <Play className="h-3 w-3 text-purple-300" />
-                  <span className="text-xs font-medium text-white">{item.label}</span>
-                </div>
-              </div>
-              {/* Play icon overlay */}
-              <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                <div className="h-10 w-10 rounded-full bg-purple-500/80 backdrop-blur-sm flex items-center justify-center">
-                  <Play className="h-4 w-4 text-white ml-0.5" fill="white" />
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
       </div>
     </div>
   );
