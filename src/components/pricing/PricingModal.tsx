@@ -1,118 +1,157 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/lib/auth";
-import { Check, X, ChevronDown, Plus, Minus, Sparkles } from "lucide-react";
+import { Check, X, Plus, Minus, Sparkles, Zap, Diamond } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Dialog, DialogPortal, DialogOverlay, DialogTitle } from "@/components/ui/dialog";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 
-/* ─────────────── Plan data ─────────────── */
+/* ─────────────── Plan data (from DB) ─────────────── */
 const PLAN_CARDS = [
   {
     id: "starter",
-    name: "Music & SFX",
-    subtitle: null,
-    monthlyPrice: 9.99,
-    yearlyPrice: 9.99,
-    badge: null,
-    cta: "Get Started",
-    license: "License",
-    licenseDesc: "Covers all personal and commercial use of music and sound effects.",
-    features: [
-      "Music and stems",
-      "Sound effects",
-      "Extension for Premiere Pro",
-    ],
-    businessFeatures: [],
-  },
-  {
-    id: "basic",
-    name: "Max",
-    subtitle: null,
-    monthlyPrice: 49.99,
-    yearlyPrice: 39.99,
-    badge: "✦ Best Value",
-    cta: "Get Started",
-    license: "Pro License",
-    licenseDesc: "Covers all personal and commercial use of the stock catalog.",
-    features: [
-      "Music, stems and sound effects",
-      "Footage, templates and LUTs",
-      "Plugins and extensions",
-      "Full access to AI Toolkit",
-    ],
-    businessFeatures: [],
-  },
-  {
-    id: "creator",
-    name: "Max Business",
-    subtitle: "For businesses with 50+ employees and agencies of all sizes",
-    monthlyPrice: 499,
-    yearlyPrice: 399,
-    badge: null,
-    cta: "Get Started",
-    license: "Business License",
-    licenseDesc: "Covers your business and client projects for commercial use of the stock catalog.",
-    features: [
-      "Includes up to 7 members",
-      "Stock catalog",
-      "Full access to AI Toolkit",
-    ],
-    businessFeatures: [
-      "Legal indemnification",
-      "Guaranteed SLA",
-      "Security & compliance",
-      "Team collaboration tools",
-      "Team credit & model control",
-      "Priority generation speed",
-      "Priority support",
-    ],
-  },
-  {
-    id: "agency",
-    name: "Enterprise",
-    subtitle: "Tailored for enterprise companies of 50+ employees and agencies of all sizes",
+    name: "Starter",
     monthlyPrice: 0,
     yearlyPrice: 0,
     badge: null,
-    cta: "Contact Sales",
-    license: "Enterprise License",
-    licenseDesc: "Tailored enterprise license covering commercial use of the stock catalog.",
+    credits: "0",
+    modelTier: "—",
     features: [
-      "Custom number of members",
+      "Create & Customize Storefront",
+      "Sell Digital Products & Subs",
+      "Buy from Marketplace",
+      "Community Access",
     ],
-    businessFeatures: [
-      "Everything in Max Business, plus:",
-      "SSO authentication",
-      "Enhanced legal indemnification",
-      "Curation service & AI Support",
-      "Dedicated account manager",
-      "Customized privacy terms",
+    feeNote: "10% Transaction Fee",
+    highlights: [],
+  },
+  {
+    id: "basic",
+    name: "Basic",
+    monthlyPrice: 25,
+    yearlyPrice: 25,
+    badge: null,
+    credits: "500",
+    modelTier: "Flash",
+    features: [
+      "VibeCoder AI Builder",
+      "All Audio Tools",
+      "AI Storefront Editor",
+      "Flash Models (Gemini Flash, GPT-5 Nano)",
+      "~250 images / mo",
+      "4 parallel generations",
     ],
+    feeNote: "8% Transaction Fee",
+    highlights: [],
+  },
+  {
+    id: "creator",
+    name: "Creator",
+    monthlyPrice: 69,
+    yearlyPrice: 69,
+    badge: "MOST POPULAR",
+    credits: "2,500",
+    modelTier: "Pro",
+    features: [
+      "Everything in Basic, plus:",
+      "Pro Models (GPT-5, Gemini Pro)",
+      "AI Image Generation (Flux, Grok, Gemini)",
+      "Auto-Model Selection",
+      "Advanced Analytics",
+      "~1,250 images / mo",
+      "~35 videos / mo",
+      "8 parallel generations",
+      "Verified Badge (Grey)",
+      "Commercial Use Rights",
+    ],
+    feeNote: "5% Transaction Fee",
+    highlights: [],
+  },
+  {
+    id: "agency",
+    name: "Agency",
+    monthlyPrice: 199,
+    yearlyPrice: 199,
+    badge: "BEST VALUE",
+    credits: "6,000",
+    modelTier: "Flagship",
+    features: [
+      "Everything in Creator, plus:",
+      "Flagship Models (GPT-5.2)",
+      "AI Video Generation (Sora 2, Veo 3.1)",
+      "~3,000 images / mo",
+      "~75 videos / mo",
+      "16 parallel generations",
+      "Verified Badge (Gold)",
+      "Priority Processing",
+      "Priority Support",
+    ],
+    feeNote: "0% Transaction Fee",
+    highlights: [],
   },
 ];
 
 const AI_MODELS = [
-  { icon: "✦", name: "Sora" },
-  { icon: "G", name: "Veo" },
-  { icon: "G", name: "Nano Banana" },
-  { icon: "◈", name: "Kling" },
-  { icon: "▊", name: "Seedance" },
-  { icon: "II", name: "ElevenLabs" },
-  { icon: "◈", name: "GPT Image" },
-  { icon: "G", name: "Lyria" },
+  { name: "GPT-5" },
+  { name: "GPT-5.2" },
+  { name: "Gemini Pro" },
+  { name: "Sora 2" },
+  { name: "Veo 3.1" },
+  { name: "Flux.2" },
+  { name: "Kling" },
+  { name: "Grok" },
 ];
 
-/* ─────────────── FAQ data ─────────────── */
+/* ─────────────── Credit cost reference ─────────────── */
+const CREDIT_COSTS = [
+  { category: "Text / Code", items: [
+    { name: "Flash models", cost: "~0.2–0.6 credits / 1K tokens" },
+    { name: "Pro models", cost: "~2.5–4 credits / 1K tokens" },
+    { name: "Flagship (GPT-5.2)", cost: "~6 credits / 1K tokens" },
+  ]},
+  { category: "Images", items: [
+    { name: "Standard (Flux Dev, Seedream)", cost: "1–2 credits" },
+    { name: "Pro (Flux Pro, Grok Imagine)", cost: "3–8 credits" },
+  ]},
+  { category: "Video", items: [
+    { name: "Standard (Kling 3.0)", cost: "50 credits" },
+    { name: "Pro (Kling O3, Grok Video)", cost: "60–70 credits" },
+    { name: "Flagship (Sora 2, Veo 3.1)", cost: "80 credits" },
+  ]},
+];
+
+/* ─────────────── FAQ ─────────────── */
 const FAQS = [
   { q: "Can I cancel my subscription any time?", a: "Yes. You can cancel anytime from your billing settings. Your credits remain active until the end of your billing cycle." },
-  { q: "How do I cancel my subscription?", a: "Go to Settings → Billing → Manage Subscription. Click 'Cancel Subscription'. Your plan will remain active until the end of the current period." },
   { q: "Do my monthly credits roll over?", a: "Unused credits roll over for one billing cycle. After that, unspent credits expire." },
-  { q: "What's the difference between monthly and annual plans?", a: "Annual plans save up to 50% compared to monthly billing. You pay once per year. Credits are still distributed monthly." },
-  { q: "What are add-ons?", a: "Add-on Credit Packs let you purchase extra credits on top of your plan's monthly allocation. Available on Creator and Agency plans." },
-  { q: "What happens when I upgrade?", a: "You'll immediately get access to the new plan's features and a pro-rated credit allocation. Any existing credits carry over." },
+  { q: "What happens when I run out of credits?", a: "You can purchase add-on Credit Packs: 25 credits for $5, 100 for $15, or 300 for $35." },
+  { q: "What are the model tiers?", a: "Flash = fast & affordable models. Pro = high-quality models for images & code. Flagship = the most powerful AI models available." },
+  { q: "What happens when I upgrade?", a: "You'll immediately get access to the new plan's features and a pro-rated credit allocation." },
+  { q: "How does the 0% fee work?", a: "On the Agency plan, SellsPay takes $0 from your sales. You keep 100% of your revenue (minus standard Stripe processing fees)." },
 ];
+
+/* ─────────────── Comparison rows ─────────────── */
+const COMPARISON_ROWS = [
+  { label: "Monthly Credits", values: ["0", "500", "2,500", "6,000"] },
+  { label: "Model Tier", values: ["—", "Flash", "Pro", "Flagship"] },
+  { label: "Images / mo", values: ["—", "~250", "~1,250", "~3,000"] },
+  { label: "Videos / mo", values: ["—", "—", "~35", "~75"] },
+  { label: "Parallel Generations", values: ["1", "4", "8", "16"] },
+  { label: "Transaction Fee", values: ["10%", "8%", "5%", "0%"] },
+] as { label: string; values: string[] }[];
+
+const FEATURE_ROWS = [
+  { label: "VibeCoder AI Builder", values: [false, true, true, true] },
+  { label: "AI Image Generation", values: [false, false, true, true] },
+  { label: "AI Video Generation", values: [false, false, false, true] },
+  { label: "Auto-Model Selection", values: [false, false, true, true] },
+  { label: "Advanced Analytics", values: [false, false, true, true] },
+  { label: "Verified Badge", values: [false, false, "Grey", "Gold"] },
+  { label: "Priority Processing", values: [false, false, false, true] },
+  { label: "Priority Support", values: [false, false, false, true] },
+  { label: "Commercial Use Rights", values: [false, false, true, true] },
+] as { label: string; values: (string | boolean)[] }[];
 
 /* ─────────────── Component ─────────────── */
 
@@ -123,18 +162,36 @@ interface PricingModalProps {
 }
 
 export function PricingModal({ open, onOpenChange, darkMode = false }: PricingModalProps) {
-  const [activeTab, setActiveTab] = useState<"ai" | "stock">("ai");
   const [openFaq, setOpenFaq] = useState<number | null>(null);
   const navigate = useNavigate();
   const { user } = useAuth();
 
   const handleGetStarted = (planId: string) => {
     onOpenChange(false);
-    if (planId === "agency") {
-      navigate("/contact");
-    } else {
-      navigate(user ? "/billing" : "/signup");
-    }
+    navigate(user ? "/billing" : "/signup");
+  };
+
+  const ACCENT: Record<string, { border: string; check: string; btn: string }> = {
+    starter: {
+      border: "border-white/[0.06]",
+      check: "text-zinc-400",
+      btn: "bg-white/[0.06] hover:bg-white/[0.1] text-white/80 border border-white/[0.08]",
+    },
+    basic: {
+      border: "border-cyan-500/20",
+      check: "text-cyan-400",
+      btn: "bg-gradient-to-r from-blue-600 to-cyan-500 text-white hover:brightness-110",
+    },
+    creator: {
+      border: "border-blue-500/30",
+      check: "text-blue-400",
+      btn: "bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:brightness-110",
+    },
+    agency: {
+      border: "border-indigo-500/25",
+      check: "text-indigo-400",
+      btn: "bg-gradient-to-r from-indigo-600 to-violet-600 text-white hover:brightness-110",
+    },
   };
 
   return (
@@ -147,7 +204,6 @@ export function PricingModal({ open, onOpenChange, darkMode = false }: PricingMo
         >
           <VisuallyHidden><DialogTitle>Pricing Plans</DialogTitle></VisuallyHidden>
 
-          {/* Close button */}
           <button
             onClick={() => onOpenChange(false)}
             className="absolute top-4 right-4 z-30 w-8 h-8 rounded-full bg-white/[0.06] hover:bg-white/[0.12] flex items-center justify-center text-white/50 hover:text-white transition-colors"
@@ -155,7 +211,6 @@ export function PricingModal({ open, onOpenChange, darkMode = false }: PricingMo
             <X className="h-4 w-4" />
           </button>
 
-          {/* Scrollable content */}
           <div className="overflow-y-auto flex-1 pricing-scroll">
 
             {/* Header */}
@@ -163,41 +218,15 @@ export function PricingModal({ open, onOpenChange, darkMode = false }: PricingMo
               <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight text-white">
                 Get the perfect plan for you
               </h2>
-
-              {/* Tab Toggle */}
-              <div className="flex justify-center mt-8">
-                <div className="inline-flex items-center rounded-full p-1 bg-white/[0.04] border border-white/[0.08]">
-                  <button
-                    onClick={() => setActiveTab("ai")}
-                    className={cn(
-                      "px-6 py-2.5 rounded-full text-sm font-semibold transition-all duration-200 flex items-center gap-2",
-                      activeTab === "ai"
-                        ? "bg-white/[0.1] text-white shadow-sm"
-                        : "text-white/40 hover:text-white/60"
-                    )}
-                  >
-                    <Sparkles className="w-3.5 h-3.5" />
-                    AI Suite
-                  </button>
-                  <button
-                    onClick={() => setActiveTab("stock")}
-                    className={cn(
-                      "px-6 py-2.5 rounded-full text-sm font-semibold transition-all duration-200",
-                      activeTab === "stock"
-                        ? "bg-white/[0.1] text-white shadow-sm"
-                        : "text-white/40 hover:text-white/60"
-                    )}
-                  >
-                    Stock Catalog
-                  </button>
-                </div>
-              </div>
+              <p className="mt-3 text-base text-white/40 max-w-lg mx-auto">
+                Scale your creative business with AI-powered tools.
+              </p>
 
               {/* AI Model icons row */}
-              <div className="flex justify-center items-center gap-6 sm:gap-8 mt-6 flex-wrap">
+              <div className="flex justify-center items-center gap-5 sm:gap-7 mt-6 flex-wrap">
                 {AI_MODELS.map((model) => (
                   <div key={model.name} className="flex items-center gap-1.5 text-white/40">
-                    <span className="text-xs font-bold">{model.icon}</span>
+                    <Sparkles className="w-3 h-3" />
                     <span className="text-xs font-medium">{model.name}</span>
                   </div>
                 ))}
@@ -208,133 +237,162 @@ export function PricingModal({ open, onOpenChange, darkMode = false }: PricingMo
             <div className="px-4 sm:px-6 lg:px-8 pb-12">
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 max-w-[1300px] mx-auto">
                 {PLAN_CARDS.map((plan) => {
-                  const isEnterprise = plan.id === "agency";
-                  const isBestValue = !!plan.badge;
+                  const a = ACCENT[plan.id];
 
                   return (
                     <div
                       key={plan.id}
                       className={cn(
                         "relative rounded-xl flex flex-col border transition-colors",
-                        isBestValue
-                          ? "border-amber-500/30"
-                          : "border-white/[0.06]",
+                        a.border,
+                        plan.badge === "MOST POPULAR" && "shadow-[0_0_40px_-12px_rgba(59,130,246,0.25)]",
                       )}
                       style={{ background: '#111111' }}
                     >
-                      {/* Best Value Badge */}
+                      {/* Badge */}
                       {plan.badge && (
                         <div className="flex justify-center -mt-3.5">
-                          <span className="px-4 py-1 rounded-full text-xs font-bold text-amber-400 bg-amber-500/10 border border-amber-500/20">
-                            {plan.badge}
+                          <span className={cn(
+                            "px-4 py-1 rounded-full text-xs font-bold border",
+                            plan.badge === "MOST POPULAR"
+                              ? "text-blue-400 bg-blue-500/10 border-blue-500/20"
+                              : "text-indigo-400 bg-indigo-500/10 border-indigo-500/20"
+                          )}>
+                            ✦ {plan.badge}
                           </span>
                         </div>
                       )}
 
                       <div className={cn("p-6 pb-0", plan.badge ? "pt-3" : "pt-6")}>
-                        {/* Name */}
                         <h3 className="text-lg font-bold text-white">{plan.name}</h3>
-                        {plan.subtitle && (
-                          <p className="text-[11px] text-white/35 mt-1 leading-snug">{plan.subtitle}</p>
-                        )}
 
                         {/* Price */}
-                        <div className="mt-4">
-                          {isEnterprise ? (
-                            <span className="text-3xl font-bold text-white">Custom</span>
+                        <div className="mt-3 flex items-baseline gap-0.5">
+                          {plan.monthlyPrice === 0 ? (
+                            <span className="text-3xl font-extrabold text-white">Free</span>
                           ) : (
-                            <div className="flex items-baseline gap-0.5">
-                              <span className="text-3xl font-extrabold text-white">
-                                ${Math.floor(plan.yearlyPrice)}
-                              </span>
-                              <span className="text-lg font-bold text-white/60">
-                                .{String(Math.round((plan.yearlyPrice % 1) * 100)).padStart(2, '0')}
-                              </span>
+                            <>
+                              <span className="text-3xl font-extrabold text-white">${plan.monthlyPrice}</span>
                               <span className="text-sm text-white/35 ml-1">/month</span>
-                            </div>
-                          )}
-                          {!isEnterprise && plan.id !== "starter" && (
-                            <p className="text-[11px] text-white/30 mt-0.5">Billed annually</p>
-                          )}
-                          {plan.id === "starter" && (
-                            <p className="text-[11px] text-white/30 mt-0.5">Starting at</p>
+                            </>
                           )}
                         </div>
 
-                        {/* Credits selector for mid-tiers */}
-                        {(plan.id === "basic" || plan.id === "creator") && (
-                          <div className="mt-4">
-                            <p className="text-[11px] text-white/40 mb-1.5">Select your monthly credits:</p>
-                            <div className="flex items-center justify-between px-3 py-2.5 rounded-lg border border-white/[0.08] bg-white/[0.03]">
-                              <div>
-                                <span className="text-sm font-semibold text-white">
-                                  {plan.id === "basic" ? "7,500 credits" : "180,000 credits"}
-                                </span>
-                                <p className="text-[10px] text-white/30 mt-0.5">
-                                  {plan.id === "basic"
-                                    ? "~25 videos / ~250 images / ~15 hours of voiceovers"
-                                    : "~1125 videos / ~18000 images / ~36 hours of voiceovers"}
-                                </p>
-                              </div>
-                              <ChevronDown className="w-4 h-4 text-white/30 shrink-0" />
-                            </div>
-                          </div>
-                        )}
+                        {/* Credits pill */}
+                        <div className="mt-4 px-3 py-2.5 rounded-lg border border-white/[0.08] bg-white/[0.03] flex items-center gap-2">
+                          <Diamond className="h-4 w-4 text-blue-400/70" />
+                          <span className="text-sm font-semibold text-white/70">{plan.credits} credits / mo</span>
+                        </div>
 
-                        {/* CTA Button */}
+                        {/* Model tier */}
+                        <p className="text-[11px] text-white/30 mt-2">
+                          Model tier: <span className="text-white/50 font-medium">{plan.modelTier}</span>
+                        </p>
+
+                        {/* CTA */}
                         <button
                           onClick={() => handleGetStarted(plan.id)}
                           className={cn(
-                            "mt-5 w-full py-3.5 rounded-full text-sm font-bold transition-all cursor-pointer",
-                            isEnterprise
-                              ? "bg-white/[0.08] hover:bg-white/[0.14] text-white border border-white/[0.1]"
-                              : "text-black font-bold"
+                            "mt-4 w-full py-3.5 rounded-full text-sm font-bold transition-all cursor-pointer",
+                            a.btn
                           )}
-                          style={!isEnterprise ? {
-                            background: 'linear-gradient(135deg, #ffd700, #f5c200, #e6b400)',
-                            boxShadow: '0 2px 12px rgba(245,194,0,0.25)',
-                          } : undefined}
                         >
-                          {plan.cta}
+                          Get Started
                         </button>
-                      </div>
 
-                      {/* License info */}
-                      <div className="px-6 pt-5 pb-2">
-                        <p className="text-xs font-semibold text-white/60">{plan.license}</p>
-                        <p className="text-[11px] text-white/30 mt-1 leading-relaxed">{plan.licenseDesc}</p>
+                        <p className="text-[11px] text-white/25 mt-2 text-center">{plan.feeNote}</p>
                       </div>
 
                       {/* Features */}
-                      <div className="px-6 pb-6 pt-2 flex-1">
+                      <div className="p-5 pt-4 flex-1">
                         <ul className="space-y-2.5">
                           {plan.features.map((feature, i) => (
                             <li key={i} className="flex items-start gap-2.5">
-                              <Check className="h-4 w-4 shrink-0 mt-0.5 text-emerald-400/80" />
+                              <Check className={cn("h-4 w-4 shrink-0 mt-0.5", a.check)} />
                               <span className="text-[12px] leading-relaxed text-white/50">{feature}</span>
                             </li>
                           ))}
                         </ul>
-
-                        {/* Business features */}
-                        {plan.businessFeatures.length > 0 && (
-                          <div className="mt-4 pt-3 border-t border-white/[0.05]">
-                            <p className="text-xs font-semibold text-white/50 mb-2.5">
-                              {plan.id === "agency" ? "" : "Business features:"}
-                            </p>
-                            <ul className="space-y-2">
-                              {plan.businessFeatures.map((feature, i) => (
-                                <li key={i} className="flex items-start gap-2">
-                                  <span className="text-[12px] leading-relaxed text-white/40">• {feature}</span>
-                                </li>
-                              ))}
-                            </ul>
-                          </div>
-                        )}
                       </div>
                     </div>
                   );
                 })}
+              </div>
+            </div>
+
+            {/* ─── Credit Cost Reference ─── */}
+            <div className="px-6 sm:px-8 pb-12">
+              <div className="max-w-[1300px] mx-auto">
+                <div className="flex items-center gap-2 mb-6">
+                  <Zap className="h-4 w-4 text-blue-400" />
+                  <span className="text-sm font-bold text-white">Credit Usage Guide</span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  {CREDIT_COSTS.map((cat) => (
+                    <div key={cat.category} className="rounded-xl border border-white/[0.06] p-5" style={{ background: '#111' }}>
+                      <h4 className="text-xs font-bold uppercase tracking-wider text-white/50 mb-3">{cat.category}</h4>
+                      <ul className="space-y-2">
+                        {cat.items.map((item) => (
+                          <li key={item.name} className="flex justify-between items-baseline">
+                            <span className="text-[12px] text-white/40">{item.name}</span>
+                            <span className="text-[12px] font-semibold text-white/60">{item.cost}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* ─── Comparison Table ─── */}
+            <div className="px-6 sm:px-8 pb-12">
+              <div className="max-w-[1300px] mx-auto overflow-x-auto">
+                <table className="w-full border-collapse min-w-[800px]">
+                  <thead>
+                    <tr>
+                      <th className="w-[220px]" />
+                      {PLAN_CARDS.map((p) => (
+                        <th key={p.id} className="text-center px-4 pb-4 min-w-[160px]">
+                          <span className="text-sm font-bold text-white">{p.name}</span>
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {COMPARISON_ROWS.map((row, i) => (
+                      <tr key={`cr-${i}`} className="border-t border-white/[0.05]">
+                        <td className="py-3.5 px-1 text-sm text-white/40">{row.label}</td>
+                        {row.values.map((val, j) => (
+                          <td key={j} className="py-3.5 px-4 text-center">
+                            <span className="text-sm font-medium text-white">{val}</span>
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+
+                    <tr>
+                      <td colSpan={5} className="pt-8 pb-4 px-1">
+                        <div className="flex items-center gap-2">
+                          <Sparkles className="h-4 w-4 text-blue-400" />
+                          <span className="text-sm font-bold text-white">Features</span>
+                        </div>
+                      </td>
+                    </tr>
+                    {FEATURE_ROWS.map((row, i) => (
+                      <tr key={`ft-${i}`} className="border-t border-white/[0.05]">
+                        <td className="py-3.5 px-1 text-sm text-white/40">{row.label}</td>
+                        {row.values.map((val, j) => (
+                          <td key={j} className="py-3.5 px-4 text-center">
+                            {val === true ? <Check className="h-4 w-4 text-emerald-400 mx-auto" />
+                              : val === false ? <span className="text-white/15">—</span>
+                              : <span className="text-sm font-medium text-white">{val}</span>}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </div>
 
@@ -355,7 +413,7 @@ export function PricingModal({ open, onOpenChange, darkMode = false }: PricingMo
                           </span>
                           <div className={cn(
                             "w-6 h-6 rounded-full flex items-center justify-center shrink-0 ml-4 transition-colors",
-                            openFaq === idx ? "bg-white/10 text-white" : "bg-white/[0.06] text-white/40"
+                            openFaq === idx ? "bg-blue-500/20 text-blue-400" : "bg-white/[0.06] text-white/40"
                           )}>
                             {openFaq === idx ? <Minus className="h-3 w-3" /> : <Plus className="h-3 w-3" />}
                           </div>
