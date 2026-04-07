@@ -35,11 +35,12 @@ import { useCreativeStudio } from './hooks/useCreativeStudio';
 import { useProjectHydration } from './hooks/useProjectHydration';
 
 interface AIBuilderCanvasProps {
-  profileId: string;
+  profileId: string | null;
   hasPremiumAccess?: boolean;
+  isGuest?: boolean;
 }
 
-export function AIBuilderCanvas({ profileId, hasPremiumAccess = false }: AIBuilderCanvasProps) {
+export function AIBuilderCanvas({ profileId, hasPremiumAccess = false, isGuest = false }: AIBuilderCanvasProps) {
   const navigate = useNavigate();
   const location = useLocation();
   const [isPublished, setIsPublished] = useState(false);
@@ -699,6 +700,10 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false }: AIBuild
   // Code should be derived from the active project (messages/code snapshots). Otherwise, deleted
   // projects can "reappear" on refresh due to leftover profile-scoped cached code.
   useEffect(() => {
+    if (!profileId) {
+      setLoading(false);
+      return;
+    }
     const loadData = async () => {
       const [layoutResp, profileResp] = await Promise.all([
         supabase
@@ -896,6 +901,12 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false }: AIBuild
     if (activeProjectId && (isVerifyingProject || contentProjectId !== activeProjectId)) {
       console.warn('[handleSendMessage] 🛑 BLOCKED: Project not ready. isVerifying:', isVerifyingProject, 'contentProjectId:', contentProjectId, 'activeProjectId:', activeProjectId);
       toast.error('Project is still loading. Please wait a moment and try again.');
+      return;
+    }
+
+    // 🔒 GUEST GATE: Redirect unauthenticated users to sign in
+    if (isGuest) {
+      navigate('/login?redirect=/ai-builder');
       return;
     }
 
