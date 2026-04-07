@@ -2,9 +2,9 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Sparkles, Wand2, Zap, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import showcaseHero from '@/assets/showcase-hero-storefront.jpg';
 import showcaseCode from '@/assets/showcase-code-preview.jpg';
 import showcaseVibes from '@/assets/showcase-multiple-vibes.jpg';
-import showcaseGen from '@/assets/showcase-instant-gen.jpg';
 
 export function AIBuilderShowcase() {
   return (
@@ -54,7 +54,7 @@ export function AIBuilderShowcase() {
           >
             <div className="relative aspect-[21/9] overflow-hidden">
               <img
-                src={showcaseGen}
+                src={showcaseHero}
                 alt="AI instant generation — describe your vision and watch it materialize"
                 loading="lazy"
                 width={1920}
