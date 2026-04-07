@@ -166,6 +166,7 @@ interface StudioSidebarProps {
 const DEFAULT_PINNED = [
   "image-generator",
   "video-generator",
+  "motion-transfer",
 ];
 
 const PINNED_TOOLS_STORAGE_KEY = "studio-pinned-tools-v2";
