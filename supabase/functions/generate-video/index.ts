@@ -63,7 +63,7 @@ serve(async (req) => {
     }
 
     // ===== SUBMIT MODE =====
-    const { prompt, image_url, video_url, source_video_url, duration = "5", aspect_ratio = "16:9", mode = "image-to-video" } = body;
+    const { prompt, image_url, video_url, source_video_url, duration = "5", aspect_ratio = "16:9", mode = "image-to-video", model: requestedModel } = body;
 
     if (!prompt || typeof prompt !== "string" || prompt.trim().length === 0) {
       return new Response(JSON.stringify({ error: "Prompt is required" }), {
@@ -102,16 +102,28 @@ serve(async (req) => {
       });
     }
 
-    // Choose fal endpoint
+    // Choose fal endpoint based on model + mode
+    const VIDEO_MODEL_MAP: Record<string, string> = {
+      "kling-2.6-pro": "fal-ai/kling-video/v2/master",
+      "kling-3.0": "fal-ai/kling-video/v2/master",
+      "kling-o3": "fal-ai/kling-video/v2/master",
+      "kling-motion-control": "fal-ai/kling-video/v2/master",
+      "veo-3.1": "fal-ai/kling-video/v2/master",
+      "sora-2": "fal-ai/kling-video/v2/master",
+      "grok-imagine-video": "fal-ai/kling-video/v2/master",
+    };
+
+    const modelBase = VIDEO_MODEL_MAP[requestedModel] || "fal-ai/kling-video/v2/master";
+
     let falModel: string;
     if (mode === "motion-transfer" && source_video_url && video_url) {
-      falModel = "fal-ai/kling-video/v2/master/video-to-video";
+      falModel = `${modelBase}/video-to-video`;
     } else if (mode === "video-reference" && video_url) {
       falModel = "fal-ai/kling-video/o1/video-to-video/reference";
     } else if (image_url) {
-      falModel = "fal-ai/kling-video/v2/master/image-to-video";
+      falModel = `${modelBase}/image-to-video`;
     } else {
-      falModel = "fal-ai/kling-video/v2/master/text-to-video";
+      falModel = `${modelBase}/text-to-video`;
     }
 
     const requestBody: Record<string, unknown> = {

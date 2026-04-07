@@ -45,6 +45,15 @@ export const IMAGE_MODELS: ImageModel[] = [
     backendModel: "gemini-2.5-flash-image",
     creditCost: 1,
   },
+  {
+    id: "flux-2-dev",
+    name: "Flux.2 Dev",
+    category: "fast",
+    description: "Open-source research model by Black Forest Labs",
+    tag: "New",
+    backendModel: "gemini-3.1-flash-image-preview",
+    creditCost: 1,
+  },
 
   // ── Realistic ──
   {
@@ -55,6 +64,15 @@ export const IMAGE_MODELS: ImageModel[] = [
     tag: "Pro",
     backendModel: "gemini-3.1-flash-image-preview",
     creditCost: 2,
+  },
+  {
+    id: "flux-2-pro",
+    name: "Flux.2 Pro",
+    category: "realistic",
+    description: "Next-gen photorealism by Black Forest Labs",
+    tag: "New",
+    backendModel: "gemini-3-pro-image-preview",
+    creditCost: 3,
   },
   {
     id: "photo-real-v2",
@@ -71,6 +89,15 @@ export const IMAGE_MODELS: ImageModel[] = [
     category: "realistic",
     description: "Film-grade dramatic compositions",
     tag: "Pro",
+    backendModel: "gemini-3-pro-image-preview",
+    creditCost: 2,
+  },
+  {
+    id: "seedream-5.0",
+    name: "Seedream 5.0",
+    category: "realistic",
+    description: "ByteDance's flagship photorealistic model",
+    tag: "New",
     backendModel: "gemini-3-pro-image-preview",
     creditCost: 2,
   },
@@ -99,6 +126,24 @@ export const IMAGE_MODELS: ImageModel[] = [
     category: "stylized",
     description: "Luxury editorial and moodboard visuals",
     tag: "Pro",
+    backendModel: "gemini-3.1-flash-image-preview",
+    creditCost: 2,
+  },
+  {
+    id: "grok-imagine",
+    name: "Grok Imagine",
+    category: "stylized",
+    description: "xAI's creative image generation engine",
+    tag: "New",
+    backendModel: "gemini-3-pro-image-preview",
+    creditCost: 3,
+  },
+  {
+    id: "artlist-original-1.0",
+    name: "Artlist Original 1.0",
+    category: "stylized",
+    description: "Artlist's creative-focused generation model",
+    tag: "New",
     backendModel: "gemini-3.1-flash-image-preview",
     creditCost: 2,
   },
@@ -142,7 +187,6 @@ export const IMAGE_MODELS: ImageModel[] = [
     creditCost: 2,
   },
 ];
-
 /** Category display metadata */
 export const MODEL_CATEGORIES: Record<ModelCategory, { label: string; emoji: string }> = {
   fast: { label: "Fast Models", emoji: "⚡" },

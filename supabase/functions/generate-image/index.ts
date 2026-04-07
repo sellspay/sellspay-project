@@ -14,14 +14,19 @@ const MODEL_MAP: Record<string, string> = {
   "nano-banana-2": "gemini-3.1-flash-image-preview",
   "sdxl-turbo": "gemini-2.5-flash-image",
   "nano-banana": "gemini-2.5-flash-image",
+  "flux-2-dev": "gemini-3.1-flash-image-preview",
   // Realistic
   "flux-pro": "gemini-3.1-flash-image-preview",
+  "flux-2-pro": "gemini-3-pro-image-preview",
   "photo-real-v2": "gemini-3-pro-image-preview",
   "cinematic-scene": "gemini-3-pro-image-preview",
+  "seedream-5.0": "gemini-3-pro-image-preview",
   // Stylized
   "recraft-v3": "gemini-3.1-flash-image-preview",
   "juggernaut-flux": "gemini-3.1-flash-image-preview",
   "editorial-fashion": "gemini-3.1-flash-image-preview",
+  "grok-imagine": "gemini-3-pro-image-preview",
+  "artlist-original-1.0": "gemini-3.1-flash-image-preview",
   // Anime
   "anime-xl": "gemini-2.5-flash-image",
   "anime-diffusion": "gemini-3.1-flash-image-preview",
