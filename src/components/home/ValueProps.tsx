@@ -203,13 +203,14 @@ export function ValueProps() {
             </Link>
           </div>
         </Reveal>
+      </div>
 
-        {/* AI Studio Banner */}
-        <Reveal>
-          <motion.div
-            whileHover={{ y: -4 }}
-            transition={{ duration: 0.4, ease: 'easeOut' }}
-            className="mt-20 mb-20 rounded-[28px] p-[1px] relative overflow-hidden"
+      {/* AI Studio Banner — full bleed */}
+      <Reveal>
+        <motion.div
+          whileHover={{ y: -4 }}
+          transition={{ duration: 0.4, ease: 'easeOut' }}
+          className="relative z-10 mt-20 mb-20 p-[1px] overflow-hidden"
             style={{ background: 'linear-gradient(135deg, rgba(59,130,246,0.35), rgba(139,92,246,0.25), rgba(34,211,238,0.15), rgba(255,255,255,0.05))' }}
           >
             <div className="rounded-[27px] relative overflow-hidden" style={{ background: 'linear-gradient(135deg, #080d1a, #0a0810, #060812)' }}>
