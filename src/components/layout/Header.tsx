@@ -177,12 +177,11 @@ export default function Header() {
       />
 
       <header className={cn(
-        "fixed top-0 z-50 w-full transition-all duration-300",
-        scrolled
-          ? "backdrop-blur-xl border-b border-white/[0.06]"
-          : "bg-transparent border-b border-transparent",
-        activeDropdown && "border-b border-white/[0.06]"
-      )} style={{ backgroundColor: scrolled || activeDropdown ? 'rgba(0,0,0,0.95)' : 'transparent' }}>
+        "fixed top-0 z-50 w-full transition-all duration-300 backdrop-blur-xl border-b",
+        scrolled || activeDropdown
+          ? "border-white/[0.08]"
+          : "border-white/[0.04]"
+      )} style={{ backgroundColor: scrolled || activeDropdown ? 'rgba(10, 10, 20, 0.82)' : 'rgba(10, 10, 20, 0.55)' }}>
         <div className="mx-auto w-full px-4 sm:px-6 lg:px-8">
           <div className="relative flex h-16 items-center justify-between">
             {/* Left spacer for desktop */}
