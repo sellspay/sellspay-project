@@ -9,7 +9,7 @@ interface MainLayoutProps {
   darkMode?: boolean;
 }
 
-export default function MainLayout({ children, hideFooter = false, darkMode = false }: MainLayoutProps) {
+export default function MainLayout({ children, hideFooter = false, darkMode = true }: MainLayoutProps) {
   return (
     <div className={cn("min-h-screen flex flex-col bg-background", darkMode && "dark")}>
       <Header />
