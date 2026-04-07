@@ -480,7 +480,7 @@ export default function Header() {
                   <Button 
                     variant="outline"
                     asChild 
-                    className="h-10 px-6 text-sm font-medium rounded-full"
+                    className="h-10 px-6 text-sm font-medium rounded-full border-foreground/20 text-foreground hover:bg-foreground/10"
                   >
                     <Link to="/login">Sign In</Link>
                   </Button>

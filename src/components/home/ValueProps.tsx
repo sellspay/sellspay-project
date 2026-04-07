@@ -13,7 +13,7 @@ export function ValueProps() {
         transition={{ duration: 1.2, ease: 'easeOut' }}
         className="absolute inset-0"
         style={{
-          background: 'linear-gradient(180deg, hsl(var(--background)) 0%, hsl(220 15% 12%) 30%, hsl(220 18% 10%) 60%, hsl(220 15% 8%) 100%)',
+          background: 'hsl(220 15% 7%)',
         }}
       />
 
