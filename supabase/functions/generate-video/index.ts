@@ -6,7 +6,74 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const VIDEO_COST = 50;
+// Credit costs per model
+const MODEL_CREDITS: Record<string, number> = {
+  "kling-2.6-pro": 50,
+  "kling-3.0": 60,
+  "kling-o3": 70,
+  "kling-i2v": 50,
+  "kling-3.0-i2v": 60,
+  "kling-motion-control": 50,
+  "veo-3.1": 80,
+  "sora-2": 80,
+  "grok-imagine-video": 60,
+};
+
+// Real Fal.ai model endpoints for each model
+function resolveFalEndpoint(modelId: string, mode: string, hasImage: boolean, hasVideo: boolean, hasSourceVideo: boolean): string {
+  // Motion transfer mode
+  if (mode === "motion-transfer" && hasSourceVideo && hasVideo) {
+    return "fal-ai/kling-video/v2/master/video-to-video";
+  }
+
+  // Video reference mode
+  if (mode === "video-reference" && hasVideo) {
+    return "fal-ai/kling-video/o1/video-to-video/reference";
+  }
+
+  // Model-specific routing
+  switch (modelId) {
+    // ── Kling 2.6 Pro (v2.5 turbo pro) ──
+    case "kling-2.6-pro":
+    case "kling-i2v":
+      if (hasImage) return "fal-ai/kling-video/v2.5-turbo/pro/image-to-video";
+      return "fal-ai/kling-video/v2.5-turbo/pro/text-to-video";
+
+    // ── Kling 3.0 (v3 pro) ──
+    case "kling-3.0":
+    case "kling-3.0-i2v":
+      if (hasImage) return "fal-ai/kling-video/v3/pro/image-to-video";
+      return "fal-ai/kling-video/v3/pro/text-to-video";
+
+    // ── Kling O3 (omni 3 pro) ──
+    case "kling-o3":
+      if (hasImage) return "fal-ai/kling-video/o3/pro/image-to-video";
+      return "fal-ai/kling-video/o3/pro/text-to-video";
+
+    // ── Kling Motion Control ──
+    case "kling-motion-control":
+      return "fal-ai/kling-video/v2/master/video-to-video";
+
+    // ── Veo 3.1 (via Fal.ai) ──
+    case "veo-3.1":
+      if (hasImage) return "fal-ai/veo3/image-to-video";
+      return "fal-ai/veo3/text-to-video";
+
+    // ── Sora 2 (via Fal.ai) ──
+    case "sora-2":
+      return "fal-ai/sora/text-to-video";
+
+    // ── Grok Imagine Video — fallback to Kling O3 until xAI API available ──
+    case "grok-imagine-video":
+      if (hasImage) return "fal-ai/kling-video/o3/pro/image-to-video";
+      return "fal-ai/kling-video/o3/pro/text-to-video";
+
+    // Default fallback
+    default:
+      if (hasImage) return "fal-ai/kling-video/v2/master/image-to-video";
+      return "fal-ai/kling-video/v2/master/text-to-video";
+  }
+}
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -71,6 +138,8 @@ serve(async (req) => {
       });
     }
 
+    const VIDEO_COST = MODEL_CREDITS[requestedModel] ?? 50;
+
     // Credit check & deduct
     const { data: wallet } = await supabase
       .from("user_wallets").select("balance").eq("user_id", user.id).single();
@@ -102,29 +171,14 @@ serve(async (req) => {
       });
     }
 
-    // Choose fal endpoint based on model + mode
-    const VIDEO_MODEL_MAP: Record<string, string> = {
-      "kling-2.6-pro": "fal-ai/kling-video/v2/master",
-      "kling-3.0": "fal-ai/kling-video/v2/master",
-      "kling-o3": "fal-ai/kling-video/v2/master",
-      "kling-motion-control": "fal-ai/kling-video/v2/master",
-      "veo-3.1": "fal-ai/kling-video/v2/master",
-      "sora-2": "fal-ai/kling-video/v2/master",
-      "grok-imagine-video": "fal-ai/kling-video/v2/master",
-    };
-
-    const modelBase = VIDEO_MODEL_MAP[requestedModel] || "fal-ai/kling-video/v2/master";
-
-    let falModel: string;
-    if (mode === "motion-transfer" && source_video_url && video_url) {
-      falModel = `${modelBase}/video-to-video`;
-    } else if (mode === "video-reference" && video_url) {
-      falModel = "fal-ai/kling-video/o1/video-to-video/reference";
-    } else if (image_url) {
-      falModel = `${modelBase}/image-to-video`;
-    } else {
-      falModel = `${modelBase}/text-to-video`;
-    }
+    // Resolve the real Fal.ai endpoint
+    const falModel = resolveFalEndpoint(
+      requestedModel || "kling-2.6-pro",
+      mode,
+      !!image_url,
+      !!video_url,
+      !!source_video_url,
+    );
 
     const requestBody: Record<string, unknown> = {
       prompt: prompt.trim(),
@@ -163,9 +217,9 @@ serve(async (req) => {
 
     const requestId = queueEntry.id;
 
-    console.log(`Submitting video to fal.ai queue: model=${falModel}, requestId=${requestId}`);
+    console.log(`Submitting video: model=${requestedModel}, endpoint=${falModel}, requestId=${requestId}`);
 
-    // Submit to fal.ai queue endpoint (returns immediately)
+    // Submit to fal.ai queue endpoint
     const queueResponse = await fetch(`https://queue.fal.run/${falModel}`, {
       method: "POST",
       headers: {
@@ -187,16 +241,15 @@ serve(async (req) => {
     const falRequestId = queueResult.request_id;
     const statusUrl = queueResult.status_url;
     const responseUrl = queueResult.response_url;
-    console.log("fal.ai queued, request_id:", falRequestId, "status_url:", statusUrl, "response_url:", responseUrl);
+    console.log("fal.ai queued, request_id:", falRequestId, "status_url:", statusUrl);
 
-    // Store the fal request ID and URLs for polling
     await supabase.from("video_generation_queue").update({
       fal_request_id: falRequestId,
     }).eq("id", requestId);
 
-    // Now poll fal.ai for completion (we have ~300s in edge functions)
-    const maxPollTime = 280_000; // 280s max polling
-    const pollInterval = 5_000; // 5s between polls
+    // Poll fal.ai for completion
+    const maxPollTime = 280_000;
+    const pollInterval = 5_000;
     const startTime = Date.now();
 
     let videoUrl: string | null = null;
@@ -221,9 +274,7 @@ serve(async (req) => {
         console.log("Poll status:", statusResult.status);
 
         if (statusResult.status === "COMPLETED") {
-          // Fetch the result
           const resultFetchUrl = responseUrl || `https://queue.fal.run/${falModel}/requests/${falRequestId}`;
-          console.log("Fetching result from:", resultFetchUrl);
           const resultResponse = await fetch(resultFetchUrl, {
             method: "GET",
             headers: { Authorization: `Key ${FAL_KEY}` },
@@ -231,11 +282,9 @@ serve(async (req) => {
 
           if (resultResponse.ok) {
             const resultData = await resultResponse.json();
-            console.log("Result data keys:", Object.keys(resultData));
             videoUrl = resultData.video?.url;
-            console.log("Video URL:", videoUrl);
             if (!videoUrl) {
-              console.error("No video URL in result data:", JSON.stringify(resultData));
+              console.error("No video URL in result:", JSON.stringify(resultData).substring(0, 500));
               const errMsg = "Video generation completed but no video URL returned";
               await supabase.from("video_generation_queue").update({ status: "failed", error_message: errMsg }).eq("id", requestId);
               await supabase.rpc("add_credits", { p_user_id: user.id, p_amount: VIDEO_COST, p_action: "refund", p_description: "Refund: no video URL in result" });
@@ -246,13 +295,10 @@ serve(async (req) => {
           } else {
             const errTxt = await resultResponse.text();
             console.error("Result fetch error:", resultResponse.status, errTxt);
-            // Parse error for user-friendly message
             let errMsg = `Video generation failed (${resultResponse.status})`;
             try {
               const errJson = JSON.parse(errTxt);
-              if (errJson.detail?.[0]?.msg) {
-                errMsg = errJson.detail[0].msg;
-              }
+              if (errJson.detail?.[0]?.msg) errMsg = errJson.detail[0].msg;
             } catch {}
             await supabase.from("video_generation_queue").update({ status: "failed", error_message: errMsg }).eq("id", requestId);
             await supabase.rpc("add_credits", { p_user_id: user.id, p_amount: VIDEO_COST, p_action: "refund", p_description: `Refund: result fetch failed (${resultResponse.status})` });
@@ -270,18 +316,13 @@ serve(async (req) => {
             status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
         }
-        // IN_QUEUE or IN_PROGRESS — keep polling
       } catch (pollErr) {
         console.error("Poll error:", pollErr);
       }
     }
 
     if (!videoUrl) {
-      // Timed out polling — update queue so client can keep polling
-      await supabase.from("video_generation_queue").update({
-        status: "processing", // still processing
-      }).eq("id", requestId);
-
+      await supabase.from("video_generation_queue").update({ status: "processing" }).eq("id", requestId);
       return new Response(JSON.stringify({
         status: "processing",
         request_id: requestId,
@@ -289,12 +330,8 @@ serve(async (req) => {
       }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // Success!
-    await supabase.from("video_generation_queue").update({
-      status: "completed",
-      result_url: videoUrl,
-    }).eq("id", requestId);
-
+    // Success
+    await supabase.from("video_generation_queue").update({ status: "completed", result_url: videoUrl }).eq("id", requestId);
     await supabase.from("tool_usage").insert({ user_id: user.id, tool_id: "video_gen" });
 
     const { data: newWallet } = await supabase
@@ -305,6 +342,8 @@ serve(async (req) => {
       status: "completed",
       video_url: videoUrl,
       request_id: requestId,
+      model: requestedModel,
+      endpoint: falModel,
       duration,
       credits_deducted: VIDEO_COST,
       remaining_credits: newWallet?.balance ?? 0,
