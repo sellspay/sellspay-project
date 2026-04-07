@@ -262,10 +262,11 @@ export default function Header() {
               <Link 
                 to="/vibecoder"
                 className={cn(
-                  "inline-flex h-10 items-center gap-1.5 px-3 text-sm font-semibold tracking-wide",
-                  "bg-white/[0.06] backdrop-blur-sm rounded-full border border-white/[0.1]",
-                  "text-foreground/90 hover:text-foreground hover:bg-white/[0.1] transition-all duration-200",
-                  isActive('/vibecoder') && "text-foreground bg-white/[0.1]"
+                  "inline-flex h-10 items-center px-3 text-sm font-bold tracking-wide",
+                  "text-foreground/90 transition-all duration-300",
+                  "hover:text-foreground hover:[text-shadow:_0_1px_8px_rgba(255,255,255,0.4),_0_0_20px_rgba(255,255,255,0.15)] hover:scale-105",
+                  "[text-shadow:_0_1px_2px_rgba(0,0,0,0.5)]",
+                  isActive('/vibecoder') && "text-foreground [text-shadow:_0_1px_8px_rgba(255,255,255,0.4)]"
                 )}
               >
                 AI Builder
