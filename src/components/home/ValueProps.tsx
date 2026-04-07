@@ -1,9 +1,11 @@
 import { Reveal } from './Reveal';
-import { motion, useInView } from 'framer-motion';
+import { motion, useInView, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { Sparkles, Zap, TrendingUp, Users, ArrowRight, Image, Music, Video, Wand2, ShieldCheck, CreditCard, Globe, Lock } from 'lucide-react';
+import { Sparkles, Zap, TrendingUp, Users, ArrowRight, Image, Music, Video, Wand2, ShieldCheck, CreditCard, Globe, Lock, Mic, Scissors, AudioLines, Volume2 } from 'lucide-react';
 import { useRef, useEffect, useState } from 'react';
-import aiStudioHero from '@/assets/home/ai-studio-hero.jpg';
+import studioImageGen from '@/assets/home/studio-image-gen.jpg';
+import studioVideoGen from '@/assets/home/studio-video-gen.mp4.asset.json';
+import studioMotionSync from '@/assets/home/studio-motion-sync.mp4.asset.json';
 
 /* ─── Animated Counter Hook ─── */
 function useAnimatedCounter(end: number, duration = 2000, ref?: React.RefObject<HTMLElement | null>) {
@@ -29,29 +31,6 @@ function useAnimatedCounter(end: number, duration = 2000, ref?: React.RefObject<
 }
 
 /* ─── Data ─── */
-const STATS = [
-  { value: 10, suffix: 'K+', label: 'Creators', icon: Users, accent: '#3b82f6' },
-  { value: 999, suffix: '', label: 'Uptime', icon: Zap, accent: '#8b5cf6', isDecimal: true },
-  { value: 50, suffix: 'K+', label: 'Products Sold', icon: TrendingUp, accent: '#22d3ee' },
-];
-
-const AI_TOOLS = [
-  { icon: Image, label: 'AI Image Generator', tag: 'New', active: false },
-  { icon: Video, label: 'AI Video Generator', tag: 'New', active: true },
-  { icon: Music, label: 'Audio Tools', tag: null, active: false },
-  { icon: Wand2, label: 'SFX Engine', tag: null, active: false },
-  { icon: Sparkles, label: 'Motion Sync', tag: 'New', active: false },
-];
-
-const SOCIAL_PROOF = [
-  { user: 'Jake M.', action: 'just purchased', item: 'Cinematic LUT Pack', time: '2m ago' },
-  { user: 'Emily R.', action: 'just sold', item: 'Lo-Fi Beat Kit', time: '5m ago' },
-  { user: 'Carlos D.', action: 'just purchased', item: 'Vocal Preset Bundle', time: '8m ago' },
-  { user: 'Mia K.', action: 'just created', item: 'AI Generated SFX Pack', time: '12m ago' },
-  { user: 'Noah L.', action: 'just sold', item: 'Transition Pack Pro', time: '15m ago' },
-  { user: 'Ava T.', action: 'just purchased', item: 'Color Grade Collection', time: '18m ago' },
-];
-
 const TRUST_BADGES = [
   { icon: ShieldCheck, label: 'SSL Secured', desc: '256-bit encryption' },
   { icon: CreditCard, label: 'Stripe Powered', desc: 'PCI compliant' },
@@ -59,89 +38,177 @@ const TRUST_BADGES = [
   { icon: Lock, label: 'Secure Files', desc: 'Encrypted delivery' },
 ];
 
-/* ─── Animated Stat Card ─── */
-function AnimatedStatCard({ stat, index }: { stat: typeof STATS[0]; index: number }) {
-  const ref = useRef<HTMLDivElement>(null);
-  const count = useAnimatedCounter(stat.isDecimal ? 999 : stat.value, 2200, ref);
-  const display = stat.isDecimal ? (count / 10).toFixed(1) : count;
-  const suffix = stat.isDecimal ? '%' : stat.suffix;
+type ToolId = 'image-gen' | 'video-gen' | 'audio-tools' | 'sfx-engine' | 'motion-sync';
+
+const TOOL_ITEMS: { id: ToolId; icon: any; label: string; tag: string | null }[] = [
+  { id: 'image-gen', icon: Image, label: 'AI Image Generator', tag: 'New' },
+  { id: 'video-gen', icon: Video, label: 'AI Video Generator', tag: 'New' },
+  { id: 'audio-tools', icon: Music, label: 'Audio Tools', tag: null },
+  { id: 'sfx-engine', icon: Wand2, label: 'SFX Engine', tag: null },
+  { id: 'motion-sync', icon: Sparkles, label: 'Motion Sync', tag: 'New' },
+];
+
+const AUDIO_TOOLS_LIST = [
+  { icon: Mic, label: 'Text to Speech', desc: 'Convert text to natural voices' },
+  { icon: AudioLines, label: 'Voice Cloning', desc: 'Clone any voice in seconds' },
+  { icon: Scissors, label: 'Audio Cutter', desc: 'Trim and split audio files' },
+  { icon: Volume2, label: 'Music Generator', desc: 'AI-powered music creation' },
+];
+
+const SFX_EXAMPLES = [
+  { label: 'Explosion', waveform: '██▓▒░░▒▓█▓▒░' },
+  { label: 'Rain', waveform: '▒░▒░▒░▒░▒░▒░' },
+  { label: 'Laser Blast', waveform: '█▓▒░░░░░░░░░' },
+  { label: 'Footsteps', waveform: '█░░█░░█░░█░░' },
+  { label: 'Thunder', waveform: '▒▓██▓▒░░▒▓█▓' },
+];
+
+/* ─── Tool Content Panels ─── */
+function ToolContent({ activeId }: { activeId: ToolId }) {
+  const contentMap: Record<ToolId, { title: string; desc: string; link: string }> = {
+    'image-gen': {
+      title: 'AI Image Generator',
+      desc: 'Create stunning images from text prompts — photorealistic renders, concept art, illustrations, and more.',
+      link: '/studio/image-generator',
+    },
+    'video-gen': {
+      title: 'AI Video Generator',
+      desc: 'Create stunning cinematic videos from text prompts with consistent character animation, facial identity, and realistic movement.',
+      link: '/studio/video-generator',
+    },
+    'audio-tools': {
+      title: 'Audio Tools',
+      desc: 'A complete suite of AI-powered audio tools — text-to-speech, voice cloning, music generation, and editing.',
+      link: '/studio/audio-tools',
+    },
+    'sfx-engine': {
+      title: 'SFX Engine',
+      desc: 'Generate custom sound effects instantly — explosions, ambient textures, UI sounds, and cinematic audio.',
+      link: '/studio/sfx-engine',
+    },
+    'motion-sync': {
+      title: 'Motion Sync',
+      desc: 'Transfer motion from reference videos to generate new scenes with consistent animation and realistic movement.',
+      link: '/studio/motion-sync',
+    },
+  };
+
+  const info = contentMap[activeId];
 
   return (
-    <motion.div
-      ref={ref}
-      initial={{ opacity: 0, y: 24 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true }}
-      transition={{ duration: 0.5, delay: index * 0.1 }}
-      whileHover={{ y: -3 }}
-      className="text-center py-7 px-5 rounded-2xl"
-      style={{
-        background: 'linear-gradient(145deg, rgba(255,255,255,0.04), rgba(255,255,255,0.015))',
-        border: '1px solid rgba(255,255,255,0.07)',
-      }}
-    >
-      <div className="w-9 h-9 rounded-lg mx-auto mb-4 flex items-center justify-center"
-        style={{ background: `${stat.accent}12`, border: `1px solid ${stat.accent}20` }}
+    <AnimatePresence mode="wait">
+      <motion.div
+        key={activeId}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.3 }}
+        className="flex-1 relative overflow-hidden"
       >
-        <stat.icon className="w-4 h-4" style={{ color: stat.accent }} />
-      </div>
-      <p className="text-3xl sm:text-4xl font-bold tracking-tight mb-1 tabular-nums" style={{ color: '#f0f0f0' }}>
-        {display}{suffix}
-      </p>
-      <p className="text-[11px] uppercase tracking-[0.2em] font-medium" style={{ color: 'rgba(255,255,255,0.35)' }}>
-        {stat.label}
-      </p>
-    </motion.div>
-  );
-}
+        {/* Media background */}
+        {activeId === 'video-gen' && (
+          <video
+            src={studioVideoGen.url}
+            autoPlay
+            loop
+            muted
+            playsInline
+            className="absolute inset-0 w-full h-full object-cover"
+          />
+        )}
+        {activeId === 'motion-sync' && (
+          <video
+            src={studioMotionSync.url}
+            autoPlay
+            loop
+            muted
+            playsInline
+            className="absolute inset-0 w-full h-full object-cover"
+          />
+        )}
+        {activeId === 'image-gen' && (
+          <img
+            src={studioImageGen}
+            alt="AI Image Generator preview"
+            className="absolute inset-0 w-full h-full object-cover"
+          />
+        )}
+        {activeId === 'audio-tools' && (
+          <div className="absolute inset-0 flex items-center justify-center p-8"
+            style={{ background: 'linear-gradient(135deg, #0a0a1a, #0d1117)' }}
+          >
+            <div className="grid grid-cols-2 gap-4 w-full max-w-md">
+              {AUDIO_TOOLS_LIST.map((tool) => (
+                <div
+                  key={tool.label}
+                  className="flex flex-col items-center gap-2 p-5 rounded-2xl text-center"
+                  style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}
+                >
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center"
+                    style={{ background: 'rgba(59,130,246,0.12)', border: '1px solid rgba(59,130,246,0.2)' }}
+                  >
+                    <tool.icon className="w-5 h-5" style={{ color: '#60a5fa' }} />
+                  </div>
+                  <p className="text-xs font-semibold text-white/70">{tool.label}</p>
+                  <p className="text-[10px] text-white/35 leading-relaxed">{tool.desc}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+        {activeId === 'sfx-engine' && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 p-8"
+            style={{ background: 'linear-gradient(135deg, #0a0a1a, #0d1117)' }}
+          >
+            {SFX_EXAMPLES.map((sfx) => (
+              <div
+                key={sfx.label}
+                className="flex items-center gap-4 w-full max-w-sm px-5 py-3 rounded-xl"
+                style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}
+              >
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+                  style={{ background: 'rgba(139,92,246,0.15)', border: '1px solid rgba(139,92,246,0.2)' }}
+                >
+                  <Volume2 className="w-4 h-4" style={{ color: '#a78bfa' }} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-semibold text-white/70">{sfx.label}</p>
+                </div>
+                <span className="text-xs font-mono tracking-tighter text-white/20 flex-shrink-0">{sfx.waveform}</span>
+              </div>
+            ))}
+          </div>
+        )}
 
-/* ─── Social Proof Ticker ─── */
-function SocialProofTicker() {
-  const [currentIndex, setCurrentIndex] = useState(0);
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentIndex((i) => (i + 1) % SOCIAL_PROOF.length);
-    }, 3000);
-    return () => clearInterval(interval);
-  }, []);
-
-  const item = SOCIAL_PROOF[currentIndex];
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true }}
-      className="flex justify-center mb-20"
-    >
-      <div className="inline-flex items-center gap-3 px-5 py-2.5 rounded-full"
-        style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}
-      >
-        <span className="relative flex h-2.5 w-2.5">
-          <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-50" style={{ backgroundColor: '#22c55e' }} />
-          <span className="relative inline-flex rounded-full h-2.5 w-2.5" style={{ backgroundColor: '#22c55e' }} />
-        </span>
-        <motion.span
-          key={currentIndex}
-          initial={{ opacity: 0, y: 6 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3 }}
-          className="text-sm"
-          style={{ color: 'rgba(255,255,255,0.6)' }}
+        {/* Gradient overlay + info */}
+        <div className="absolute inset-0 z-10 p-8 lg:p-10 flex flex-col justify-end"
+          style={{ background: activeId === 'audio-tools' || activeId === 'sfx-engine'
+            ? 'linear-gradient(to top, rgba(0,0,0,0.7) 0%, transparent 50%)'
+            : 'linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.3) 40%, transparent 70%)'
+          }}
         >
-          <span style={{ color: 'rgba(255,255,255,0.8)' }} className="font-medium">{item.user}</span>
-          {' '}{item.action}{' '}
-          <span style={{ color: '#818cf8' }} className="font-medium">{item.item}</span>
-          <span className="ml-2 text-xs" style={{ color: 'rgba(255,255,255,0.3)' }}>{item.time}</span>
-        </motion.span>
-      </div>
-    </motion.div>
+          <h3
+            className="text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight text-white mb-2"
+            style={{ fontFamily: "'DM Serif Display', Georgia, serif" }}
+          >
+            {info.title}
+          </h3>
+          <p className="text-sm max-w-md leading-relaxed" style={{ color: 'rgba(255,255,255,0.55)' }}>
+            {info.desc}
+          </p>
+          <Link to={info.link} className="mt-3 text-sm font-medium inline-flex items-center gap-1" style={{ color: '#60a5fa' }}>
+            {info.title} <ArrowRight className="w-3.5 h-3.5" />
+          </Link>
+        </div>
+      </motion.div>
+    </AnimatePresence>
   );
 }
 
 /* ─── Main Component ─── */
 export function ValueProps() {
+  const [activeTool, setActiveTool] = useState<ToolId>('video-gen');
+
   return (
     <section className="relative py-32 sm:py-40" style={{ background: '#000' }}>
       <div className="absolute -top-40 left-0 right-0 h-80 pointer-events-none"
@@ -149,7 +216,7 @@ export function ValueProps() {
       />
 
       <div className="relative z-10 max-w-[1200px] mx-auto px-6 sm:px-8">
-        {/* Heading — centered Kling style */}
+        {/* Heading */}
         <Reveal>
           <div className="text-center mb-12">
             <h2
@@ -164,7 +231,7 @@ export function ValueProps() {
           </div>
         </Reveal>
 
-        {/* Large preview card — Kling style */}
+        {/* Large preview card */}
         <Reveal>
           <motion.div
             initial={{ opacity: 0, y: 30 }}
@@ -178,51 +245,55 @@ export function ValueProps() {
               boxShadow: '0 0 0 1px rgba(255,255,255,0.04), 0 8px 40px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1), inset 0 -1px 0 rgba(255,255,255,0.03)',
             }}
           >
-            <div className="flex flex-col lg:flex-row h-[380px] lg:h-[420px]">
-              {/* Left sidebar — tool list */}
+            <div className="flex flex-col lg:flex-row" style={{ height: 'clamp(360px, 38vw, 460px)' }}>
+              {/* Left sidebar */}
               <div
-                className="lg:w-[320px] flex-shrink-0 p-8 lg:p-10 flex flex-col justify-between"
+                className="lg:w-[280px] flex-shrink-0 p-7 lg:p-8 flex flex-col justify-between"
                 style={{
                   background: 'linear-gradient(180deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.01) 100%)',
                   borderRight: '1px solid rgba(255,255,255,0.06)',
                 }}
               >
                 <div>
-                  <p className="text-xs font-bold uppercase tracking-[0.18em] mb-6" style={{ color: 'rgba(255,255,255,0.4)' }}>
+                  <p className="text-[11px] font-bold uppercase tracking-[0.18em] mb-5" style={{ color: 'rgba(255,255,255,0.4)' }}>
                     AI Studio Tools
                   </p>
                   <div className="space-y-1">
-                    {AI_TOOLS.map((tool) => (
-                      <div
-                        key={tool.label}
-                        className="flex items-center gap-3 px-4 py-3 rounded-xl transition-colors"
-                        style={{
-                          background: tool.active
-                            ? 'linear-gradient(135deg, rgba(59,130,246,0.12), rgba(139,92,246,0.08))'
-                            : 'transparent',
-                          border: tool.active ? '1px solid rgba(59,130,246,0.2)' : '1px solid transparent',
-                        }}
-                      >
-                        <tool.icon className="w-4 h-4 flex-shrink-0" style={{ color: tool.active ? '#818cf8' : 'rgba(255,255,255,0.4)' }} />
-                        <span className="text-sm font-medium" style={{ color: tool.active ? '#e0e7ff' : 'rgba(255,255,255,0.55)' }}>
-                          {tool.label}
-                        </span>
-                        {tool.tag && (
-                          <span
-                            className="ml-auto text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full"
-                            style={{ background: 'rgba(59,130,246,0.15)', color: '#60a5fa' }}
-                          >
-                            {tool.tag}
+                    {TOOL_ITEMS.map((tool) => {
+                      const isActive = tool.id === activeTool;
+                      return (
+                        <button
+                          key={tool.id}
+                          onClick={() => setActiveTool(tool.id)}
+                          className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all text-left cursor-pointer"
+                          style={{
+                            background: isActive
+                              ? 'linear-gradient(135deg, rgba(59,130,246,0.12), rgba(139,92,246,0.08))'
+                              : 'transparent',
+                            border: isActive ? '1px solid rgba(59,130,246,0.2)' : '1px solid transparent',
+                          }}
+                        >
+                          <tool.icon className="w-4 h-4 flex-shrink-0" style={{ color: isActive ? '#818cf8' : 'rgba(255,255,255,0.4)' }} />
+                          <span className="text-sm font-medium" style={{ color: isActive ? '#e0e7ff' : 'rgba(255,255,255,0.55)' }}>
+                            {tool.label}
                           </span>
-                        )}
-                      </div>
-                    ))}
+                          {tool.tag && (
+                            <span
+                              className="ml-auto text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full"
+                              style={{ background: 'rgba(59,130,246,0.15)', color: '#60a5fa' }}
+                            >
+                              {tool.tag}
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
 
                 <Link
                   to="/login"
-                  className="mt-8 inline-flex items-center justify-center gap-2 rounded-full px-6 py-3 text-sm font-bold text-white transition-all hover:brightness-110 hover:scale-[1.03] active:scale-[0.98] w-full"
+                  className="mt-6 inline-flex items-center justify-center gap-2 rounded-full px-6 py-3 text-sm font-bold text-white transition-all hover:brightness-110 hover:scale-[1.03] active:scale-[0.98] w-full"
                   style={{
                     background: 'linear-gradient(180deg, #60a5fa 0%, #3b82f6 30%, #1d4ed8 70%, #1e3a8a 100%)',
                     boxShadow: '0 4px 20px rgba(59,130,246,0.4), 0 1px 3px rgba(0,0,0,0.3), inset 0 2px 0 rgba(255,255,255,0.25), inset 0 -2px 4px rgba(0,0,0,0.2)',
@@ -235,34 +306,8 @@ export function ValueProps() {
                 </Link>
               </div>
 
-              {/* Right — hero content + image */}
-              <div className="flex-1 relative overflow-hidden">
-                {/* Info overlay */}
-                <div className="absolute inset-0 z-10 p-8 lg:p-10 flex flex-col justify-end"
-                  style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.3) 40%, transparent 70%)' }}
-                >
-                  <h3
-                    className="text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight text-white mb-3"
-                    style={{ fontFamily: "'DM Serif Display', Georgia, serif" }}
-                  >
-                    AI Video Generator
-                  </h3>
-                  <p className="text-sm sm:text-base max-w-md leading-relaxed" style={{ color: 'rgba(255,255,255,0.55)' }}>
-                    Create stunning cinematic videos from text prompts with consistent character animation, facial identity, and realistic movement.
-                  </p>
-                  <Link to="/studio" className="mt-3 text-sm font-medium inline-flex items-center gap-1" style={{ color: '#60a5fa' }}>
-                    AI Video Generator <ArrowRight className="w-3.5 h-3.5" />
-                  </Link>
-                </div>
-
-                {/* Background image */}
-                <img
-                  src={aiStudioHero}
-                  alt="AI Studio preview"
-                  className="w-full h-full object-cover"
-                  loading="lazy"
-                />
-              </div>
+              {/* Right — dynamic content */}
+              <ToolContent activeId={activeTool} />
             </div>
           </motion.div>
         </Reveal>
