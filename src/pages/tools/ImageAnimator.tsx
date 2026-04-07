@@ -304,6 +304,53 @@ export default function ImageAnimator() {
               />
             </div>
 
+            {/* Model */}
+            <div>
+              <label className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500 mb-1.5 block">Model</label>
+              <button
+                onClick={() => setModelSelectorOpen(!modelSelectorOpen)}
+                className="flex w-full items-center justify-between gap-2 rounded-xl px-3 py-2.5 text-left text-[13px] transition bg-white/[0.03] border border-white/[0.06] hover:border-white/[0.1]"
+              >
+                <span className="truncate font-medium text-white">{getVideoModelById(videoModel)?.name || videoModel}</span>
+                <ChevronDown className={`h-3.5 w-3.5 shrink-0 text-zinc-500 transition-transform ${modelSelectorOpen ? "rotate-180" : ""}`} />
+              </button>
+              <AnimatePresence>
+                {modelSelectorOpen && (
+                  <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden mt-1">
+                    <div className="max-h-[220px] overflow-y-auto space-y-2 rounded-xl p-2 bg-[#0a0a0d] border border-white/[0.06]">
+                      {(Object.keys(VIDEO_MODEL_CATEGORIES) as VideoModelCategory[]).map((cat) => {
+                        const models = getVideoModelsByCategory()[cat];
+                        if (!models?.length) return null;
+                        const meta = VIDEO_MODEL_CATEGORIES[cat];
+                        return (
+                          <div key={cat}>
+                            <div className="text-[9px] font-bold uppercase tracking-widest text-zinc-600 px-2 py-1">{meta.emoji} {meta.label}</div>
+                            <div className="space-y-px">
+                              {models.map((m) => {
+                                const selected = videoModel === m.id;
+                                return (
+                                  <button
+                                    key={m.id}
+                                    onClick={() => { setVideoModel(m.id); setModelSelectorOpen(false); }}
+                                    className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[11px] transition hover:bg-white/[0.04]"
+                                    style={{ background: selected ? "rgba(139,92,246,0.1)" : "transparent", color: selected ? "#a78bfa" : "#a1a1aa" }}
+                                  >
+                                    <span className="flex-1 truncate">{m.name}</span>
+                                    {m.tag && <span className="text-[8px] font-bold uppercase px-1.5 py-0.5 rounded-full" style={{ background: "rgba(139,92,246,0.15)", color: "#a78bfa" }}>{m.tag}</span>}
+                                    <span className="text-[9px] text-zinc-600">{m.creditCost}cr</span>
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+
             {/* Duration */}
             <div>
               <label className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500 mb-1.5 block">Duration</label>
