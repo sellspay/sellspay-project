@@ -6,7 +6,8 @@ import {
   FileAudio, 
   AudioWaveform,
   Volume2,
-  Sparkles
+  Sparkles,
+  Clapperboard,
 } from "lucide-react";
 
 import imageGeneratorIcon from "@/assets/tools/image-generator.png";
@@ -269,6 +270,27 @@ export const toolsData: ToolData[] = [
     ],
     gradient: "from-sky-500 via-cyan-500 to-teal-500",
     accentColor: "sky",
+  },
+  {
+    id: "video-generator",
+    title: "Image Animator",
+    tagline: "Bring Images to Life",
+    description: "Transform any static image into a smooth, cinematic video clip using AI-powered animation.",
+    icon: Clapperboard,
+    category: "generators",
+    badge: "Pro · 50 Credits",
+    available: true,
+    features: [
+      "AI-powered animation",
+      "5s or 10s duration",
+      "Custom motion prompts",
+      "High-quality MP4 output",
+    ],
+    previewExamples: [
+      { label: "Still Image", before: "🖼️", after: "Animated video" },
+    ],
+    gradient: "from-violet-500 via-fuchsia-500 to-pink-500",
+    accentColor: "violet",
   },
 ];
 
