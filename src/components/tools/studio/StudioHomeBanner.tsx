@@ -3,6 +3,7 @@ import { ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toolsRegistry, type ToolRegistryEntry } from "@/components/tools/toolsRegistry";
 import { toolThumbnails } from "./toolThumbnails";
+import { InspirationsGallery } from "./InspirationsGallery";
 import bannerHero1 from "@/assets/tools/banner-hero-1.jpg";
 import bannerHero2 from "@/assets/tools/banner-hero-2.jpg";
 import bannerHero3 from "@/assets/tools/banner-hero-3.jpg";
@@ -245,17 +246,8 @@ export function StudioHomeBanner({ onToolSelect }: StudioHomeBannerProps) {
         ) : null;
       })()}
 
-      {/* ── UTILITY TOOLS (large image model cards) ── */}
-      {utilityTools.length > 0 && (
-        <motion.section variants={fadeUp} className="mb-14">
-          <SectionHeader title="Utility Tools" showMore />
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-            {utilityTools.map(tool => (
-              <ModelCard key={tool.id} tool={tool} image={thumb(tool.id)} onClick={() => launch(tool.id)} />
-            ))}
-          </div>
-        </motion.section>
-      )}
+      {/* ── INSPIRATIONS GALLERY ── */}
+      <InspirationsGallery />
     </motion.div>
   );
 }
