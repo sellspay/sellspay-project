@@ -503,15 +503,15 @@ export default function Header() {
         {/* CapCut-style Mega Menu Panels */}
         <div
           className={cn(
-            "hidden lg:block overflow-hidden transition-all duration-300 ease-in-out border-t",
+            "hidden lg:block overflow-hidden transition-all duration-300 ease-in-out",
             activeDropdown
-              ? "max-h-[400px] opacity-100 border-border/30"
-              : "max-h-0 opacity-0 border-transparent"
+              ? "max-h-[400px] opacity-100"
+              : "max-h-0 opacity-0"
           )}
           onMouseEnter={handleEnterPanel}
           onMouseLeave={handleLeavePanel}
         >
-          <div className="bg-background">
+          <div className="backdrop-blur-xl bg-white/[0.04] border-t border-white/[0.06]">
             <div className="mx-auto max-w-6xl px-8 py-8">
               {activeDropdown === 'marketplace' && (
                 <div className="grid grid-cols-6 gap-5">
