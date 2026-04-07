@@ -510,15 +510,18 @@
   animation: glow-pulse 4s ease-in-out infinite;
 }
 
-/* Custom scrollbar styling */
+/* Custom scrollbar styling — overlay so content extends full width */
+html {
+  overflow-y: overlay;
+}
+
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
 
 ::-webkit-scrollbar-track {
-  background: hsl(var(--background));
-  border-radius: 4px;
+  background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
@@ -535,13 +538,13 @@
 }
 
 ::-webkit-scrollbar-corner {
-  background: hsl(var(--background));
+  background: transparent;
 }
 
 /* Firefox scrollbar styling */
 * {
   scrollbar-width: thin;
-  scrollbar-color: hsl(var(--primary) / 0.25) hsl(var(--background));
+  scrollbar-color: hsl(var(--primary) / 0.25) transparent;
 }
 
 /* Studio scrollbar override */
