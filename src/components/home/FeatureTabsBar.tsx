@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Reveal } from './Reveal';
-import { Plus, Minus, Sparkles, ArrowRight } from 'lucide-react';
+import { ArrowRight, Sparkles } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import everythingYouNeedImg from '@/assets/everything-you-need.jpg';
 import toolImageImg from '@/assets/tool-image-gen.jpg';
@@ -19,16 +19,16 @@ interface SubTool {
 
 interface Category {
   id: string;
-  number: string;
   label: string;
+  tagline: string;
   subTools: SubTool[];
 }
 
 const categories: Category[] = [
   {
     id: 'marketplace',
-    number: '01',
     label: 'Marketplace',
+    tagline: 'Premium digital assets from top creators',
     subTools: [
       {
         name: 'LUTs & Presets',
@@ -39,14 +39,14 @@ const categories: Category[] = [
       },
       {
         name: 'Sound Packs',
-        desc: 'Royalty-free sound effects, ambient packs, and audio loops for video editors, podcasters, and music producers. Studio-quality audio, instantly downloadable.',
+        desc: 'Royalty-free sound effects, ambient packs, and audio loops for video editors, podcasters, and music producers.',
         link: '/products',
         linkText: 'Browse Sound Packs',
         image: toolVocalImg,
       },
       {
         name: 'Templates & Themes',
-        desc: 'Ready-made design templates for social media, storefronts, and portfolios. Skip the blank canvas and start with a polished foundation.',
+        desc: 'Ready-made design templates for social media, storefronts, and portfolios. Skip the blank canvas.',
         link: '/products',
         linkText: 'Browse Templates',
         image: toolSfxImg,
@@ -55,26 +55,26 @@ const categories: Category[] = [
   },
   {
     id: 'image',
-    number: '02',
     label: 'Image Generation',
+    tagline: 'Create stunning visuals with AI',
     subTools: [
       {
         name: 'AI Image Generator',
-        desc: 'Turn text prompts into stunning visuals. Create product mockups, thumbnails, banners, and art in seconds — no design skills needed.',
+        desc: 'Turn text prompts into stunning visuals. Create product mockups, thumbnails, banners, and art in seconds.',
         link: '/tools',
         linkText: 'Try Image Generator',
         image: toolImageImg,
       },
       {
         name: 'Background Remover',
-        desc: 'Remove backgrounds from any image with one click. Perfect for product photos, profile pictures, and transparent overlays.',
+        desc: 'Remove backgrounds from any image with one click. Perfect for product photos and transparent overlays.',
         link: '/tools',
         linkText: 'Try Background Remover',
         image: toolImageImg,
       },
       {
         name: 'Image Enhancer',
-        desc: 'Upscale and enhance image quality with AI. Fix low-res images, sharpen details, and make every pixel count.',
+        desc: 'Upscale and enhance image quality with AI. Fix low-res images and sharpen every detail.',
         link: '/tools',
         linkText: 'Try Image Enhancer',
         image: toolImageImg,
@@ -83,8 +83,8 @@ const categories: Category[] = [
   },
   {
     id: 'video',
-    number: '03',
     label: 'Video Generation',
+    tagline: 'Cinematic video creation powered by AI',
     subTools: [
       {
         name: 'Text-to-Video',
@@ -95,14 +95,14 @@ const categories: Category[] = [
       },
       {
         name: 'Image-to-Video',
-        desc: 'Animate any still image into a dynamic video. Add camera movement, character motion, and environmental effects.',
+        desc: 'Animate any still image into a dynamic video. Add camera movement, character motion, and effects.',
         link: '/tools',
         linkText: 'Try Image-to-Video',
         image: toolStemImg,
       },
       {
         name: 'Motion Transfer',
-        desc: 'Transfer motion from one video to another. Sync dance moves, actions, and expressions across different subjects.',
+        desc: 'Transfer motion from one video to another. Sync dance moves, actions, and expressions across subjects.',
         link: '/tools/motion-transfer',
         linkText: 'Try Motion Transfer',
         image: toolStemImg,
@@ -111,26 +111,26 @@ const categories: Category[] = [
   },
   {
     id: 'audio',
-    number: '04',
     label: 'Audio Tools',
+    tagline: 'Studio-grade audio processing',
     subTools: [
       {
         name: 'Vocal Isolator',
-        desc: 'Extract clean vocals from any track instantly with AI-powered source separation. Perfect for remixes, karaoke, and content creation.',
+        desc: 'Extract clean vocals from any track instantly with AI-powered source separation.',
         link: '/studio/voice-isolator',
         linkText: 'Try Vocal Isolator',
         image: toolVocalImg,
       },
       {
         name: 'Stem Splitter',
-        desc: 'Separate any song into individual stems — vocals, drums, bass, and instruments. Full creative control over every layer.',
+        desc: 'Separate any song into individual stems — vocals, drums, bass, and instruments.',
         link: '/studio/voice-isolator',
         linkText: 'Try Stem Splitter',
         image: toolVocalImg,
       },
       {
         name: 'AI SFX Generator',
-        desc: 'Generate custom sound effects from text descriptions. Footsteps, explosions, ambience — create any sound you can imagine.',
+        desc: 'Generate custom sound effects from text descriptions. Create any sound you can imagine.',
         link: '/tools',
         linkText: 'Try SFX Generator',
         image: toolSfxImg,
@@ -139,26 +139,26 @@ const categories: Category[] = [
   },
   {
     id: 'storefront',
-    number: '05',
     label: 'AI Storefront',
+    tagline: 'Build your brand with AI',
     subTools: [
       {
         name: 'VibeCoder',
-        desc: 'Describe your storefront idea and watch AI build it live — layouts, styles, and content. No coding needed, fully customizable.',
+        desc: 'Describe your storefront idea and watch AI build it live — layouts, styles, and content.',
         link: '/ai-builder',
         linkText: 'Try VibeCoder',
         image: toolSfxImg,
       },
       {
         name: 'Brand Kit',
-        desc: 'Define your colors, fonts, and visual identity in one place. Every page and product you create stays perfectly on-brand.',
+        desc: 'Define your colors, fonts, and visual identity in one place. Stay perfectly on-brand.',
         link: '/ai-builder',
         linkText: 'Set Up Brand Kit',
         image: toolSfxImg,
       },
       {
         name: 'Landing Pages',
-        desc: 'Generate high-converting landing pages for product launches, promotions, and lead capture — all AI-powered.',
+        desc: 'Generate high-converting landing pages for product launches and promotions.',
         link: '/ai-builder',
         linkText: 'Build Landing Page',
         image: toolSfxImg,
@@ -168,176 +168,170 @@ const categories: Category[] = [
 ];
 
 export function FeatureTabsBar() {
-  const [openId, setOpenId] = useState<string>('marketplace');
+  const [activeId, setActiveId] = useState('marketplace');
   const [activeSubIndex, setActiveSubIndex] = useState<Record<string, number>>({});
 
-  const toggle = (id: string) => {
-    setOpenId(id);
-  };
-
-  const getSubIndex = (catId: string) => activeSubIndex[catId] ?? 0;
-
-  const setSubIndex = (catId: string, idx: number) => {
-    setActiveSubIndex((prev) => ({ ...prev, [catId]: idx }));
-  };
+  const activeCat = categories.find((c) => c.id === activeId) || categories[0];
+  const subIdx = activeSubIndex[activeId] ?? 0;
+  const activeSub = activeCat.subTools[subIdx];
 
   return (
-    <Reveal>
-      <section className="px-6 sm:px-8 lg:px-10 pt-20 sm:pt-28 pb-16 sm:pb-20 max-w-5xl mx-auto">
+    <section className="py-24 sm:py-32 lg:py-40" style={{ background: '#000' }}>
+      <div className="px-6 sm:px-8 lg:px-12 max-w-[1200px] mx-auto">
         {/* Header */}
-        <div className="text-center mb-14 sm:mb-20">
-          <motion.h2
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.6, ease: 'easeOut' }}
-            className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-foreground tracking-tight"
-          >
-            Everything you need
-          </motion.h2>
-          <motion.p
-            initial={{ opacity: 0, y: 12 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.6, delay: 0.15, ease: 'easeOut' }}
-            className="text-base sm:text-lg text-muted-foreground mt-3 max-w-md mx-auto leading-relaxed"
-          >
-            One platform for selling, creating, and growing your digital brand.
-          </motion.p>
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            whileInView={{ opacity: 1, scale: 1 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.4, delay: 0.3 }}
-            className="mt-6"
-          >
-            <Link
-              to="/login"
-              className="inline-flex h-11 px-7 items-center justify-center rounded-full bg-foreground text-background text-sm font-semibold hover:bg-foreground/90 transition-colors"
-            >
-              Try online
-            </Link>
-          </motion.div>
-        </div>
+        <Reveal>
+          <div className="text-center mb-16 sm:mb-20">
+            <p className="text-xs font-bold uppercase tracking-[0.3em] text-primary mb-5">
+              Platform
+            </p>
+            <h2 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-white tracking-tight leading-[1.05]">
+              Everything you need
+            </h2>
+            <p className="text-base sm:text-lg text-white/50 mt-4 max-w-lg mx-auto leading-relaxed">
+              One platform for selling, creating, and growing your digital brand.
+            </p>
+          </div>
+        </Reveal>
 
-        {/* Accordion rows */}
-        <div>
-          {categories.map((cat, catIdx) => {
-            const isOpen = openId === cat.id;
-            const subIdx = getSubIndex(cat.id);
-            const activeSub = cat.subTools[subIdx];
-
-            return (
-              <div
-                key={cat.id}
-                className={`border-b border-primary/20 ${catIdx === 0 ? 'border-t' : ''}`}
-              >
-                {/* Row header */}
+        {/* Category tabs — horizontal pill bar */}
+        <Reveal>
+          <div className="flex flex-wrap justify-center gap-2 mb-12 sm:mb-16">
+            {categories.map((cat) => {
+              const isActive = activeId === cat.id;
+              return (
                 <button
-                  onClick={() => toggle(cat.id)}
-                  className="w-full flex items-center gap-4 sm:gap-8 py-5 sm:py-6 group text-left cursor-pointer"
+                  key={cat.id}
+                  onClick={() => setActiveId(cat.id)}
+                  className={`relative px-5 py-2.5 rounded-full text-sm font-semibold transition-all duration-300 cursor-pointer ${
+                    isActive
+                      ? 'bg-primary text-white shadow-lg shadow-primary/25'
+                      : 'bg-white/[0.06] text-white/60 hover:text-white hover:bg-white/[0.1] border border-white/[0.06]'
+                  }`}
                 >
-                  <span className="text-lg sm:text-xl lg:text-2xl font-light text-muted-foreground/50 tabular-nums w-10 sm:w-12 shrink-0 transition-colors group-hover:text-primary/60">
-                    {cat.number}
-                  </span>
-                  <span
-                    className={`text-base sm:text-lg lg:text-xl font-semibold flex-1 transition-colors duration-300 ${
-                      isOpen ? 'text-primary' : 'text-foreground group-hover:text-primary'
-                    }`}
-                  >
-                    {cat.label}
-                  </span>
-                  <div className="p-1">
-                    {isOpen ? (
-                      <Minus className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
-                    ) : (
-                      <Plus className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground group-hover:text-primary transition-colors" />
-                    )}
-                  </div>
+                  {cat.label}
                 </button>
+              );
+            })}
+          </div>
+        </Reveal>
 
-                {/* Expandable panel */}
-                <AnimatePresence initial={false}>
-                  {isOpen && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: 'auto', opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-                      className="overflow-hidden"
-                    >
-                      <div className="rounded-2xl bg-white/[0.04] border border-white/10 shadow-sm p-5 sm:p-6 lg:p-8 mb-5 sm:mb-7">
-                        {/* Sub-tool list with inline expansion */}
-                        <div className="flex flex-col">
-                          {cat.subTools.map((sub, idx) => {
-                            const isActive = idx === subIdx;
-                            return (
-                              <div key={sub.name}>
-                                <button
-                                  onClick={() => setSubIndex(cat.id, idx)}
-                                  className={`w-full text-left px-3 py-2.5 rounded-lg text-sm font-semibold transition-all duration-200 cursor-pointer ${
-                                    isActive
-                                      ? 'text-primary bg-primary/8'
-                                      : 'text-foreground/80 hover:text-primary hover:bg-primary/5'
-                                  }`}
+        {/* Content area — two column layout */}
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={activeId}
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+          >
+            <div className="rounded-3xl border border-white/[0.08] overflow-hidden" style={{ background: '#0a0a0a' }}>
+              <div className="grid grid-cols-1 lg:grid-cols-[1fr_1.2fr]">
+                {/* Left — sub tools list */}
+                <div className="p-6 sm:p-8 lg:p-10 flex flex-col">
+                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary/70 mb-1">
+                    {activeCat.label}
+                  </p>
+                  <p className="text-sm text-white/40 mb-8">
+                    {activeCat.tagline}
+                  </p>
+
+                  <div className="flex flex-col gap-1 flex-1">
+                    {activeCat.subTools.map((sub, idx) => {
+                      const isActive = idx === subIdx;
+                      return (
+                        <button
+                          key={sub.name}
+                          onClick={() => setActiveSubIndex((prev) => ({ ...prev, [activeId]: idx }))}
+                          className={`group w-full text-left px-4 py-3.5 rounded-xl transition-all duration-200 cursor-pointer ${
+                            isActive
+                              ? 'bg-white/[0.06] border border-white/[0.1]'
+                              : 'hover:bg-white/[0.03] border border-transparent'
+                          }`}
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className={`w-1.5 h-1.5 rounded-full transition-colors ${isActive ? 'bg-primary' : 'bg-white/20'}`} />
+                            <span className={`text-sm font-semibold transition-colors ${isActive ? 'text-white' : 'text-white/50 group-hover:text-white/70'}`}>
+                              {sub.name}
+                            </span>
+                          </div>
+                          
+                          <AnimatePresence initial={false}>
+                            {isActive && (
+                              <motion.div
+                                initial={{ height: 0, opacity: 0 }}
+                                animate={{ height: 'auto', opacity: 1 }}
+                                exit={{ height: 0, opacity: 0 }}
+                                transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+                                className="overflow-hidden"
+                              >
+                                <p className="text-[13px] text-white/40 leading-relaxed mt-2.5 ml-[18px] max-w-sm">
+                                  {sub.desc}
+                                </p>
+                                <Link
+                                  to={sub.link}
+                                  className="inline-flex items-center gap-1.5 mt-3 ml-[18px] text-xs font-semibold text-primary hover:text-primary/80 transition-colors group/link"
                                 >
-                                  {sub.name}
-                                </button>
+                                  {sub.linkText}
+                                  <ArrowRight className="h-3 w-3 transition-transform group-hover/link:translate-x-0.5" />
+                                </Link>
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+                        </button>
+                      );
+                    })}
+                  </div>
 
-                                {/* Expanded content appears directly below the active item */}
-                                <AnimatePresence initial={false}>
-                                  {isActive && (
-                                    <motion.div
-                                      initial={{ height: 0, opacity: 0 }}
-                                      animate={{ height: 'auto', opacity: 1 }}
-                                      exit={{ height: 0, opacity: 0 }}
-                                      transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-                                      className="overflow-hidden"
-                                    >
-                                      <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-6 lg:gap-10 items-start px-3 pt-4 pb-5">
-                                        <div>
-                                          <div className="flex items-center gap-2.5 mb-3">
-                                            <Sparkles className="h-4 w-4 text-primary" />
-                                            <span className="text-base font-bold text-foreground">
-                                              {sub.name}
-                                            </span>
-                                          </div>
-                                          <p className="text-sm sm:text-[15px] text-muted-foreground leading-relaxed max-w-md mb-4">
-                                            {sub.desc}
-                                          </p>
-                                          <Link
-                                            to={sub.link}
-                                            className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline underline-offset-4 group/link"
-                                          >
-                                            {sub.linkText}
-                                            <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover/link:translate-x-0.5" />
-                                          </Link>
-                                        </div>
-                                        <div className="w-full shrink-0">
-                                          <img
-                                            src={sub.image}
-                                            alt={sub.name}
-                                            className="w-full h-auto rounded-xl object-cover aspect-[4/3] shadow-md"
-                                            loading="lazy"
-                                          />
-                                        </div>
-                                      </div>
-                                    </motion.div>
-                                  )}
-                                </AnimatePresence>
-                              </div>
-                            );
-                          })}
+                  <div className="mt-8 pt-6 border-t border-white/[0.06]">
+                    <Link
+                      to="/login"
+                      className="inline-flex h-10 px-6 items-center justify-center rounded-full bg-primary text-white text-sm font-semibold hover:bg-primary/90 transition-colors shadow-lg shadow-primary/20"
+                    >
+                      Get Started Free
+                      <ArrowRight className="h-3.5 w-3.5 ml-2" />
+                    </Link>
+                  </div>
+                </div>
+
+                {/* Right — preview image */}
+                <div className="relative hidden lg:block">
+                  <AnimatePresence mode="wait">
+                    <motion.div
+                      key={`${activeId}-${subIdx}`}
+                      initial={{ opacity: 0, scale: 1.02 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.4, ease: 'easeOut' }}
+                      className="absolute inset-0"
+                    >
+                      <img
+                        src={activeSub.image}
+                        alt={activeSub.name}
+                        className="w-full h-full object-cover"
+                        loading="lazy"
+                      />
+                      {/* Gradient overlay from left for text readability */}
+                      <div className="absolute inset-0 bg-gradient-to-r from-[#0a0a0a] via-transparent to-transparent w-1/3" />
+                      {/* Bottom gradient */}
+                      <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-[#0a0a0a] to-transparent" />
+                      
+                      {/* Floating label */}
+                      <div className="absolute bottom-6 left-6 right-6">
+                        <div className="flex items-center gap-2">
+                          <Sparkles className="h-3.5 w-3.5 text-primary" />
+                          <span className="text-xs font-bold uppercase tracking-wider text-white/80">
+                            {activeSub.name}
+                          </span>
                         </div>
                       </div>
                     </motion.div>
-                  )}
-                </AnimatePresence>
+                  </AnimatePresence>
+                </div>
               </div>
-            );
-          })}
-        </div>
-      </section>
-    </Reveal>
+            </div>
+          </motion.div>
+        </AnimatePresence>
+      </div>
+    </section>
   );
 }

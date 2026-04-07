@@ -13,7 +13,7 @@ export function ValueProps() {
         transition={{ duration: 1.2, ease: 'easeOut' }}
         className="absolute inset-0"
         style={{
-          background: '#080a0f',
+          background: '#000',
         }}
       />
 
