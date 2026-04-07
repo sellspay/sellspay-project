@@ -156,7 +156,7 @@ export default function NanoBanana() {
                     border: mode === entry ? "1px solid rgba(6,182,212,0.2)" : "1px solid transparent",
                   }}
                 >
-                  {entry === "create" ? "Create Image" : "Variations"}
+                  {entry === "create" ? "Text to Image" : "Image to Image"}
                 </button>
               ))}
             </div>
