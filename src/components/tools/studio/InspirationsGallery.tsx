@@ -27,6 +27,18 @@ import insp18 from "@/assets/inspirations/insp-18.jpg";
 import insp19 from "@/assets/inspirations/insp-19.jpg";
 import insp20 from "@/assets/inspirations/insp-20.jpg";
 import insp21 from "@/assets/inspirations/insp-21.jpg";
+import insp22 from "@/assets/inspirations/insp-22.jpg";
+import insp23 from "@/assets/inspirations/insp-23.jpg";
+import insp24 from "@/assets/inspirations/insp-24.jpg";
+import insp25 from "@/assets/inspirations/insp-25.jpg";
+import insp26 from "@/assets/inspirations/insp-26.jpg";
+import insp27 from "@/assets/inspirations/insp-27.jpg";
+import insp28 from "@/assets/inspirations/insp-28.jpg";
+import insp29 from "@/assets/inspirations/insp-29.jpg";
+import insp30 from "@/assets/inspirations/insp-30.jpg";
+import insp31 from "@/assets/inspirations/insp-31.jpg";
+
+// Video thumbnail imports
 import vid1Thumb from "@/assets/inspirations/vid-1.jpg";
 import vid2Thumb from "@/assets/inspirations/vid-2.jpg";
 import vid3Thumb from "@/assets/inspirations/vid-3.jpg";
@@ -44,6 +56,16 @@ import vid14Thumb from "@/assets/inspirations/vid-14.jpg";
 import vid15Thumb from "@/assets/inspirations/vid-15.jpg";
 import vid16Thumb from "@/assets/inspirations/vid-16.jpg";
 import vid17Thumb from "@/assets/inspirations/vid-17.jpg";
+import vid18Thumb from "@/assets/inspirations/vid-18.jpg";
+import vid19Thumb from "@/assets/inspirations/vid-19.jpg";
+import vid20Thumb from "@/assets/inspirations/vid-20.jpg";
+import vid21Thumb from "@/assets/inspirations/vid-21.jpg";
+import vid22Thumb from "@/assets/inspirations/vid-22.jpg";
+import vid23Thumb from "@/assets/inspirations/vid-23.jpg";
+import vid24Thumb from "@/assets/inspirations/vid-24.jpg";
+import vid25Thumb from "@/assets/inspirations/vid-25.jpg";
+import vid26Thumb from "@/assets/inspirations/vid-26.jpg";
+import vid27Thumb from "@/assets/inspirations/vid-27.jpg";
 
 // Video asset imports
 import vid1Video from "@/assets/inspirations/vid-1.mp4.asset.json";
@@ -63,6 +85,16 @@ import vid14Video from "@/assets/inspirations/vid-14.mp4.asset.json";
 import vid15Video from "@/assets/inspirations/vid-15.mp4.asset.json";
 import vid16Video from "@/assets/inspirations/vid-16.mp4.asset.json";
 import vid17Video from "@/assets/inspirations/vid-17.mp4.asset.json";
+import vid18Video from "@/assets/inspirations/vid-18.mp4.asset.json";
+import vid19Video from "@/assets/inspirations/vid-19.mp4.asset.json";
+import vid20Video from "@/assets/inspirations/vid-20.mp4.asset.json";
+import vid21Video from "@/assets/inspirations/vid-21.mp4.asset.json";
+import vid22Video from "@/assets/inspirations/vid-22.mp4.asset.json";
+import vid23Video from "@/assets/inspirations/vid-23.mp4.asset.json";
+import vid24Video from "@/assets/inspirations/vid-24.mp4.asset.json";
+import vid25Video from "@/assets/inspirations/vid-25.mp4.asset.json";
+import vid26Video from "@/assets/inspirations/vid-26.mp4.asset.json";
+import vid27Video from "@/assets/inspirations/vid-27.mp4.asset.json";
 
 type Tab = "image" | "video";
 
@@ -77,17 +109,27 @@ interface GalleryItem {
 const IMAGE_ITEMS: GalleryItem[] = [
   { src: insp1, label: "Surreal cinematic landscape", prompt: "A surreal cinematic landscape, a woman in a white dress standing in a vast field of white daisies looking up at a massive UFO hovering in a golden sunset sky, photorealistic, dramatic lighting, cinematic composition", toolId: "image-generator" },
   { src: insp11, label: "Dog with a burger", prompt: "A dog with a burger in its mouth sitting in a sunny garden, funny pet photography, shallow depth of field, warm golden lighting, viral social media photo", toolId: "image-generator" },
+  { src: insp22, label: "Mystical torii gate", prompt: "A mystical Japanese shrine gate (torii) standing in foggy water at sunrise, cherry blossom petals floating, ethereal atmosphere, cinematic photography", toolId: "image-generator" },
   { src: insp3, label: "NYC street fashion", prompt: "Street fashion photography, two stylish people crossing a New York City crosswalk wearing matching retro outfits, motion blur pedestrians, golden hour lighting, editorial fashion shot", toolId: "image-generator" },
+  { src: insp23, label: "Neon ramen alley", prompt: "Futuristic neon-lit ramen shop in a cyberpunk alley, steam rising from bowls, Japanese signage glowing, moody atmospheric street photography", toolId: "image-generator" },
   { src: insp12, label: "Samurai at dawn", prompt: "A samurai standing on a misty mountain peak at dawn, cherry blossom petals floating in the wind, epic cinematic Japanese landscape, dramatic lighting", toolId: "image-generator" },
   { src: insp4, label: "Fashion portrait", prompt: "A close-up portrait of a young woman wearing black sunglasses against a vivid green background, eating street food, editorial fashion photography, rich colors, sharp detail", toolId: "image-generator" },
+  { src: insp24, label: "Pilot pup", prompt: "A golden retriever wearing aviator sunglasses sitting in the cockpit of a vintage airplane, hilarious pet portrait, warm lighting, sharp detail", toolId: "image-generator" },
   { src: insp9, label: "Parisian street style", prompt: "Stylish woman in a black fur coat walking down a Parisian street next to a yellow post, high fashion editorial photography, moody overcast lighting, film grain", toolId: "image-generator" },
+  { src: insp25, label: "Steampunk city", prompt: "An elaborate steampunk clockwork city floating in the clouds, brass gears and copper pipes, airships docking at towers, warm sunset light, detailed fantasy concept art", toolId: "image-generator" },
   { src: insp2, label: "Cyberpunk warrior", prompt: "A cyberpunk woman with glowing blue cybernetic arm standing in rain, neon city lights reflecting on wet streets, moody atmospheric lighting, cinematic photography style", toolId: "image-generator" },
+  { src: insp26, label: "Avant-garde beauty", prompt: "High fashion editorial portrait of a model with dramatic geometric face paint in black and gold, bold avant-garde makeup, dark studio background, Vogue cover quality", toolId: "image-generator" },
   { src: insp14, label: "Autumn aerial", prompt: "Aerial drone shot of a winding road through autumn forest, vibrant orange red and yellow foliage, golden hour, landscape photography masterpiece", toolId: "image-generator" },
   { src: insp5, label: "Fire dragon", prompt: "Dark fantasy dragon breathing fire over a volcanic landscape with lava rivers, epic cinematic scene, dramatic red and orange lighting, hyper detailed digital art", toolId: "image-generator" },
+  { src: insp27, label: "Tree house village", prompt: "A massive ancient tree house village at twilight, lanterns hanging from branches, glowing windows, fantasy world, cozy magical atmosphere, detailed illustration", toolId: "image-generator" },
   { src: insp13, label: "Luxury product shot", prompt: "Luxury perfume bottle floating in golden liquid splash, high-end product photography, black background, dramatic studio lighting, commercial advertisement", toolId: "image-generator" },
+  { src: insp28, label: "Dewdrop world", prompt: "Macro photography of a dewdrop on a spider web reflecting an entire garden landscape, crystal clear refraction, shallow depth of field, nature masterpiece", toolId: "image-generator" },
   { src: insp7, label: "Tropical paradise", prompt: "POV looking down from a wooden sailboat into crystal clear turquoise tropical water, feet dangling over the edge, adventure travel photography, bright sunny day", toolId: "image-generator" },
+  { src: insp29, label: "Midnight supercar", prompt: "A sleek matte black supercar parked on a rooftop helipad at night with city skyline behind, dramatic rim lighting, luxury automotive photography", toolId: "image-generator" },
   { src: insp15, label: "Synthwave city", prompt: "Retro 80s synthwave city skyline at night, neon pink and purple lights, chrome sports car on empty highway, vaporwave aesthetic, digital art", toolId: "image-generator" },
+  { src: insp30, label: "Cosmic silhouette", prompt: "Surreal double exposure portrait of a woman's silhouette filled with a cosmic nebula and stars, fine art photography, dark background, ethereal glow", toolId: "image-generator" },
   { src: insp10, label: "Alien crystals", prompt: "Beautiful purple amethyst crystals growing on an alien moonscape, space background with stars, photorealistic macro photography, dramatic lighting", toolId: "image-generator" },
+  { src: insp31, label: "Art Deco ballroom", prompt: "An ornate Art Deco grand ballroom with golden geometric patterns, crystal chandeliers, marble floors reflecting light, luxury interior photography, wide angle", toolId: "image-generator" },
   { src: insp16, label: "Majestic whale", prompt: "Underwater photography of a majestic humpback whale swimming through sunbeams in deep blue ocean, ethereal light rays, National Geographic style", toolId: "image-generator" },
   { src: insp6, label: "Industrial harbor", prompt: "A massive cargo ship in a rainy harbor at night, moody atmospheric industrial scene, wet reflections, foggy, cinematic blue teal color grading, photorealistic", toolId: "image-generator" },
   { src: insp17, label: "Victorian mansion", prompt: "Abandoned Victorian mansion overgrown with flowers and ivy, magical realism, warm sunset light filtering through broken windows, dreamlike atmosphere", toolId: "image-generator" },
@@ -100,15 +142,25 @@ const IMAGE_ITEMS: GalleryItem[] = [
 
 const VIDEO_ITEMS: GalleryItem[] = [
   { src: vid1Thumb, videoUrl: vid1Video.url, label: "Space battle cockpit", prompt: "A cinematic scene of a futuristic spaceship cockpit with a pilot looking out at a nebula, sci-fi movie still, dramatic lighting, widescreen anamorphic look", toolId: "text-to-video" },
+  { src: vid18Thumb, videoUrl: vid18Video.url, label: "Lavender golden hour", prompt: "A beautiful woman walking through a field of lavender at golden hour, her white dress flowing in the wind, cinematic slow motion", toolId: "text-to-video" },
   { src: vid8Thumb, videoUrl: vid8Video.url, label: "Bioluminescent whale", prompt: "A massive bioluminescent whale breaching from dark ocean at night near an industrial shipyard, neon teal veins glowing, cinematic VFX shot, rain and lightning", toolId: "text-to-video" },
+  { src: vid19Thumb, videoUrl: vid19Video.url, label: "Cinematic explosion", prompt: "A massive explosion in slow motion with debris and fire, action movie VFX shot, dark background, dramatic lighting", toolId: "text-to-video" },
   { src: vid2Thumb, videoUrl: vid2Video.url, label: "Robot encounter", prompt: "Action movie scene, group of people standing in a futuristic white room with a small pink robot, cinematic wide shot, sci-fi thriller atmosphere", toolId: "text-to-video" },
+  { src: vid20Thumb, videoUrl: vid20Video.url, label: "Epic wave surfing", prompt: "Aerial cinematic shot of a lone surfer riding a massive wave, drone footage, crystal blue ocean, epic nature documentary", toolId: "text-to-video" },
   { src: vid9Thumb, videoUrl: vid9Video.url, label: "Night car chase", prompt: "Fast-paced car chase through narrow European streets at night, sparks flying, motion blur, adrenaline action movie still, widescreen cinematic", toolId: "text-to-video" },
+  { src: vid21Thumb, videoUrl: vid21Video.url, label: "Royal cat", prompt: "A cat sitting regally on a velvet throne wearing a tiny crown, funny pet video, soft studio lighting, royal aesthetic", toolId: "text-to-video" },
   { src: vid3Thumb, videoUrl: vid3Video.url, label: "Arctic expedition", prompt: "Snowy mountain landscape with a lone figure running through deep snow, avalanche in background, cinematic action shot, dramatic scale, epic movie scene", toolId: "text-to-video" },
+  { src: vid22Thumb, videoUrl: vid22Video.url, label: "Molten gold pour", prompt: "Pouring molten gold into an ornate mold, satisfying close-up shot, sparks and glow, luxury craftsmanship, cinematic slow motion", toolId: "text-to-video" },
   { src: vid10Thumb, videoUrl: vid10Video.url, label: "Astronaut in space", prompt: "Astronaut floating in space with Earth reflected in helmet visor, stars and nebula behind, ultra realistic, IMAX movie still quality", toolId: "text-to-video" },
+  { src: vid23Thumb, videoUrl: vid23Video.url, label: "City rising", prompt: "A hyperlapse of a futuristic city being built from the ground up, construction timelapse, dramatic clouds rolling, epic scale", toolId: "text-to-video" },
   { src: vid4Thumb, videoUrl: vid4Video.url, label: "Cyberpunk transit", prompt: "Neon-lit cyberpunk bus driving through a rainy night city, reflections on wet asphalt, dystopian atmosphere, cinematic color grading, movie still", toolId: "text-to-video" },
+  { src: vid24Thumb, videoUrl: vid24Video.url, label: "Warehouse dancer", prompt: "A dancer performing contemporary ballet in an abandoned warehouse, dramatic shaft of light from window, dust particles floating, emotional cinematic", toolId: "text-to-video" },
   { src: vid11Thumb, videoUrl: vid11Video.url, label: "Gladiator arena", prompt: "Ancient Roman gladiator arena with thousands of spectators, dramatic overhead view, dust and sand, epic historical movie scene, golden hour lighting", toolId: "text-to-video" },
+  { src: vid25Thumb, videoUrl: vid25Video.url, label: "Luxury watch macro", prompt: "Close-up of a luxury mechanical watch with exposed gears ticking, macro product video, dark background, dramatic lighting reflecting off metal", toolId: "text-to-video" },
   { src: vid5Thumb, videoUrl: vid5Video.url, label: "Retro phone booth", prompt: "Close up of a retro neon phone booth at night with people inside, 80s vibe, rain, colorful reflections, cinematic street photography", toolId: "text-to-video" },
+  { src: vid26Thumb, videoUrl: vid26Video.url, label: "Ice cave drone", prompt: "A drone flying through a massive ice cave with blue glowing walls, adventure exploration footage, breathtaking natural wonder", toolId: "text-to-video" },
   { src: vid12Thumb, videoUrl: vid12Video.url, label: "Haute couture runway", prompt: "Luxury fashion runway show with dramatic spotlights, model walking in avant-garde haute couture, smoke machine, dark elegant atmosphere, fashion week", toolId: "text-to-video" },
+  { src: vid27Thumb, videoUrl: vid27Video.url, label: "Paris saxophone rain", prompt: "A street musician playing saxophone on a rainy Paris bridge at night, neon reflections in puddles, moody cinematic atmosphere, slow motion raindrops", toolId: "text-to-video" },
   { src: vid13Thumb, videoUrl: vid13Video.url, label: "Wolf under aurora", prompt: "A wolf howling on a cliff edge under northern lights aurora borealis, snow falling, dramatic wildlife cinematography, epic nature documentary", toolId: "text-to-video" },
   { src: vid14Thumb, videoUrl: vid14Video.url, label: "Medieval siege", prompt: "Massive medieval castle siege with catapults firing and fire arrows in the night sky, epic battle scene, Lord of the Rings style cinematography", toolId: "text-to-video" },
   { src: vid6Thumb, videoUrl: vid6Video.url, label: "Floating tech", prompt: "Sleek white laptop floating in a minimalist white void with dramatic shadow, product photography, ultra clean, futuristic tech shot", toolId: "text-to-video" },
@@ -157,7 +209,6 @@ function VideoCard({
       onMouseLeave={handleMouseLeave}
       className="group relative overflow-hidden rounded-[14px] bg-[#111] cursor-pointer w-full text-left"
     >
-      {/* Thumbnail */}
       <img
         src={item.src}
         alt={item.label}
@@ -167,8 +218,6 @@ function VideoCard({
           isPlaying ? "opacity-0" : "opacity-100 group-hover:scale-[1.04]"
         )}
       />
-
-      {/* Video overlay */}
       {item.videoUrl && (
         <video
           ref={videoRef}
@@ -183,8 +232,6 @@ function VideoCard({
           )}
         />
       )}
-
-      {/* Play badge */}
       <div
         className={cn(
           "absolute top-3 right-3 h-7 w-7 rounded-full bg-black/60 backdrop-blur-sm flex items-center justify-center border border-white/[0.12] transition-opacity duration-300",
@@ -193,13 +240,9 @@ function VideoCard({
       >
         <Play className="h-3 w-3 text-white fill-white" />
       </div>
-
-      {/* Bottom label */}
       <div className="absolute inset-x-0 bottom-0 p-3 bg-gradient-to-t from-black/80 via-black/40 to-transparent">
         <p className="text-[11px] text-white/80 font-medium leading-snug">{item.label}</p>
       </div>
-
-      {/* Hover border glow */}
       <div className="absolute inset-0 rounded-[14px] border border-white/[0.04] transition-all duration-300 group-hover:border-[#3b82f6]/40 group-hover:shadow-[0_0_20px_-4px_rgba(59,130,246,0.25)]" />
     </button>
   );
@@ -245,31 +288,15 @@ function PreviewModal({
           <X className="h-4 w-4" />
         </button>
 
-        {/* Media */}
         <div className="relative flex-shrink-0">
           {tab === "video" && item.videoUrl ? (
-            <video
-              src={item.videoUrl}
-              autoPlay
-              muted
-              loop
-              playsInline
-              className="w-full max-h-[400px] object-cover"
-            />
+            <video src={item.videoUrl} autoPlay muted loop playsInline className="w-full max-h-[400px] object-cover" />
           ) : (
             <img src={item.src} alt={item.label} className="w-full max-h-[400px] object-cover" />
-          )}
-          {tab === "video" && !item.videoUrl && (
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="h-14 w-14 rounded-full bg-black/50 backdrop-blur-sm border border-white/[0.15] flex items-center justify-center">
-                <Play className="h-6 w-6 text-white fill-white ml-0.5" />
-              </div>
-            </div>
           )}
           <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-[#0c0c0f] to-transparent" />
         </div>
 
-        {/* Content */}
         <div className="p-5 space-y-4 overflow-y-auto custom-scrollbar">
           <div>
             <span className="text-[10px] font-semibold uppercase tracking-widest text-primary/60">
@@ -322,7 +349,6 @@ export function InspirationsGallery() {
 
   return (
     <motion.section variants={fadeUp} className="mb-14">
-      {/* Header */}
       <div className="mb-6 flex items-center justify-between">
         <h2 className="text-[26px] font-semibold tracking-[-0.02em] text-white">
           Inspirations
@@ -349,7 +375,6 @@ export function InspirationsGallery() {
         </div>
       </div>
 
-      {/* Masonry grid */}
       <div className="columns-2 sm:columns-3 lg:columns-4 xl:columns-5 gap-3 [column-fill:_balance]">
         {items.map((item, i) => (
           <motion.div
@@ -382,7 +407,6 @@ export function InspirationsGallery() {
         ))}
       </div>
 
-      {/* Preview modal */}
       <AnimatePresence>
         {selected && (
           <PreviewModal
