@@ -26,6 +26,7 @@ interface GenerationNotificationsProps {
 const TYPE_ICON: Record<string, typeof Image> = {
   "image-generator": Image,
   "video-generator": Video,
+  "motion-transfer": Video,
   "sfx-generator": Music,
 };
 

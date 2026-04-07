@@ -63,7 +63,7 @@ serve(async (req) => {
     }
 
     // ===== SUBMIT MODE =====
-    const { prompt, image_url, video_url, duration = "5", aspect_ratio = "16:9", mode = "image-to-video" } = body;
+    const { prompt, image_url, video_url, source_video_url, duration = "5", aspect_ratio = "16:9", mode = "image-to-video" } = body;
 
     if (!prompt || typeof prompt !== "string" || prompt.trim().length === 0) {
       return new Response(JSON.stringify({ error: "Prompt is required" }), {
@@ -104,7 +104,9 @@ serve(async (req) => {
 
     // Choose fal endpoint
     let falModel: string;
-    if (mode === "video-reference" && video_url) {
+    if (mode === "motion-transfer" && source_video_url && video_url) {
+      falModel = "fal-ai/kling-video/v2/master/video-to-video";
+    } else if (mode === "video-reference" && video_url) {
       falModel = "fal-ai/kling-video/o1/video-to-video/reference";
     } else if (image_url) {
       falModel = "fal-ai/kling-video/v2/master/image-to-video";
@@ -118,8 +120,11 @@ serve(async (req) => {
       aspect_ratio,
     };
 
-    // For video-reference mode: send BOTH image_url and video_url
-    if (mode === "video-reference" && video_url) {
+    // For motion-transfer mode: source video is the main video, reference guides motion
+    if (mode === "motion-transfer" && source_video_url) {
+      requestBody.video_url = source_video_url;
+      if (video_url) requestBody.ref_video_url = video_url;
+    } else if (mode === "video-reference" && video_url) {
       requestBody.video_url = video_url;
       if (image_url) requestBody.image_url = image_url;
     } else if (image_url) {
