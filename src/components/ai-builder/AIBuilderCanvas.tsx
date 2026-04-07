@@ -900,6 +900,12 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false, isGuest =
       return;
     }
 
+    // 🔒 GUEST GATE: Redirect unauthenticated users to sign in
+    if (isGuest) {
+      navigate('/login?redirect=/ai-builder');
+      return;
+    }
+
     // 🔒 PREMIUM GATE: Non-premium users can explore but not generate
     if (!hasPremiumAccess) {
       setShowUpgradeModal(true);
