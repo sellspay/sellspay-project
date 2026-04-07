@@ -35,9 +35,14 @@ export default function ImageAnimator() {
 
   // If navigated here with a viewAssetUrl, show it
   useEffect(() => {
-    const state = location.state as { viewAssetUrl?: string } | null;
+    const state = location.state as { viewAssetUrl?: string; prefillPrompt?: string } | null;
     if (state?.viewAssetUrl) {
       setGeneratedVideo(state.viewAssetUrl);
+    }
+    if (state?.prefillPrompt) {
+      setPrompt(state.prefillPrompt);
+    }
+    if (state?.viewAssetUrl || state?.prefillPrompt) {
       window.history.replaceState({}, "");
     }
   }, [location.state]);

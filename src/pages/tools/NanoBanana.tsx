@@ -56,10 +56,15 @@ export default function NanoBanana() {
 
   // If navigated here with a viewAssetUrl (from notification/assets), show it
   useEffect(() => {
-    const state = location.state as { viewAssetUrl?: string } | null;
+    const state = location.state as { viewAssetUrl?: string; prefillPrompt?: string } | null;
     if (state?.viewAssetUrl) {
       setGeneratedImage(state.viewAssetUrl);
-      // Clear the state so refresh doesn't re-show
+    }
+    if (state?.prefillPrompt) {
+      setPrompt(state.prefillPrompt);
+    }
+    if (state?.viewAssetUrl || state?.prefillPrompt) {
+      // Clear the state so refresh doesn't re-trigger
       window.history.replaceState({}, "");
     }
   }, [location.state]);
