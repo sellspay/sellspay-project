@@ -83,10 +83,11 @@ export function AIBuilderShowcase() {
 
   const startSequence = () => {
     let i = 0;
+    const currentPrompt = EXAMPLES[exampleIdx].prompt;
     const typeInterval = setInterval(() => {
       i++;
-      setTyped(PROMPT_TEXT.slice(0, i));
-      if (i >= PROMPT_TEXT.length) {
+      setTyped(currentPrompt.slice(0, i));
+      if (i >= currentPrompt.length) {
         clearInterval(typeInterval);
         setTimeout(() => {
           setPhase('generating');
@@ -283,7 +284,7 @@ export function AIBuilderShowcase() {
                 {/* Image - clean, no overlays */}
                 <div className="relative overflow-hidden">
                   <img
-                    src={aiBuilderResult}
+                    src={EXAMPLES[exampleIdx].image}
                     alt="AI-generated storefront preview"
                     className="block w-full h-auto"
                     width={1440}
@@ -299,10 +300,10 @@ export function AIBuilderShowcase() {
                     </div>
                     <div>
                       <p className="text-sm font-semibold text-foreground">
-                        Luxury Fashion Boutique
+                        {EXAMPLES[exampleIdx].title}
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        Generated from your prompt · Dark & Gold theme
+                        {EXAMPLES[exampleIdx].subtitle}
                       </p>
                     </div>
                   </div>
