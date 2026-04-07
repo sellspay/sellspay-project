@@ -272,8 +272,8 @@ export function AIBuilderShowcase() {
                       src={aiBuilderResult}
                       alt="AI-generated luxury fashion storefront"
                       className="w-full object-cover"
-                      width={1280}
-                      height={720}
+                      width={1440}
+                      height={600}
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-background/90 via-transparent to-transparent" />
 
