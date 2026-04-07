@@ -72,11 +72,11 @@ import vid1Video from "@/assets/inspirations/vid-1.mp4.asset.json";
 import vid2Video from "@/assets/inspirations/vid-2.mp4.asset.json";
 import vid3Video from "@/assets/inspirations/vid-3.mp4.asset.json";
 import vid4Video from "@/assets/inspirations/vid-4.mp4.asset.json";
-import vid5Video from "@/assets/inspirations/vid-5.mp4.asset.json";
-import vid6Video from "@/assets/inspirations/vid-6.mp4.asset.json";
+import vid5Video from "@/assets/inspirations/vid-5-v2.mp4.asset.json";
+import vid6Video from "@/assets/inspirations/vid-6-v2.mp4.asset.json";
 import vid7Video from "@/assets/inspirations/vid-7.mp4.asset.json";
 import vid8Video from "@/assets/inspirations/vid-8.mp4.asset.json";
-import vid9Video from "@/assets/inspirations/vid-9.mp4.asset.json";
+import vid9Video from "@/assets/inspirations/vid-9-v2.mp4.asset.json";
 import vid10Video from "@/assets/inspirations/vid-10.mp4.asset.json";
 import vid11Video from "@/assets/inspirations/vid-11.mp4.asset.json";
 import vid12Video from "@/assets/inspirations/vid-12.mp4.asset.json";
@@ -214,8 +214,8 @@ function VideoCard({
         alt={item.label}
         loading="lazy"
         className={cn(
-          "w-full h-auto object-cover transition-all duration-500",
-          isPlaying ? "opacity-0" : "opacity-100 group-hover:scale-[1.04]"
+          "w-full h-auto object-cover",
+          isPlaying ? "opacity-0 hidden" : "opacity-100 transition-transform duration-500 group-hover:scale-[1.04]"
         )}
       />
       {item.videoUrl && (
@@ -227,8 +227,8 @@ function VideoCard({
           playsInline
           preload="none"
           className={cn(
-            "absolute inset-0 w-full h-full object-cover transition-opacity duration-300",
-            isPlaying ? "opacity-100" : "opacity-0"
+            "absolute inset-0 w-full h-full object-cover",
+            isPlaying ? "opacity-100" : "opacity-0 pointer-events-none"
           )}
         />
       )}
