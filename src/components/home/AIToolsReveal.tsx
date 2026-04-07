@@ -218,7 +218,7 @@ export function AIToolsReveal() {
 
       // Step 0 initial state
       mainTl.set(section, { backgroundColor: steps[0].bg }, 0);
-      if (headlineEl) mainTl.set(headlineEl, { color: steps[0].text }, 0);
+      mainTl.set(textContainer, { color: steps[0].text }, 0);
       for (let i = 0; i < panelCount; i++) {
         if (i === 0) {
           mainTl.set(cards[i], { yPercent: 0, y: 0, scale: TOP_CARD_SCALE }, 0);
