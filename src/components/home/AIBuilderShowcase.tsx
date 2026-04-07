@@ -268,11 +268,11 @@ export function AIBuilderShowcase() {
                   </div>
 
                   {/* Full-width preview */}
-                  <div className="relative">
+                  <div className="relative overflow-hidden">
                     <img
                       src={aiBuilderResult}
                       alt="AI-generated luxury fashion storefront"
-                      className="block w-full"
+                      className="block w-full h-auto"
                       width={1440}
                       height={600}
                     />
