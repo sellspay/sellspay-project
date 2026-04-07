@@ -26,7 +26,7 @@ export function FeatureTabsBar() {
           <div className="mb-20 sm:mb-24">
             <h2 className="max-w-2xl">
               <span
-                className="block text-[clamp(1.1rem,2vw,1.35rem)] uppercase tracking-[0.25em] text-white/40 font-medium mb-4"
+                className="block text-[clamp(1.1rem,2vw,1.35rem)] uppercase tracking-[0.25em] text-white/70 font-medium mb-4"
                 style={{ fontFamily: "'Inter', system-ui, sans-serif" }}
               >
                 Why creators choose
