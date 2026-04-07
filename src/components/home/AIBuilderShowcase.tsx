@@ -1,184 +1,211 @@
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, Sparkles, Wand2, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import showcaseCode from '@/assets/showcase-code-preview-v2.jpg';
 import showcaseVibes from '@/assets/showcase-aesthetics-v2.jpg';
 
+const stats = [
+  { value: '10s', label: 'avg. build time' },
+  { value: '∞', label: 'design styles' },
+  { value: '0', label: 'code required' },
+];
+
 export function AIBuilderShowcase() {
   return (
-    <section className="relative py-32 sm:py-40 lg:py-48 overflow-hidden">
-      {/* Background glow */}
-      <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute top-[30%] left-1/2 -translate-x-1/2 -translate-y-1/2 w-[900px] h-[400px] rounded-full bg-white/[0.04] blur-[180px]" />
+    <section className="studio-dark relative overflow-hidden bg-background py-28 sm:py-36 lg:py-44">
+      <div className="pointer-events-none absolute inset-0 overflow-hidden">
+        <div
+          className="absolute left-1/2 top-28 h-[380px] w-[380px] -translate-x-1/2 rounded-full blur-[140px]"
+          style={{ background: 'radial-gradient(circle, hsl(var(--primary) / 0.24) 0%, transparent 70%)' }}
+        />
+        <div
+          className="absolute left-1/2 top-44 h-[560px] w-[980px] -translate-x-1/2 rounded-full blur-[180px]"
+          style={{ background: 'radial-gradient(circle, hsl(var(--ring) / 0.12) 0%, transparent 72%)' }}
+        />
       </div>
 
-      <div className="relative z-10 w-full max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Top label */}
-        <motion.p
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.6 }}
-          className="text-center text-sm sm:text-base text-white/50 tracking-wide mb-6"
-        >
-          AI-Powered Storefront Builder
-        </motion.p>
-
-        {/* Giant glowing title */}
+      <div className="relative mx-auto w-full max-w-[1240px] px-4 sm:px-6 lg:px-8">
         <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          whileInView={{ opacity: 1, scale: 1 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.8, delay: 0.1 }}
-          className="relative text-center mb-16 sm:mb-20"
+          initial={{ opacity: 0, y: 24 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: '-80px' }}
+          transition={{ duration: 0.6 }}
+          className="mx-auto max-w-3xl text-center"
         >
-          <h2
-            className="text-[clamp(3.5rem,10vw,10rem)] font-black tracking-tight leading-[0.9] text-transparent"
-            style={{
-              WebkitTextStroke: '1.5px rgba(255,255,255,0.15)',
-              textShadow: '0 0 80px rgba(255,255,255,0.08), 0 0 160px rgba(255,255,255,0.04)',
-            }}
-          >
-            <span
-              className="bg-clip-text text-transparent"
-              style={{
-                backgroundImage: 'linear-gradient(180deg, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0.2) 100%)',
-              }}
-            >
-              AI Builder
-            </span>
+          <div className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-card/70 px-4 py-2 text-xs font-medium uppercase tracking-[0.22em] text-muted-foreground backdrop-blur-md">
+            <Sparkles className="h-3.5 w-3.5 text-primary" />
+            AI-Powered Storefront Builder
+          </div>
+
+          <h2 className="mt-6 text-[clamp(3.3rem,8vw,7rem)] font-black leading-[0.9] tracking-[-0.07em] text-foreground">
+            AI Builder
           </h2>
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[200px] rounded-full bg-white/[0.03] blur-[100px] pointer-events-none" />
+
+          <p className="mx-auto mt-5 max-w-2xl text-sm leading-7 text-muted-foreground sm:text-base">
+            Describe your brand, style, and experience — then watch the live preview and production-ready code come together in one centered build flow.
+          </p>
         </motion.div>
 
-        {/* Two-column showcase grid — always centered */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5 max-w-[1000px] mx-auto">
-          {/* Left: Prompt mockup + code preview */}
-          <motion.div
-            initial={{ opacity: 0, y: 40 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.7, delay: 0.2 }}
-            className="space-y-4"
+        <motion.div
+          initial={{ opacity: 0, y: 28 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: '-80px' }}
+          transition={{ duration: 0.7, delay: 0.08 }}
+          className="mx-auto mt-14 max-w-[980px]"
+        >
+          <div
+            className="overflow-hidden rounded-[32px] border border-border/70 bg-card/75 backdrop-blur-xl"
+            style={{ boxShadow: '0 40px 120px -56px hsl(var(--primary) / 0.45)' }}
           >
-            <div className="rounded-[20px] border border-white/[0.08] bg-white/[0.03] backdrop-blur-md p-5 sm:p-6">
-              <div className="flex items-center gap-3 mb-5">
-                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white text-xs font-bold">
-                  AI
-                </div>
-                <div className="flex gap-2">
-                  <div className="px-3 py-1.5 rounded-full bg-white/10 text-[11px] font-medium text-white/80 border border-white/[0.08]">
-                    Storefront
+            <div className="relative aspect-[16/10] overflow-hidden sm:aspect-[16/9]">
+              <img
+                src={showcaseCode}
+                alt="Live code editor with real-time storefront preview"
+                loading="lazy"
+                width={1280}
+                height={720}
+                className="h-full w-full object-cover"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-background via-background/15 to-background/10" />
+
+              <div className="absolute left-5 top-5 inline-flex items-center gap-2 rounded-full border border-border/70 bg-background/80 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-primary backdrop-blur-md">
+                <span className="h-2 w-2 rounded-full bg-primary" />
+                Live Build + Preview
+              </div>
+
+              <div className="absolute inset-x-0 bottom-0 p-5 sm:p-7">
+                <div className="rounded-[24px] border border-border/70 bg-background/78 p-5 backdrop-blur-xl sm:p-6">
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+                    <div className="max-w-xl text-left">
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-primary">
+                        Prompt to storefront
+                      </p>
+                      <h3 className="mt-2 text-2xl font-semibold tracking-[-0.03em] text-foreground sm:text-3xl">
+                        Build from one prompt — centered around the result.
+                      </h3>
+                      <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                        The main stage stays anchored in the middle, so the whole section feels balanced even on huge screens.
+                      </p>
+                    </div>
+
+                    <div className="flex flex-wrap gap-2 sm:justify-end">
+                      <span className="rounded-full border border-border/70 bg-card px-3 py-1.5 text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
+                        real code
+                      </span>
+                      <span className="rounded-full border border-border/70 bg-card px-3 py-1.5 text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
+                        instant preview
+                      </span>
+                    </div>
                   </div>
-                  <div className="px-3 py-1.5 rounded-full bg-white/[0.04] text-[11px] font-medium text-white/40 border border-white/[0.05]">
-                    Landing Page
-                  </div>
-                </div>
-              </div>
-
-              <div className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-4 mb-4">
-                <p className="text-sm text-white/60 leading-relaxed">
-                  <span className="text-white/90 font-medium">Build me</span> a luxury fashion boutique with dark theme,
-                  gold accents, hero video section, and a product grid with hover effects...
-                </p>
-              </div>
-
-              <div className="flex items-center gap-3">
-                <div className="flex-1 h-1 rounded-full bg-white/[0.06] overflow-hidden">
-                  <motion.div
-                    className="h-full rounded-full bg-gradient-to-r from-purple-500 to-cyan-500"
-                    initial={{ width: '0%' }}
-                    whileInView={{ width: '100%' }}
-                    viewport={{ once: true }}
-                    transition={{ duration: 2.5, delay: 0.8, ease: 'easeInOut' }}
-                  />
-                </div>
-                <span className="text-[11px] text-white/40 font-medium">Generating...</span>
-              </div>
-            </div>
-
-            <div className="rounded-[20px] border border-white/[0.08] overflow-hidden">
-              <div className="relative aspect-[16/10] overflow-hidden">
-                <img
-                  src={showcaseCode}
-                  alt="Live code editor with real-time storefront preview"
-                  loading="lazy"
-                  width={1280}
-                  height={720}
-                  className="w-full h-full object-cover"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/20" />
-                <div className="absolute bottom-4 left-4 flex items-center gap-2">
-                  <div className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
-                  <span className="text-[10px] font-bold tracking-widest uppercase text-cyan-400">Live Code + Preview</span>
                 </div>
               </div>
             </div>
-          </motion.div>
+          </div>
+        </motion.div>
 
-          {/* Right: Aesthetics showcase + stats */}
+        <div className="mx-auto mt-5 grid max-w-[980px] gap-4 md:grid-cols-[0.92fr_1.08fr]">
           <motion.div
-            initial={{ opacity: 0, y: 40 }}
+            initial={{ opacity: 0, y: 24 }}
             whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.7, delay: 0.3 }}
-            className="space-y-4"
+            viewport={{ once: true, margin: '-80px' }}
+            transition={{ duration: 0.6, delay: 0.12 }}
+            className="rounded-[28px] border border-border/70 bg-card/70 p-5 backdrop-blur-xl sm:p-6"
           >
-            <div className="rounded-[20px] border border-white/[0.08] overflow-hidden">
-              <div className="relative aspect-[16/10] overflow-hidden">
-                <img
-                  src={showcaseVibes}
-                  alt="Multiple storefront design styles generated by AI"
-                  loading="lazy"
-                  width={1280}
-                  height={720}
-                  className="w-full h-full object-cover"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/20" />
-                <div className="absolute bottom-4 left-4 flex items-center gap-2">
-                  <div className="w-1.5 h-1.5 rounded-full bg-fuchsia-400" />
-                  <span className="text-[10px] font-bold tracking-widest uppercase text-fuchsia-400">Infinite Aesthetics</span>
-                </div>
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/25">
+                <Wand2 className="h-4 w-4" />
+              </div>
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-primary">Prompt input</p>
+                <p className="text-xs text-muted-foreground">Natural language → full experience</p>
               </div>
             </div>
 
-            <div className="grid grid-cols-3 gap-3">
-              {[
-                { value: '10s', label: 'Avg. build time' },
-                { value: '∞', label: 'Design styles' },
-                { value: '0', label: 'Code required' },
-              ].map((stat) => (
+            <div className="mt-5 rounded-[22px] border border-border/70 bg-background/80 p-4">
+              <p className="text-sm leading-6 text-muted-foreground">
+                <span className="font-medium text-foreground">Build me</span> a luxury storefront with cinematic hero media, premium typography, and elegant product cards.
+              </p>
+            </div>
+
+            <div className="mt-5 flex items-center gap-3">
+              <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-secondary">
+                <motion.div
+                  className="h-full rounded-full bg-primary"
+                  initial={{ width: '0%' }}
+                  whileInView={{ width: '100%' }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 2.2, delay: 0.35, ease: 'easeInOut' }}
+                />
+              </div>
+              <span className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">Generating</span>
+            </div>
+
+            <div className="mt-5 grid grid-cols-3 gap-3">
+              {stats.map((stat) => (
                 <div
                   key={stat.label}
-                  className="rounded-2xl border border-white/[0.08] bg-white/[0.03] backdrop-blur-sm p-4 text-center"
+                  className="rounded-[18px] border border-border/70 bg-background/70 p-3 text-center"
                 >
-                  <div className="text-xl sm:text-2xl font-black text-white/90 mb-1">{stat.value}</div>
-                  <div className="text-[10px] text-white/40 font-medium tracking-wide uppercase">{stat.label}</div>
+                  <div className="text-lg font-black tracking-[-0.04em] text-foreground sm:text-xl">{stat.value}</div>
+                  <div className="mt-1 text-[10px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
+                    {stat.label}
+                  </div>
                 </div>
               ))}
             </div>
           </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 24 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: '-80px' }}
+            transition={{ duration: 0.6, delay: 0.16 }}
+            className="overflow-hidden rounded-[28px] border border-border/70 bg-card/70 backdrop-blur-xl"
+          >
+            <div className="relative aspect-[16/12] overflow-hidden">
+              <img
+                src={showcaseVibes}
+                alt="Multiple storefront design styles generated by AI"
+                loading="lazy"
+                width={1280}
+                height={720}
+                className="h-full w-full object-cover"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-background via-transparent to-transparent" />
+
+              <div className="absolute bottom-4 left-4 right-4 rounded-[22px] border border-border/70 bg-background/80 p-4 backdrop-blur-md sm:bottom-5 sm:left-5 sm:right-5">
+                <div className="flex items-center gap-2 text-primary">
+                  <Zap className="h-4 w-4" />
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.22em]">Infinite aesthetics</span>
+                </div>
+                <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                  Luxury, editorial, cyber, minimal — switch directions instantly without losing the centered composition.
+                </p>
+              </div>
+            </div>
+          </motion.div>
         </div>
 
-        {/* CTA — always centered below */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.5, delay: 0.5 }}
-          className="text-center mt-14 sm:mt-16"
+          viewport={{ once: true, margin: '-80px' }}
+          transition={{ duration: 0.5, delay: 0.18 }}
+          className="mt-12 text-center"
         >
           <Button
             asChild
-            className="h-14 px-10 text-sm font-bold tracking-wider rounded-full bg-gradient-to-r from-blue-500 to-cyan-500 text-white hover:from-blue-400 hover:to-cyan-400 shadow-lg shadow-blue-500/25 transition-all duration-300 group"
+            className="h-14 rounded-full border border-primary/30 bg-primary px-10 text-sm font-bold uppercase tracking-[0.18em] text-primary-foreground shadow-lg shadow-primary/25 transition-all duration-300 hover:bg-primary/90"
           >
             <Link to="/ai-builder">
               Try it free
-              <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
+              <ArrowRight className="ml-2 h-4 w-4" />
             </Link>
           </Button>
-          <p className="mt-4 text-[11px] text-white/30">No code required · Free to start</p>
+          <p className="mt-4 text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+            No code required · free to start
+          </p>
         </motion.div>
       </div>
     </section>
