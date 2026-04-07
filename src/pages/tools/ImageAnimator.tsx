@@ -48,6 +48,36 @@ export default function ImageAnimator() {
     if (pending) setSourceImage(pending);
   }, []);
 
+  // Upload a base64 image to storage and return a public URL
+  const uploadImageToStorage = async (base64: string): Promise<string> => {
+    // Convert base64 to blob
+    const res = await fetch(base64);
+    const blob = await res.blob();
+    const ext = blob.type.includes("png") ? "png" : "jpg";
+    const path = `animate-src/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+    const { data, error } = await supabase.storage.from("tool-assets").upload(path, blob, { contentType: blob.type });
+    if (error) throw new Error("Failed to upload source image");
+    const { data: urlData } = supabase.storage.from("tool-assets").getPublicUrl(data.path);
+    return urlData.publicUrl;
+  };
+
+  const pollForVideo = async (requestId: string): Promise<string> => {
+    const maxPollMs = 300_000; // 5 min client-side poll
+    const interval = 6_000;
+    const start = Date.now();
+
+    while (Date.now() - start < maxPollMs) {
+      await new Promise(r => setTimeout(r, interval));
+      const { data, error } = await supabase.functions.invoke("generate-video", {
+        body: { action: "poll", request_id: requestId },
+      });
+      if (error) continue;
+      if (data?.status === "completed" && data?.video_url) return data.video_url;
+      if (data?.status === "failed") throw new Error(data.error || "Video generation failed");
+    }
+    throw new Error("Video generation timed out. Please try again.");
+  };
+
   const handleGenerate = async () => {
     if (mode === "image" && !sourceImage) { toast.error("Please add a source image"); return; }
     if (mode === "video-ref" && !sourceVideo) { toast.error("Please upload a reference video"); return; }
@@ -62,10 +92,17 @@ export default function ImageAnimator() {
     let resultUrl: string | undefined;
 
     try {
+      // Upload base64 image to storage first to avoid massive payloads
+      let imageUrl: string | undefined;
+      if (mode === "image" && sourceImage) {
+        toast.info("Uploading source image...");
+        imageUrl = await uploadImageToStorage(sourceImage);
+      }
+
       const { data, error } = await supabase.functions.invoke("generate-video", {
         body: {
           prompt: prompt.trim(),
-          image_url: mode === "image" ? sourceImage : undefined,
+          image_url: imageUrl,
           video_url: mode === "video-ref" ? sourceVideo : undefined,
           mode: mode === "video-ref" ? "video-reference" : "image-to-video",
           duration,
@@ -74,14 +111,23 @@ export default function ImageAnimator() {
       });
 
       if (error) throw error;
-      if (data?.video_url) {
-        setGeneratedVideo(data.video_url);
+
+      let videoUrl = data?.video_url;
+
+      // If still processing, poll for result
+      if (data?.status === "processing" && data?.request_id) {
+        toast.info("Video is generating... this may take 2-4 minutes.");
+        videoUrl = await pollForVideo(data.request_id);
+      }
+
+      if (videoUrl) {
+        setGeneratedVideo(videoUrl);
         toast.success("Animation complete!");
         success = true;
-        resultUrl = data.video_url;
-        saveToolAsset({ userId: user!.id, type: "video", storageUrl: data.video_url, filename: `animation-${Date.now()}.mp4`, metadata: { prompt: prompt.trim(), duration } as any });
-      } else {
-        throw new Error("No video returned");
+        resultUrl = videoUrl;
+        saveToolAsset({ userId: user!.id, type: "video", storageUrl: videoUrl, filename: `animation-${Date.now()}.mp4`, metadata: { prompt: prompt.trim(), duration } as any });
+      } else if (!data?.video_url && !data?.request_id) {
+        throw new Error(data?.error || "No video returned");
       }
     } catch (error) {
       console.error("Animation error:", error);

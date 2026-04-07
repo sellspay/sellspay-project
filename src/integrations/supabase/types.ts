@@ -3515,6 +3515,48 @@ export type Database = {
         }
         Relationships: []
       }
+      video_generation_queue: {
+        Row: {
+          created_at: string
+          error_message: string | null
+          fal_model: string | null
+          fal_request_id: string | null
+          id: string
+          prompt: string | null
+          request_body: Json | null
+          result_url: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          error_message?: string | null
+          fal_model?: string | null
+          fal_request_id?: string | null
+          id?: string
+          prompt?: string | null
+          request_body?: Json | null
+          result_url?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          error_message?: string | null
+          fal_model?: string | null
+          fal_request_id?: string | null
+          id?: string
+          prompt?: string | null
+          request_body?: Json | null
+          result_url?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       wallet_ledger_entries: {
         Row: {
           amount_cents: number
