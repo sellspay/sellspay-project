@@ -108,7 +108,7 @@ const App = () => (
               <Route path="/~oauth/callback" element={<OAuthCallback />} />
               
               {/* Main pages with layout */}
-              <Route path="/" element={<MainLayout><Home /></MainLayout>} />
+              <Route path="/" element={<MainLayout darkMode><Home /></MainLayout>} />
               <Route path="/products" element={<MainLayout><Products /></MainLayout>} />
               <Route path="/product/:idOrSlug" element={<MainLayout><ProductDetail /></MainLayout>} />
               <Route path="/p/:idOrSlug" element={<MainLayout><ProductDetail /></MainLayout>} />
