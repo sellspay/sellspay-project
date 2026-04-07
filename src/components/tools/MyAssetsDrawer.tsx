@@ -7,8 +7,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import {
   FolderOpen, Star, Image, Music, Video, FileText, File, Download,
-  Heart, Search, Trash2, CheckSquare, Square, Link2, X
+  Heart, Search, Trash2, CheckSquare, Square, Link2, X, Eye, ExternalLink, Play
 } from "lucide-react";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { useNavigate } from "react-router-dom";
@@ -66,6 +67,7 @@ export function MyAssetsDrawer({ trigger, open: controlledOpen, onOpenChange }: 
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkMode, setBulkMode] = useState(false);
+  const [previewAsset, setPreviewAsset] = useState<Asset | null>(null);
 
   useEffect(() => {
     if (!open || !user) return;
@@ -248,13 +250,6 @@ export function MyAssetsDrawer({ trigger, open: controlledOpen, onOpenChange }: 
                       isSelected ? "border-primary ring-1 ring-primary" : "border-border"
                     }`}
                     onClick={bulkMode ? () => toggleSelect(asset.id) : undefined}
-                    onDoubleClick={() => {
-                      if (bulkMode || !asset.storage_url) return;
-                      const toolMap: Record<string, string> = { image: "image-generator", video: "video-generator", audio: "sfx-generator" };
-                      const toolId = toolMap[asset.type] || "image-generator";
-                      setOpen(false);
-                      navigate(`/studio/${toolId}`, { state: { viewAssetUrl: asset.storage_url, viewAssetType: asset.type } });
-                    }}
                   >
                     {/* Bulk select checkbox */}
                     {bulkMode && (
@@ -269,10 +264,31 @@ export function MyAssetsDrawer({ trigger, open: controlledOpen, onOpenChange }: 
 
                     {/* Preview */}
                     {asset.type === "image" && (asset.thumbnail_url || asset.storage_url) ? (
-                      <img src={asset.thumbnail_url || asset.storage_url!} alt="" className="w-full h-24 object-cover" />
+                      <div className="relative cursor-pointer" onClick={() => !bulkMode && setPreviewAsset(asset)}>
+                        <img src={asset.thumbnail_url || asset.storage_url!} alt="" className="w-full h-24 object-cover" />
+                        {!bulkMode && (
+                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                            <Eye className="h-5 w-5 text-white" />
+                          </div>
+                        )}
+                      </div>
+                    ) : asset.type === "video" && asset.storage_url ? (
+                      <div className="relative cursor-pointer w-full h-24 bg-muted flex items-center justify-center" onClick={() => !bulkMode && setPreviewAsset(asset)}>
+                        <Play className="h-8 w-8 text-muted-foreground" />
+                        {!bulkMode && (
+                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                            <Eye className="h-5 w-5 text-white" />
+                          </div>
+                        )}
+                      </div>
                     ) : (
-                      <div className="w-full h-24 bg-muted flex items-center justify-center">
+                      <div className="w-full h-24 bg-muted flex items-center justify-center cursor-pointer" onClick={() => !bulkMode && asset.storage_url && setPreviewAsset(asset)}>
                         <TypeIcon className="h-8 w-8 text-muted-foreground" />
+                        {!bulkMode && asset.storage_url && (
+                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                            <Eye className="h-5 w-5 text-white" />
+                          </div>
+                        )}
                       </div>
                     )}
 
@@ -301,21 +317,6 @@ export function MyAssetsDrawer({ trigger, open: controlledOpen, onOpenChange }: 
                               <a href={asset.storage_url} download className="p-1 rounded hover:bg-muted">
                                 <Download className="h-3 w-3 text-muted-foreground" />
                               </a>
-                            )}
-                            {asset.storage_url && (
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  const toolMap: Record<string, string> = { image: "image-generator", video: "video-generator", audio: "sfx-generator" };
-                                  const toolId = toolMap[asset.type] || "image-generator";
-                                  setOpen(false);
-                                  navigate(`/studio/${toolId}`, { state: { viewAssetUrl: asset.storage_url, viewAssetType: asset.type } });
-                                }}
-                                className="p-1 rounded hover:bg-muted"
-                                title="Open in tool"
-                              >
-                                <FolderOpen className="h-3 w-3 text-muted-foreground" />
-                              </button>
                             )}
                           </div>
                         )}
