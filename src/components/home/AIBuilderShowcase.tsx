@@ -54,7 +54,7 @@ export function AIBuilderShowcase() {
           >
             <div className="relative aspect-[21/9] overflow-hidden">
               <img
-                src={showcaseGen}
+                src={showcaseHero}
                 alt="AI instant generation — describe your vision and watch it materialize"
                 loading="lazy"
                 width={1920}
