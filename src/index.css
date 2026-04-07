@@ -1013,24 +1013,23 @@ body[style*="margin-right"] {
   color-scheme: dark;
 }
 
-/* Global dark scrollbar — applied to html so it works everywhere */
 ::-webkit-scrollbar {
   width: 10px;
-  background: #000;
+  height: 10px;
 }
 ::-webkit-scrollbar-track {
   background: #000;
 }
 ::-webkit-scrollbar-thumb {
-  background: #1a1a1a;
-  border-radius: 5px;
+  background: #1f1f1f;
+  border-radius: 999px;
   border: 2px solid #000;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #2a2a2a;
+  background: #303030;
 }
 html {
-  scrollbar-color: #1a1a1a #000;
+  scrollbar-color: #1f1f1f #000;
 }
 
 /* Radial glow texture (cyberpunk) */
