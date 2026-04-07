@@ -250,41 +250,46 @@ export function AIBuilderShowcase() {
               initial={{ opacity: 0, y: 30, scale: 0.97, filter: 'blur(6px)' }}
               animate={{ opacity: 1, y: 0, scale: 1, filter: 'blur(0px)' }}
               transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
-              className="px-4 sm:px-8 lg:px-12"
+              className="mx-auto max-w-[960px] px-4 sm:px-6"
             >
+              {/* Clean result card */}
               <div
-                className="relative overflow-hidden rounded-[20px] sm:rounded-[32px] border border-border/70 bg-card/80 backdrop-blur-xl"
-                style={{ boxShadow: '0 40px 120px -56px hsl(var(--primary) / 0.4)' }}
+                className="overflow-hidden rounded-[24px] border border-border/50 bg-card/60 backdrop-blur-xl"
+                style={{ boxShadow: '0 0 80px -20px hsl(var(--primary) / 0.25), 0 30px 60px -30px rgba(0,0,0,0.5)' }}
               >
-                <div className="flex items-center justify-center border-b border-border/70 bg-background/60 px-5 py-3">
-                  <div className="flex items-center gap-2">
-                    <CheckCircle2 className="h-4 w-4 text-primary" />
-                    <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-primary">
-                      Storefront Generated
-                    </span>
-                  </div>
-                </div>
-
+                {/* Image - clean, no overlays */}
                 <div className="relative overflow-hidden">
                   <img
                     src={aiBuilderResult}
-                    alt="AI-generated luxury fashion storefront"
+                    alt="AI-generated storefront preview"
                     className="block w-full h-auto"
                     width={1440}
                     height={600}
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-background/80 via-transparent to-transparent" />
-                  <div className="absolute inset-x-0 bottom-0 p-5 sm:p-7">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-primary">
-                      Your storefront is ready
-                    </p>
-                    <h3 className="mt-2 text-xl font-semibold tracking-[-0.02em] text-foreground sm:text-2xl">
-                      Luxury Fashion Boutique — Dark & Gold
-                    </h3>
-                    <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                      Hero video, product grid, hover effects — all generated from your prompt.
-                    </p>
+                </div>
+
+                {/* Bottom info bar */}
+                <div className="flex items-center justify-between px-6 py-4 sm:px-8 sm:py-5 border-t border-border/40">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/15">
+                      <CheckCircle2 className="h-4 w-4 text-primary" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-foreground">
+                        Luxury Fashion Boutique
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        Generated from your prompt · Dark & Gold theme
+                      </p>
+                    </div>
                   </div>
+                  <Link
+                    to="/ai-builder"
+                    className="hidden sm:inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-4 py-2 text-xs font-semibold text-primary transition-colors hover:bg-primary/20"
+                  >
+                    Customize
+                    <ArrowRight className="h-3 w-3" />
+                  </Link>
                 </div>
               </div>
             </motion.div>
