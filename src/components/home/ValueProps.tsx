@@ -203,16 +203,17 @@ export function ValueProps() {
             </Link>
           </div>
         </Reveal>
+      </div>
 
-        {/* AI Studio Banner */}
-        <Reveal>
-          <motion.div
-            whileHover={{ y: -4 }}
-            transition={{ duration: 0.4, ease: 'easeOut' }}
-            className="mt-20 mb-20 rounded-[28px] p-[1px] relative overflow-hidden"
-            style={{ background: 'linear-gradient(135deg, rgba(59,130,246,0.35), rgba(139,92,246,0.25), rgba(34,211,238,0.15), rgba(255,255,255,0.05))' }}
-          >
-            <div className="rounded-[27px] relative overflow-hidden" style={{ background: 'linear-gradient(135deg, #080d1a, #0a0810, #060812)' }}>
+      {/* AI Studio Banner — full bleed */}
+      <Reveal>
+        <motion.div
+          whileHover={{ y: -4 }}
+          transition={{ duration: 0.4, ease: 'easeOut' }}
+          className="relative z-10 mt-20 mb-20 overflow-hidden"
+          style={{ background: 'linear-gradient(135deg, #080d1a, #0a0810, #060812)', borderTop: '1px solid rgba(59,130,246,0.2)', borderBottom: '1px solid rgba(139,92,246,0.15)' }}
+        >
+          <div className="relative overflow-hidden">
               <div className="absolute -top-24 -left-24 w-72 h-72 pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(59,130,246,0.18), transparent 60%)', filter: 'blur(40px)' }} />
               <div className="absolute -bottom-20 -right-20 w-64 h-64 pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(139,92,246,0.14), transparent 60%)', filter: 'blur(40px)' }} />
               <div className="relative z-10 flex flex-col lg:flex-row items-center gap-10 px-10 py-12 sm:px-14 sm:py-16">
@@ -259,7 +260,8 @@ export function ValueProps() {
           </motion.div>
         </Reveal>
 
-        {/* Trust Badges */}
+      {/* Trust Badges — back in container */}
+      <div className="relative z-10 max-w-[1100px] mx-auto px-6 sm:px-8">
         <Reveal>
           <div className="text-center">
             <div className="w-full h-px mb-12" style={{ background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent)' }} />
