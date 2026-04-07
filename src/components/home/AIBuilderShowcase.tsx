@@ -72,12 +72,14 @@ export function AIBuilderShowcase() {
   useEffect(() => {
     if (phase !== 'done') return;
     const timer = setTimeout(() => {
+      const nextIdx = (exampleIdxRef.current + 1) % EXAMPLES.length;
+      exampleIdxRef.current = nextIdx;
+      setExampleIdx(nextIdx);
       setPhase('idle');
       setTyped('');
       setStepIdx(0);
       setProgress(0);
-      setExampleIdx((prev) => (prev + 1) % EXAMPLES.length);
-      setTimeout(() => startSequence(), 300);
+      setTimeout(() => startSequence(nextIdx), 300);
     }, 10000);
     return () => clearTimeout(timer);
   }, [phase]);
