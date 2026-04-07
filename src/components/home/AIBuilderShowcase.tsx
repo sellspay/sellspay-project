@@ -135,169 +135,162 @@ export function AIBuilderShowcase() {
 
       </div>
 
-      {/* Full-width showcase card - breaks out of container */}
-      <div className="relative mt-12 sm:mt-14 px-4 sm:px-8 lg:px-12">
-        <div
-            className="relative overflow-hidden rounded-[20px] sm:rounded-[32px] border border-border/70 bg-card/80 backdrop-blur-xl"
-            style={{ boxShadow: '0 40px 120px -56px hsl(var(--primary) / 0.4)' }}
-          >
-            <AnimatePresence mode="wait">
-              {/* ─── IDLE + GENERATING: Prompt UI ─── */}
-              {phase !== 'done' && (
-                <motion.div
-                  key="prompt-phase"
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -30, scale: 0.96, filter: 'blur(6px)' }}
-                  transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-                  className="p-6 sm:p-8 lg:p-10"
-                >
-                  {/* Fake chat input */}
-                  <div className="rounded-[24px] border border-border/70 bg-background/80 p-5 sm:p-6">
-                    <div className="mb-4 flex items-center gap-3">
-                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-bold shadow-lg shadow-primary/25">
-                        AI
-                      </div>
-                      <div className="flex gap-2">
-                        <span className="rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-[11px] font-medium text-primary">
-                          Storefront
-                        </span>
-                        <span className="rounded-full border border-border/70 bg-card/60 px-3 py-1 text-[11px] font-medium text-muted-foreground">
-                          Landing Page
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="min-h-[72px] rounded-[20px] border border-border/70 bg-background/60 p-4">
-                      <p className="text-sm leading-6 text-foreground/80 sm:text-base">
-                        {typed}
-                        {phase === 'idle' && (
-                          <span className="ml-0.5 inline-block h-5 w-[2px] animate-pulse bg-primary align-middle" />
-                        )}
-                      </p>
-                    </div>
-
-                    {/* Send button area */}
-                    <div className="mt-4 flex items-center justify-between">
-                      <p className="text-[11px] text-muted-foreground">
-                        {phase === 'idle' ? 'Describe your storefront...' : ''}
-                      </p>
-                      <div
-                        className={`flex h-9 w-9 items-center justify-center rounded-full transition-all duration-300 ${
-                          phase === 'generating'
-                            ? 'bg-primary/20 text-primary'
-                            : typed.length > 0
-                            ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/25'
-                            : 'bg-secondary text-muted-foreground'
-                        }`}
-                      >
-                        {phase === 'generating' ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <Send className="h-4 w-4" />
-                        )}
-                      </div>
-                    </div>
+      {/* Showcase area */}
+      <div className="relative mt-12 sm:mt-14">
+        <AnimatePresence mode="wait">
+          {/* ─── IDLE + GENERATING: Small centered chatbox ─── */}
+          {phase !== 'done' && (
+            <motion.div
+              key="prompt-phase"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -30, scale: 0.96, filter: 'blur(6px)' }}
+              transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+              className="mx-auto max-w-[680px] px-4 sm:px-6"
+            >
+              <div
+                className="rounded-[24px] border border-border/70 bg-card/80 p-5 sm:p-6 backdrop-blur-xl"
+                style={{ boxShadow: '0 40px 120px -56px hsl(var(--primary) / 0.4)' }}
+              >
+                <div className="mb-4 flex items-center gap-3">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-bold shadow-lg shadow-primary/25">
+                    AI
                   </div>
+                  <div className="flex gap-2">
+                    <span className="rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-[11px] font-medium text-primary">
+                      Storefront
+                    </span>
+                    <span className="rounded-full border border-border/70 bg-card/60 px-3 py-1 text-[11px] font-medium text-muted-foreground">
+                      Landing Page
+                    </span>
+                  </div>
+                </div>
 
-                  {/* Generation progress */}
-                  <AnimatePresence>
-                    {phase === 'generating' && (
-                      <motion.div
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: 'auto' }}
-                        exit={{ opacity: 0, height: 0 }}
-                        transition={{ duration: 0.4 }}
-                        className="overflow-hidden"
-                      >
-                        <div className="mt-6 space-y-4">
-                          {/* Progress bar */}
-                          <div className="flex items-center gap-4">
-                            <div className="h-2 flex-1 overflow-hidden rounded-full bg-secondary">
-                              <motion.div
-                                className="h-full rounded-full bg-gradient-to-r from-primary via-primary to-ring"
-                                style={{ width: `${progress}%` }}
-                                transition={{ duration: 0.1 }}
-                              />
-                            </div>
-                            <span className="min-w-[40px] text-right text-xs font-bold tabular-nums text-primary">
-                              {progress}%
-                            </span>
-                          </div>
-
-                          {/* Step indicator */}
-                          <div className="flex items-center gap-2">
-                            <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
-                            <span className="text-xs font-medium text-muted-foreground">
-                              {progressSteps[stepIdx]}
-                            </span>
-                          </div>
-
-                          {/* Step dots */}
-                          <div className="flex gap-2">
-                            {progressSteps.map((_, i) => (
-                              <div
-                                key={i}
-                                className={`h-1.5 flex-1 rounded-full transition-all duration-300 ${
-                                  i <= stepIdx ? 'bg-primary' : 'bg-secondary'
-                                }`}
-                              />
-                            ))}
-                          </div>
-                        </div>
-                      </motion.div>
+                <div className="min-h-[56px] rounded-[16px] border border-border/70 bg-background/60 p-4">
+                  <p className="text-sm leading-6 text-foreground/80">
+                    {typed}
+                    {phase === 'idle' && (
+                      <span className="ml-0.5 inline-block h-5 w-[2px] animate-pulse bg-primary align-middle" />
                     )}
-                  </AnimatePresence>
-                </motion.div>
-              )}
+                  </p>
+                </div>
 
-              {/* ─── DONE: Generated result ─── */}
-              {phase === 'done' && (
-                <motion.div
-                  key="result-phase"
-                  initial={{ opacity: 0, y: 30, scale: 0.97, filter: 'blur(6px)' }}
-                  animate={{ opacity: 1, y: 0, scale: 1, filter: 'blur(0px)' }}
-                  transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
-                >
-                  {/* Success badge */}
-                  <div className="flex items-center justify-center border-b border-border/70 bg-background/60 px-5 py-3 sm:px-7">
-                    <div className="flex items-center gap-2">
-                      <CheckCircle2 className="h-4 w-4 text-primary" />
-                      <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-primary">
-                        Storefront Generated
-                      </span>
-                    </div>
+                <div className="mt-3 flex items-center justify-between">
+                  <p className="text-[11px] text-muted-foreground">
+                    {phase === 'idle' ? 'Describe your storefront...' : ''}
+                  </p>
+                  <div
+                    className={`flex h-8 w-8 items-center justify-center rounded-full transition-all duration-300 ${
+                      phase === 'generating'
+                        ? 'bg-primary/20 text-primary'
+                        : typed.length > 0
+                        ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/25'
+                        : 'bg-secondary text-muted-foreground'
+                    }`}
+                  >
+                    {phase === 'generating' ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Send className="h-3.5 w-3.5" />
+                    )}
                   </div>
+                </div>
 
-                  {/* Full-width preview */}
-                  <div className="relative overflow-hidden">
-                    <img
-                      src={aiBuilderResult}
-                      alt="AI-generated luxury fashion storefront"
-                      className="block w-full h-auto"
-                      width={1440}
-                      height={600}
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-background/80 via-transparent to-transparent" />
+                {/* Generation progress */}
+                <AnimatePresence>
+                  {phase === 'generating' && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      exit={{ opacity: 0, height: 0 }}
+                      transition={{ duration: 0.4 }}
+                      className="overflow-hidden"
+                    >
+                      <div className="mt-5 space-y-3">
+                        <div className="flex items-center gap-4">
+                          <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-secondary">
+                            <motion.div
+                              className="h-full rounded-full bg-gradient-to-r from-primary via-primary to-ring"
+                              style={{ width: `${progress}%` }}
+                              transition={{ duration: 0.1 }}
+                            />
+                          </div>
+                          <span className="min-w-[36px] text-right text-xs font-bold tabular-nums text-primary">
+                            {progress}%
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Loader2 className="h-3 w-3 animate-spin text-primary" />
+                          <span className="text-xs font-medium text-muted-foreground">
+                            {progressSteps[stepIdx]}
+                          </span>
+                        </div>
+                        <div className="flex gap-1.5">
+                          {progressSteps.map((_, i) => (
+                            <div
+                              key={i}
+                              className={`h-1 flex-1 rounded-full transition-all duration-300 ${
+                                i <= stepIdx ? 'bg-primary' : 'bg-secondary'
+                              }`}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            </motion.div>
+          )}
 
-                    {/* Overlay info */}
-                    <div className="absolute inset-x-0 bottom-0 p-5 sm:p-7">
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-primary">
-                        Your storefront is ready
-                      </p>
-                      <h3 className="mt-2 text-xl font-semibold tracking-[-0.02em] text-foreground sm:text-2xl">
-                        Luxury Fashion Boutique — Dark & Gold
-                      </h3>
-                      <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                        Hero video, product grid, hover effects — all generated from your prompt.
-                      </p>
-                    </div>
+          {/* ─── DONE: Full-width result ─── */}
+          {phase === 'done' && (
+            <motion.div
+              key="result-phase"
+              initial={{ opacity: 0, y: 30, scale: 0.97, filter: 'blur(6px)' }}
+              animate={{ opacity: 1, y: 0, scale: 1, filter: 'blur(0px)' }}
+              transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+              className="px-4 sm:px-8 lg:px-12"
+            >
+              <div
+                className="relative overflow-hidden rounded-[20px] sm:rounded-[32px] border border-border/70 bg-card/80 backdrop-blur-xl"
+                style={{ boxShadow: '0 40px 120px -56px hsl(var(--primary) / 0.4)' }}
+              >
+                <div className="flex items-center justify-center border-b border-border/70 bg-background/60 px-5 py-3">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="h-4 w-4 text-primary" />
+                    <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-primary">
+                      Storefront Generated
+                    </span>
                   </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-        </div>
+                </div>
+
+                <div className="relative overflow-hidden">
+                  <img
+                    src={aiBuilderResult}
+                    alt="AI-generated luxury fashion storefront"
+                    className="block w-full h-auto"
+                    width={1440}
+                    height={600}
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-background/80 via-transparent to-transparent" />
+                  <div className="absolute inset-x-0 bottom-0 p-5 sm:p-7">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-primary">
+                      Your storefront is ready
+                    </p>
+                    <h3 className="mt-2 text-xl font-semibold tracking-[-0.02em] text-foreground sm:text-2xl">
+                      Luxury Fashion Boutique — Dark & Gold
+                    </h3>
+                    <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                      Hero video, product grid, hover effects — all generated from your prompt.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
 
       {/* Stats + CTA in centered container */}
       <div className="relative mx-auto w-full max-w-[1100px] px-4 sm:px-6 lg:px-8">
