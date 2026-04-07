@@ -8,15 +8,71 @@ import klingLogo from '@/assets/logos/kling-full.png';
 import pikaLogo from '@/assets/logos/pika.png';
 import veo3Logo from '@/assets/logos/veo3.png';
 
-const logos = [
-  { name: 'DaVinci Resolve', src: davinciLogo },
-  { name: 'Premiere Pro', src: premiereLogo },
-  { name: 'After Effects', src: afterEffectsLogo },
-  { name: 'OpenAI', src: openaiLogo },
-  { name: 'Sora', src: soraLogo },
-  { name: 'Kling AI', src: klingLogo },
-  { name: 'Pika', src: pikaLogo },
-  { name: 'Veo 3', src: veo3Logo },
+type LogoItem = {
+  name: string;
+  src: string;
+  imageClassName: string;
+  filter: string;
+  opacity?: number;
+};
+
+const logos: LogoItem[] = [
+  {
+    name: 'DaVinci Resolve',
+    src: davinciLogo,
+    imageClassName: 'h-10 sm:h-11',
+    filter: 'grayscale(1) brightness(1.22) contrast(1.06)',
+    opacity: 0.84,
+  },
+  {
+    name: 'Premiere Pro',
+    src: premiereLogo,
+    imageClassName: 'h-9 sm:h-10',
+    filter: 'grayscale(1) brightness(1.18) contrast(1.12)',
+    opacity: 0.82,
+  },
+  {
+    name: 'After Effects',
+    src: afterEffectsLogo,
+    imageClassName: 'h-9 sm:h-10',
+    filter: 'grayscale(1) brightness(1.18) contrast(1.12)',
+    opacity: 0.82,
+  },
+  {
+    name: 'OpenAI',
+    src: openaiLogo,
+    imageClassName: 'h-7 sm:h-8',
+    filter: 'invert(1) grayscale(1) brightness(0.92)',
+    opacity: 0.84,
+  },
+  {
+    name: 'Sora',
+    src: soraLogo,
+    imageClassName: 'h-10 sm:h-11',
+    filter: 'grayscale(1) brightness(1.2) contrast(1.08)',
+    opacity: 0.84,
+  },
+  {
+    name: 'Kling AI',
+    src: klingLogo,
+    imageClassName: 'h-6 sm:h-7',
+    filter: 'invert(1) grayscale(1) brightness(0.94)',
+    opacity: 0.8,
+  },
+  {
+    name: 'Pika',
+    src: pikaLogo,
+    imageClassName: 'h-8 sm:h-9',
+    filter: 'grayscale(1) brightness(1.16) contrast(1.1)',
+    opacity: 0.82,
+  },
+  {
+    name: 'Veo 3',
+    src: veo3Logo,
+    imageClassName: 'h-6 sm:h-7',
+    filter: 'invert(1) grayscale(1) brightness(0.94)',
+    opacity: 0.78,
+  },
 ];
 
 export default function SlidingBanner() {
@@ -36,16 +92,20 @@ export default function SlidingBanner() {
       track.style.animation = 'none';
       const clones = track.querySelectorAll('[data-clone]');
       clones.forEach((clone) => clone.remove());
+
       const contentWidth = originalContent.offsetWidth;
       const viewportWidth = track.parentElement?.offsetWidth || window.innerWidth;
       const clonesNeeded = Math.ceil((viewportWidth * 2) / contentWidth);
+
       for (let i = 0; i < clonesNeeded; i++) {
         const clone = originalContent.cloneNode(true) as HTMLElement;
         clone.setAttribute('data-clone', 'true');
         track.appendChild(clone);
       }
+
       const duration = contentWidth / SPEED;
       if (styleRef.current) styleRef.current.remove();
+
       const style = document.createElement('style');
       style.textContent = `
         @keyframes ${animName} {
@@ -53,29 +113,36 @@ export default function SlidingBanner() {
           to { transform: translate3d(${-contentWidth}px, 0, 0); }
         }
       `;
+
       document.head.appendChild(style);
       styleRef.current = style;
       track.style.animation = `${animName} ${duration}s linear infinite`;
     };
 
-    const images = originalContent.querySelectorAll('img');
-    let loadedCount = 0;
-    const totalImages = images.length;
-    const checkAllLoaded = () => {
-      loadedCount++;
-      if (loadedCount >= totalImages) init();
-    };
-    images.forEach((img) => {
-      if (img.complete) checkAllLoaded();
-      else {
-        img.addEventListener('load', checkAllLoaded);
-        img.addEventListener('error', checkAllLoaded);
-      }
-    });
-    if (totalImages === 0 || loadedCount >= totalImages) init();
+    const images = Array.from(originalContent.querySelectorAll('img'));
+
+    if (images.length === 0) {
+      init();
+    } else {
+      let resolved = 0;
+      const handleResolved = () => {
+        resolved += 1;
+        if (resolved === images.length) init();
+      };
+
+      images.forEach((img) => {
+        if (img.complete) {
+          handleResolved();
+        } else {
+          img.addEventListener('load', handleResolved, { once: true });
+          img.addEventListener('error', handleResolved, { once: true });
+        }
+      });
+    }
 
     const handleResize = () => init();
     window.addEventListener('resize', handleResize);
+
     return () => {
       window.removeEventListener('resize', handleResize);
       if (styleRef.current) styleRef.current.remove();
@@ -83,18 +150,26 @@ export default function SlidingBanner() {
   }, []);
 
   return (
-    <div className="relative py-8 sm:py-10 border-y border-white/[0.06]" style={{ background: '#000' }}>
-      {/* Section label */}
-      <div className="text-center mb-6">
-        <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-muted-foreground">
-          Powered By
+    <section className="relative overflow-hidden border-y border-border/40 bg-background py-8 sm:py-10">
+      <div
+        className="pointer-events-none absolute inset-x-0 top-0 h-24 blur-3xl"
+        style={{
+          background: 'radial-gradient(circle at top center, hsl(var(--primary) / 0.14), transparent 68%)',
+        }}
+      />
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/60 to-transparent" />
+
+      <div className="mb-6 flex items-center justify-center gap-4 px-6">
+        <span className="h-px w-10 bg-gradient-to-r from-transparent to-border sm:w-16" />
+        <p className="text-[10px] font-semibold uppercase tracking-[0.38em] text-foreground/70">
+          Powered by
         </p>
+        <span className="h-px w-10 bg-gradient-to-l from-transparent to-border sm:w-16" />
       </div>
-      
-      <div style={{ overflow: 'hidden', width: '100%' }} className="relative">
-        {/* Edge fade masks */}
-        <div className="absolute left-0 top-0 bottom-0 w-24 sm:w-40 bg-gradient-to-r from-background to-transparent z-10 pointer-events-none" />
-        <div className="absolute right-0 top-0 bottom-0 w-24 sm:w-40 bg-gradient-to-l from-background to-transparent z-10 pointer-events-none" />
+
+      <div className="relative overflow-hidden">
+        <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-24 bg-gradient-to-r from-background via-background to-transparent sm:w-40" />
+        <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-24 bg-gradient-to-l from-background via-background to-transparent sm:w-40" />
 
         <div
           ref={trackRef}
@@ -106,30 +181,21 @@ export default function SlidingBanner() {
         >
           <div
             ref={contentRef}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '56px',
-              paddingRight: '56px',
-              flex: '0 0 auto',
-            }}
+            className="flex flex-none items-center gap-12 pr-12 sm:gap-16 sm:pr-16"
           >
             {logos.map((logo, index) => (
               <div
-                key={index}
-                className="flex items-center justify-center rounded-lg bg-white/[0.06] border border-white/[0.08] px-5 py-3"
-                style={{ flex: '0 0 auto' }}
+                key={`${logo.name}-${index}`}
+                className="flex min-w-[100px] flex-none items-center justify-center px-1 sm:min-w-[124px]"
               >
                 <img
                   src={logo.src}
                   alt={logo.name}
+                  loading="lazy"
+                  className={`w-auto object-contain ${logo.imageClassName}`}
                   style={{
-                    height: '28px',
-                    width: 'auto',
-                    objectFit: 'contain',
-                    filter: 'grayscale(1) brightness(1.8)',
-                    opacity: 0.7,
-                    flex: '0 0 auto',
+                    filter: logo.filter,
+                    opacity: logo.opacity ?? 0.82,
                   }}
                 />
               </div>
@@ -137,6 +203,6 @@ export default function SlidingBanner() {
           </div>
         </div>
       </div>
-    </div>
+    </section>
   );
 }
