@@ -9,6 +9,7 @@ import {
   RotateCcw,
   Image as ImageIcon,
 } from "lucide-react";
+import { Film } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useSubscription } from "@/hooks/useSubscription";
@@ -21,7 +22,10 @@ import { motion, AnimatePresence } from "framer-motion";
 
 export default function ImageAnimator() {
   const location = useLocation();
+  const [mode, setMode] = useState<"image" | "video-ref">("image");
   const [sourceImage, setSourceImage] = useState<string | null>(null);
+  const [sourceVideo, setSourceVideo] = useState<string | null>(null);
+  const [sourceVideoName, setSourceVideoName] = useState<string | null>(null);
   const [prompt, setPrompt] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedVideo, setGeneratedVideo] = useState<string | null>(null);
@@ -45,7 +49,8 @@ export default function ImageAnimator() {
   }, []);
 
   const handleGenerate = async () => {
-    if (!sourceImage) { toast.error("Please add a source image"); return; }
+    if (mode === "image" && !sourceImage) { toast.error("Please add a source image"); return; }
+    if (mode === "video-ref" && !sourceVideo) { toast.error("Please upload a reference video"); return; }
     if (!prompt.trim()) { toast.error("Please describe the animation"); return; }
     if (!user) { dispatchAuthGate(); return; }
     if (creditBalance < 50) { toast.error("Insufficient credits. Video generation costs 50 credits."); return; }
@@ -60,7 +65,9 @@ export default function ImageAnimator() {
       const { data, error } = await supabase.functions.invoke("generate-video", {
         body: {
           prompt: prompt.trim(),
-          image_url: sourceImage,
+          image_url: mode === "image" ? sourceImage : undefined,
+          video_url: mode === "video-ref" ? sourceVideo : undefined,
+          mode: mode === "video-ref" ? "video-reference" : "image-to-video",
           duration,
           aspect_ratio: "16:9",
         },
@@ -104,6 +111,23 @@ export default function ImageAnimator() {
     }
   };
 
+  const handleVideoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 200 * 1024 * 1024) { toast.error("File too large. Max 200MB."); return; }
+    if (!file.type.startsWith("video/")) { toast.error("Please upload a video file."); return; }
+    setSourceVideoName(file.name);
+    const upload = async () => {
+      const path = `video-ref/${Date.now()}-${file.name}`;
+      const { data: upData, error: upErr } = await supabase.storage.from("tool-assets").upload(path, file, { contentType: file.type });
+      if (upErr) { toast.error("Failed to upload video"); setSourceVideoName(null); return; }
+      const { data: urlData } = supabase.storage.from("tool-assets").getPublicUrl(upData.path);
+      setSourceVideo(urlData.publicUrl);
+      toast.success("Video uploaded!");
+    };
+    upload();
+  };
+
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -133,8 +157,36 @@ export default function ImageAnimator() {
 
           <div className="flex-1 overflow-y-auto px-4 pb-4 space-y-3">
 
-            {/* Source image */}
+            {/* Mode selector */}
             <div>
+              <label className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500 mb-1.5 block">Source Type</label>
+              <div className="flex gap-1.5">
+                {([
+                  { id: "image" as const, label: "Image", Icon: ImageIcon },
+                  { id: "video-ref" as const, label: "Ref Video", Icon: Film },
+                ]).map(({ id, label, Icon }) => {
+                  const active = mode === id;
+                  return (
+                    <button
+                      key={id}
+                      onClick={() => setMode(id)}
+                      className="flex-1 flex items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-[12px] font-medium transition text-center"
+                      style={{
+                        background: active ? "rgba(139,92,246,0.12)" : "rgba(255,255,255,0.02)",
+                        color: active ? "#a78bfa" : "#52525b",
+                        border: active ? "1px solid rgba(139,92,246,0.25)" : "1px solid rgba(255,255,255,0.04)",
+                      }}
+                    >
+                      <Icon className="h-3.5 w-3.5" />
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Source image */}
+            {mode === "image" && <div>
               <label className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500 mb-1.5 block">Source Image</label>
               {sourceImage ? (
                 <div className="relative rounded-xl overflow-hidden border border-white/[0.06]">
@@ -154,7 +206,38 @@ export default function ImageAnimator() {
                   <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
                 </label>
               )}
-            </div>
+            </div>}
+
+            {/* Source video */}
+            {mode === "video-ref" && <div>
+              <label className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500 mb-1.5 block">Reference Video</label>
+              {sourceVideo ? (
+                <div className="relative rounded-xl overflow-hidden border border-white/[0.06]">
+                  <video src={sourceVideo} className="w-full h-40 object-cover" muted />
+                  <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/80 to-transparent p-2">
+                    <p className="text-[10px] text-zinc-300 truncate">{sourceVideoName}</p>
+                  </div>
+                  <button
+                    onClick={() => { setSourceVideo(null); setSourceVideoName(null); }}
+                    className="absolute top-2 right-2 rounded-lg px-2 py-1 text-[10px] font-medium text-white bg-black/60 backdrop-blur-sm border border-white/[0.1] hover:bg-black/80 transition"
+                  >
+                    Remove
+                  </button>
+                </div>
+              ) : sourceVideoName ? (
+                <div className="flex items-center gap-2 rounded-xl p-4 border border-white/[0.06] bg-white/[0.02]">
+                  <Loader2 className="h-4 w-4 text-violet-400 animate-spin" />
+                  <span className="text-[12px] text-zinc-400">Uploading {sourceVideoName}…</span>
+                </div>
+              ) : (
+                <label className="flex flex-col items-center gap-2 rounded-xl p-6 cursor-pointer border border-dashed border-white/[0.1] bg-white/[0.02] hover:bg-white/[0.04] transition">
+                  <Film className="h-6 w-6 text-zinc-500" />
+                  <span className="text-[12px] text-zinc-400">Upload a reference video</span>
+                  <span className="text-[10px] text-zinc-600">MP4/MOV, 3-10s, max 200MB</span>
+                  <input type="file" accept="video/mp4,video/quicktime,video/*" className="hidden" onChange={handleVideoUpload} />
+                </label>
+              )}
+            </div>}
 
             {/* Prompt */}
             <div>
@@ -197,11 +280,11 @@ export default function ImageAnimator() {
           <div className="px-4 pb-4 pt-2 border-t border-white/[0.04]">
             <button
               onClick={handleGenerate}
-              disabled={isGenerating || !sourceImage || !prompt.trim()}
+              disabled={isGenerating || (mode === "image" ? !sourceImage : !sourceVideo) || !prompt.trim()}
               className="w-full inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-30 transition-all"
               style={{
                 background: "linear-gradient(135deg, #8b5cf6, #d946ef)",
-                boxShadow: isGenerating || !sourceImage || !prompt.trim() ? "none" : "0 4px 20px rgba(139,92,246,0.3), 0 0 0 1px rgba(139,92,246,0.2)",
+                boxShadow: isGenerating || (mode === "image" ? !sourceImage : !sourceVideo) || !prompt.trim() ? "none" : "0 4px 20px rgba(139,92,246,0.3), 0 0 0 1px rgba(139,92,246,0.2)",
               }}
             >
               {isGenerating ? (
