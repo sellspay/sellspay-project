@@ -25,7 +25,8 @@ export function FeatureTabsBar() {
         <Reveal>
           <div className="mb-20 sm:mb-24">
             <h2
-              className="text-[clamp(2rem,5vw,3.5rem)] font-light tracking-tight leading-[1.15] text-white/90 max-w-lg"
+              className="text-[clamp(2.5rem,6vw,4.5rem)] font-extralight tracking-[-0.03em] leading-[1.1] text-white/90 max-w-2xl"
+              style={{ fontFamily: "'Inter', system-ui, sans-serif" }}
             >
               Why creators choose
               <br />
@@ -34,10 +35,10 @@ export function FeatureTabsBar() {
 
             <Link
               to="/login"
-              className="mt-8 inline-flex items-center gap-2 rounded-full px-7 py-3 text-sm font-semibold text-black transition-all hover:brightness-110"
+              className="mt-8 inline-flex items-center gap-2 rounded-full px-7 py-3 text-sm font-semibold text-white transition-all hover:brightness-110"
               style={{
-                background: 'linear-gradient(180deg, #f5d76e 0%, #c9a933 100%)',
-                boxShadow: '0 1px 24px rgba(245,215,110,0.25), inset 0 1px 0 rgba(255,255,255,0.35)',
+                background: 'linear-gradient(180deg, #3b82f6 0%, #1d4ed8 100%)',
+                boxShadow: '0 1px 24px rgba(59,130,246,0.3), inset 0 1px 0 rgba(255,255,255,0.15)',
               }}
             >
               Start Creating
