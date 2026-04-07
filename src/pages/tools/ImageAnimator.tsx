@@ -79,7 +79,7 @@ export default function ImageAnimator() {
   };
 
   const handleGenerate = async () => {
-    if (mode === "image" && !sourceImage) { toast.error("Please add a source image"); return; }
+    if (!sourceImage) { toast.error("Please add a source image"); return; }
     if (mode === "video-ref" && !sourceVideo) { toast.error("Please upload a reference video"); return; }
     if (!prompt.trim()) { toast.error("Please describe the animation"); return; }
     if (!user) { dispatchAuthGate(); return; }
@@ -93,11 +93,8 @@ export default function ImageAnimator() {
 
     try {
       // Upload base64 image to storage first to avoid massive payloads
-      let imageUrl: string | undefined;
-      if (mode === "image" && sourceImage) {
-        toast.info("Uploading source image...");
-        imageUrl = await uploadImageToStorage(sourceImage);
-      }
+      toast.info("Uploading source image...");
+      const imageUrl = await uploadImageToStorage(sourceImage);
 
       const { data, error } = await supabase.functions.invoke("generate-video", {
         body: {
