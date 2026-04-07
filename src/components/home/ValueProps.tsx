@@ -171,13 +171,14 @@ export function ValueProps() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.6 }}
-            className="rounded-[24px] overflow-hidden relative"
+            className="rounded-[20px] overflow-hidden relative"
             style={{
-              background: 'linear-gradient(145deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02))',
-              border: '1px solid rgba(255,255,255,0.08)',
+              background: 'linear-gradient(145deg, rgba(255,255,255,0.08), rgba(255,255,255,0.03))',
+              border: '1px solid rgba(255,255,255,0.12)',
+              boxShadow: '0 0 0 1px rgba(255,255,255,0.04), 0 8px 40px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1), inset 0 -1px 0 rgba(255,255,255,0.03)',
             }}
           >
-            <div className="flex flex-col lg:flex-row min-h-[420px] lg:min-h-[480px]">
+            <div className="flex flex-col lg:flex-row h-[380px] lg:h-[420px]">
               {/* Left sidebar — tool list */}
               <div
                 className="lg:w-[320px] flex-shrink-0 p-8 lg:p-10 flex flex-col justify-between"
