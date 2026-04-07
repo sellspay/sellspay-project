@@ -110,7 +110,7 @@ export function AIBuilderShowcase() {
         />
       </div>
 
-      <div className="relative mx-auto w-full max-w-[920px] px-4 sm:px-6 lg:px-8">
+      <div className="relative mx-auto w-full max-w-[1100px] px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: 24 }}
