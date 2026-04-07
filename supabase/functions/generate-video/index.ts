@@ -118,8 +118,10 @@ serve(async (req) => {
       aspect_ratio,
     };
 
+    // For video-reference mode: send BOTH image_url and video_url
     if (mode === "video-reference" && video_url) {
       requestBody.video_url = video_url;
+      if (image_url) requestBody.image_url = image_url;
     } else if (image_url) {
       requestBody.image_url = image_url;
     }
