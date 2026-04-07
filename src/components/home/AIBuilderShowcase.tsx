@@ -3,11 +3,32 @@ import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowRight, Sparkles, Send, CheckCircle2, Loader2, Zap, Palette, Code2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import aiBuilderResult from '@/assets/ai-builder-result.jpg';
+import aiBuilderFashion from '@/assets/ai-builder-result.jpg';
+import aiBuilderGaming from '@/assets/ai-builder-gaming.jpg';
+import aiBuilderOrganic from '@/assets/ai-builder-organic.jpg';
 
 type Phase = 'idle' | 'generating' | 'done';
 
-const PROMPT_TEXT = 'Build me a luxury fashion boutique with dark theme, gold accents, hero video section, and a product grid with hover effects';
+const EXAMPLES = [
+  {
+    prompt: 'Build me a luxury fashion boutique with dark theme, gold accents, hero video section, and a product grid with hover effects',
+    image: aiBuilderFashion,
+    title: 'Luxury Fashion Boutique',
+    subtitle: 'Generated from your prompt · Dark & Gold theme',
+  },
+  {
+    prompt: 'Create a gaming gear store with dark purple and neon cyan colors, RGB keyboard hero banner, and product cards for peripherals with discount badges',
+    image: aiBuilderGaming,
+    title: 'Gaming Gear Store',
+    subtitle: 'Generated from your prompt · Neon & Purple theme',
+  },
+  {
+    prompt: 'Design an organic food marketplace with warm earth tones, farm-to-table hero section, and product cards showing artisan foods with pricing',
+    image: aiBuilderOrganic,
+    title: 'Organic Food Market',
+    subtitle: 'Generated from your prompt · Natural & Warm theme',
+  },
+];
 
 const progressSteps = [
   'Analyzing brand direction...',
