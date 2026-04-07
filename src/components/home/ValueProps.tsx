@@ -3,6 +3,7 @@ import { motion, useInView } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { Sparkles, Zap, TrendingUp, Users, ArrowRight, Image, Music, Video, Wand2, ShieldCheck, CreditCard, Globe, Lock } from 'lucide-react';
 import { useRef, useEffect, useState } from 'react';
+import aiStudioHero from '@/assets/home/ai-studio-hero.jpg';
 
 /* ─── Animated Counter Hook ─── */
 function useAnimatedCounter(end: number, duration = 2000, ref?: React.RefObject<HTMLElement | null>) {
@@ -35,10 +36,11 @@ const STATS = [
 ];
 
 const AI_TOOLS = [
-  { icon: Image, label: 'Image Gen' },
-  { icon: Video, label: 'Video Gen' },
-  { icon: Music, label: 'Audio Tools' },
-  { icon: Wand2, label: 'SFX Engine' },
+  { icon: Image, label: 'AI Image Generator', tag: 'New', active: false },
+  { icon: Video, label: 'AI Video Generator', tag: 'New', active: true },
+  { icon: Music, label: 'Audio Tools', tag: null, active: false },
+  { icon: Wand2, label: 'SFX Engine', tag: null, active: false },
+  { icon: Sparkles, label: 'Motion Sync', tag: 'New', active: false },
 ];
 
 const SOCIAL_PROOF = [
@@ -147,69 +149,118 @@ export function ValueProps() {
       />
 
       <div className="relative z-10 max-w-[1200px] mx-auto px-6 sm:px-8">
-        {/* AI Studio Card — rounded with gradient border */}
+        {/* Heading — centered Kling style */}
+        <Reveal>
+          <div className="text-center mb-12">
+            <h2
+              className="text-[clamp(2rem,5vw,3.5rem)] font-bold tracking-tight leading-[1.15] text-white"
+              style={{ fontFamily: "'DM Serif Display', Georgia, serif" }}
+            >
+              Get all the leading AI creation tools
+            </h2>
+            <p className="mt-4 text-base sm:text-lg max-w-2xl mx-auto" style={{ color: 'rgba(255,255,255,0.45)' }}>
+              Make any image, video, audio or SFX you want online with the leading AI models, all in one place.
+            </p>
+          </div>
+        </Reveal>
+
+        {/* Large preview card — Kling style */}
         <Reveal>
           <motion.div
-            whileHover={{ y: -6 }}
-            transition={{ duration: 0.4, ease: 'easeOut' }}
-            className="rounded-[32px] p-[1px] relative overflow-hidden"
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6 }}
+            className="rounded-[24px] overflow-hidden relative"
             style={{
-              background: 'linear-gradient(145deg, rgba(59,130,246,0.35), rgba(139,92,246,0.25), rgba(34,211,238,0.15), rgba(255,255,255,0.05))',
+              background: 'linear-gradient(145deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02))',
+              border: '1px solid rgba(255,255,255,0.08)',
             }}
           >
-            <div
-              className="rounded-[31px] relative overflow-hidden"
-              style={{ background: 'linear-gradient(145deg, #080d1a, #0a0810, #060812)' }}
-            >
-              {/* Ambient glows */}
-              <div className="absolute -top-32 -left-32 w-[500px] h-[500px] pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(59,130,246,0.15), transparent 55%)', filter: 'blur(60px)' }} />
-              <div className="absolute -bottom-24 -right-24 w-96 h-96 pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(139,92,246,0.12), transparent 55%)', filter: 'blur(60px)' }} />
-              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[350px] pointer-events-none" style={{ background: 'radial-gradient(ellipse, rgba(59,130,246,0.05), transparent 60%)', filter: 'blur(40px)' }} />
-
-              {/* Content */}
-              <div className="relative z-10 flex flex-col lg:flex-row items-center gap-14 px-10 py-16 sm:px-16 sm:py-20 lg:px-20">
-                <div className="flex-1 text-center lg:text-left">
-                  <div className="flex items-center gap-2.5 mb-7 justify-center lg:justify-start">
-                    <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #3b82f6, #8b5cf6)', boxShadow: '0 4px 20px rgba(59,130,246,0.3)' }}>
-                      <Sparkles className="w-4.5 h-4.5 text-white" />
-                    </div>
-                    <span className="text-xs font-bold uppercase tracking-[0.18em]" style={{ color: 'rgba(255,255,255,0.5)' }}>AI Studio</span>
+            <div className="flex flex-col lg:flex-row min-h-[420px] lg:min-h-[480px]">
+              {/* Left sidebar — tool list */}
+              <div
+                className="lg:w-[320px] flex-shrink-0 p-8 lg:p-10 flex flex-col justify-between"
+                style={{
+                  background: 'linear-gradient(180deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.01) 100%)',
+                  borderRight: '1px solid rgba(255,255,255,0.06)',
+                }}
+              >
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-[0.18em] mb-6" style={{ color: 'rgba(255,255,255,0.4)' }}>
+                    AI Studio Tools
+                  </p>
+                  <div className="space-y-1">
+                    {AI_TOOLS.map((tool) => (
+                      <div
+                        key={tool.label}
+                        className="flex items-center gap-3 px-4 py-3 rounded-xl transition-colors"
+                        style={{
+                          background: tool.active
+                            ? 'linear-gradient(135deg, rgba(59,130,246,0.12), rgba(139,92,246,0.08))'
+                            : 'transparent',
+                          border: tool.active ? '1px solid rgba(59,130,246,0.2)' : '1px solid transparent',
+                        }}
+                      >
+                        <tool.icon className="w-4 h-4 flex-shrink-0" style={{ color: tool.active ? '#818cf8' : 'rgba(255,255,255,0.4)' }} />
+                        <span className="text-sm font-medium" style={{ color: tool.active ? '#e0e7ff' : 'rgba(255,255,255,0.55)' }}>
+                          {tool.label}
+                        </span>
+                        {tool.tag && (
+                          <span
+                            className="ml-auto text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full"
+                            style={{ background: 'rgba(59,130,246,0.15)', color: '#60a5fa' }}
+                          >
+                            {tool.tag}
+                          </span>
+                        )}
+                      </div>
+                    ))}
                   </div>
-                  <h3 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight mb-4" style={{ color: '#f0f0f0' }}>
-                    Create with AI.
+                </div>
+
+                <Link
+                  to="/login"
+                  className="mt-8 inline-flex items-center justify-center gap-2 rounded-full px-6 py-3 text-sm font-bold text-white transition-all hover:brightness-110 hover:scale-[1.03] active:scale-[0.98] w-full"
+                  style={{
+                    background: 'linear-gradient(180deg, #60a5fa 0%, #3b82f6 30%, #1d4ed8 70%, #1e3a8a 100%)',
+                    boxShadow: '0 4px 20px rgba(59,130,246,0.4), 0 1px 3px rgba(0,0,0,0.3), inset 0 2px 0 rgba(255,255,255,0.25), inset 0 -2px 4px rgba(0,0,0,0.2)',
+                    border: '1px solid rgba(96,165,250,0.5)',
+                    textShadow: '0 1px 2px rgba(0,0,0,0.3)',
+                  }}
+                >
+                  Explore AI Studio
+                  <ArrowRight className="w-4 h-4" />
+                </Link>
+              </div>
+
+              {/* Right — hero content + image */}
+              <div className="flex-1 relative overflow-hidden">
+                {/* Info overlay */}
+                <div className="absolute inset-0 z-10 p-8 lg:p-10 flex flex-col justify-end"
+                  style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.3) 40%, transparent 70%)' }}
+                >
+                  <h3
+                    className="text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight text-white mb-3"
+                    style={{ fontFamily: "'DM Serif Display', Georgia, serif" }}
+                  >
+                    AI Video Generator
                   </h3>
-                  <p className="text-xl sm:text-2xl font-light mb-6" style={{ color: 'rgba(255,255,255,0.3)' }}>
-                    Sell instantly.
+                  <p className="text-sm sm:text-base max-w-md leading-relaxed" style={{ color: 'rgba(255,255,255,0.55)' }}>
+                    Create stunning cinematic videos from text prompts with consistent character animation, facial identity, and realistic movement.
                   </p>
-                  <p className="text-base leading-relaxed max-w-lg mb-10 mx-auto lg:mx-0" style={{ color: 'rgba(255,255,255,0.42)' }}>
-                    Generate images, videos, audio & SFX — everything you need to build and sell digital products, powered by cutting-edge AI models.
-                  </p>
-                  <Link to="/studio" className="btn-premium inline-flex items-center gap-2.5 px-8 py-3.5 rounded-full text-sm font-semibold text-white">
-                    Explore AI Studio
-                    <ArrowRight className="w-4 h-4" />
+                  <Link to="/studio" className="mt-3 text-sm font-medium inline-flex items-center gap-1" style={{ color: '#60a5fa' }}>
+                    AI Video Generator <ArrowRight className="w-3.5 h-3.5" />
                   </Link>
                 </div>
-                <div className="grid grid-cols-2 gap-4 flex-shrink-0 w-full lg:w-auto lg:max-w-[300px]">
-                  {AI_TOOLS.map((tool, i) => (
-                    <motion.div
-                      key={tool.label}
-                      initial={{ opacity: 0, scale: 0.9 }}
-                      whileInView={{ opacity: 1, scale: 1 }}
-                      viewport={{ once: true }}
-                      transition={{ duration: 0.4, delay: 0.2 + i * 0.08 }}
-                      whileHover={{ scale: 1.04, y: -2 }}
-                      className="flex flex-col items-center justify-center gap-3 py-7 px-5 rounded-2xl text-center"
-                      style={{ background: 'rgba(255,255,255,0.035)', border: '1px solid rgba(255,255,255,0.06)' }}
-                    >
-                      <div className="w-11 h-11 rounded-xl flex items-center justify-center"
-                        style={{ background: 'linear-gradient(135deg, rgba(59,130,246,0.15), rgba(139,92,246,0.1))', border: '1px solid rgba(255,255,255,0.08)' }}
-                      >
-                        <tool.icon className="w-5 h-5" style={{ color: '#818cf8' }} />
-                      </div>
-                      <p className="text-xs font-semibold" style={{ color: 'rgba(255,255,255,0.6)' }}>{tool.label}</p>
-                    </motion.div>
-                  ))}
-                </div>
+
+                {/* Background image */}
+                <img
+                  src={aiStudioHero}
+                  alt="AI Studio preview"
+                  className="w-full h-full object-cover"
+                  loading="lazy"
+                />
               </div>
             </div>
           </motion.div>
