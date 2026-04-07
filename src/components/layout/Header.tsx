@@ -176,9 +176,7 @@ export default function Header() {
         onClick={() => setActiveDropdown(null)}
       />
 
-      <header className={cn(
-        "fixed top-0 z-50 w-full transition-all duration-300 backdrop-blur-md",
-        "border-b border-transparent"
+      <header className="fixed top-0 z-50 w-full transition-all duration-300 backdrop-blur-md border-b border-transparent" style={{ backgroundColor: 'transparent' }}>
       )} style={{ backgroundColor: 'transparent' }}>
         <div className="mx-auto w-full px-4 sm:px-6 lg:px-8">
           <div className="relative flex h-16 items-center justify-between">
@@ -264,9 +262,10 @@ export default function Header() {
                 className={cn(
                   "inline-flex h-10 items-center px-3 text-sm font-bold tracking-wide",
                   "text-foreground/90 transition-all duration-300",
-                  "hover:text-foreground hover:[text-shadow:_0_1px_8px_rgba(255,255,255,0.4),_0_0_20px_rgba(255,255,255,0.15)] hover:scale-105",
+                  "hover:text-foreground hover:scale-105",
                   "[text-shadow:_0_1px_2px_rgba(0,0,0,0.5)]",
-                  isActive('/vibecoder') && "text-foreground [text-shadow:_0_1px_8px_rgba(255,255,255,0.4)]"
+                  "hover:[text-shadow:_0_0_8px_rgba(255,100,100,0.5),_0_0_16px_rgba(100,200,255,0.4),_0_0_24px_rgba(150,100,255,0.3)]",
+                  isActive('/vibecoder') && "text-foreground [text-shadow:_0_0_8px_rgba(255,100,100,0.5),_0_0_16px_rgba(100,200,255,0.4)]"
                 )}
               >
                 AI Builder
