@@ -22,8 +22,9 @@ import { dispatchAuthGate } from "@/utils/authGateEvent";
 import { dispatchToolGenStart, dispatchToolGenEnd } from "@/utils/toolGenerationEvent";
 import { saveToolAsset } from "@/utils/saveToolAsset";
 import { motion, AnimatePresence } from "framer-motion";
+import { VIDEO_MODELS, VIDEO_MODEL_CATEGORIES, getVideoModelsByCategory, getVideoModelById } from "@/models/videoModels";
 
-const VIDEO_COST = 50;
+const DEFAULT_VIDEO_COST = 50;
 
 const EXAMPLE_PAIRS = [
   { label: "Dance Transfer", desc: "Apply choreography from one performer to another", emoji: "💃" },
@@ -42,6 +43,10 @@ export default function MotionTransfer() {
   const [generatedVideo, setGeneratedVideo] = useState<string | null>(null);
   const [duration, setDuration] = useState<"5" | "10">("5");
   const [motionStrength, setMotionStrength] = useState<"exact" | "partial">("exact");
+  const [videoModel, setVideoModel] = useState("kling-motion-control");
+  const [modelSelectorOpen, setModelSelectorOpen] = useState(false);
+  const selectedModelInfo = getVideoModelById(videoModel);
+  const VIDEO_COST = selectedModelInfo?.creditCost ?? DEFAULT_VIDEO_COST;
   const [isSourcePlaying, setIsSourcePlaying] = useState(false);
   const [isRefPlaying, setIsRefPlaying] = useState(false);
   const sourceVideoRef = useRef<HTMLVideoElement>(null);
@@ -95,6 +100,7 @@ export default function MotionTransfer() {
           video_url: referenceVideo,
           source_video_url: sourceVideo,
           mode: "motion-transfer",
+          model: videoModel,
           duration,
           aspect_ratio: "16:9",
         },
