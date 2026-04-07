@@ -136,7 +136,7 @@ export function AIBuilderShowcase() {
             asChild
             className="h-14 px-10 text-sm font-bold tracking-wider rounded-full bg-gradient-to-r from-purple-600 to-pink-600 text-white hover:from-purple-500 hover:to-pink-500 shadow-lg shadow-purple-500/20 transition-all duration-300 group"
           >
-            <Link to="/vibecoder">
+            <Link to="/ai-builder">
               Start Building
               <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
             </Link>

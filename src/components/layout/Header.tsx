@@ -257,14 +257,14 @@ export default function Header() {
 
               {/* AI Builder */}
               <Link 
-                to="/vibecoder"
+                to="/ai-builder"
                 className={cn(
                   "inline-flex h-10 items-center px-3 text-sm font-bold tracking-wide",
                   "text-foreground/90 transition-all duration-300",
                   "hover:text-foreground hover:scale-105",
                   "[text-shadow:_0_1px_2px_rgba(0,0,0,0.5)]",
                   "hover:[text-shadow:_0_0_8px_rgba(255,100,100,0.5),_0_0_16px_rgba(100,200,255,0.4),_0_0_24px_rgba(150,100,255,0.3)]",
-                  isActive('/vibecoder') && "text-foreground [text-shadow:_0_0_8px_rgba(255,100,100,0.5),_0_0_16px_rgba(100,200,255,0.4)]"
+                  isActive('/ai-builder') && "text-foreground [text-shadow:_0_0_8px_rgba(255,100,100,0.5),_0_0_16px_rgba(100,200,255,0.4)]"
                 )}
               >
                 AI Builder
