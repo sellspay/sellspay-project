@@ -133,10 +133,12 @@ export function AIBuilderShowcase() {
           </p>
         </motion.div>
 
-        {/* Central showcase card */}
-        <div className="mx-auto mt-12 sm:mt-14">
-          <div
-            className="relative overflow-hidden rounded-[32px] border border-border/70 bg-card/80 backdrop-blur-xl"
+      </div>
+
+      {/* Full-width showcase card - breaks out of container */}
+      <div className="relative mt-12 sm:mt-14 px-4 sm:px-8 lg:px-12">
+        <div
+            className="relative overflow-hidden rounded-[20px] sm:rounded-[32px] border border-border/70 bg-card/80 backdrop-blur-xl"
             style={{ boxShadow: '0 40px 120px -56px hsl(var(--primary) / 0.4)' }}
           >
             <AnimatePresence mode="wait">
@@ -297,6 +299,8 @@ export function AIBuilderShowcase() {
           </div>
         </div>
 
+      {/* Stats + CTA in centered container */}
+      <div className="relative mx-auto w-full max-w-[1100px] px-4 sm:px-6 lg:px-8">
         {/* Stats row */}
         <div className="mx-auto mt-6 grid max-w-[720px] grid-cols-3 gap-3">
           {[
