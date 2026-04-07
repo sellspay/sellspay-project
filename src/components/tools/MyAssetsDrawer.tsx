@@ -331,7 +331,6 @@ export function MyAssetsDrawer({ trigger, open: controlledOpen, onOpenChange }: 
         </ScrollArea>
       </SheetContent>
     </Sheet>
-    </>
 
     {/* Asset Preview Dialog */}
     <Dialog open={!!previewAsset} onOpenChange={(v) => !v && setPreviewAsset(null)}>
@@ -419,5 +418,6 @@ export function MyAssetsDrawer({ trigger, open: controlledOpen, onOpenChange }: 
         )}
       </DialogContent>
     </Dialog>
+    </>
   );
 }
