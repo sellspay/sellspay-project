@@ -19,7 +19,7 @@ interface Notification {
 
 interface GenerationNotificationsProps {
   collapsed: boolean;
-  onNavigateToTool: (toolId: string) => void;
+  onNavigateToTool: (toolId: string, assetUrl?: string) => void;
 }
 
 const TYPE_ICON: Record<string, typeof Image> = {
