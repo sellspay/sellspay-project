@@ -18,6 +18,7 @@ const MusicSplitter = lazy(() => import("@/pages/tools/MusicSplitter"));
 const SFXGenerator = lazy(() => import("@/pages/tools/SFXGenerator"));
 const NanoBanana = lazy(() => import("@/pages/tools/NanoBanana"));
 const ImageAnimator = lazy(() => import("@/pages/tools/ImageAnimator"));
+const MotionTransfer = lazy(() => import("@/pages/tools/MotionTransfer"));
 
 interface ToolContentProps {
   toolId: string | null;
@@ -115,6 +116,8 @@ export function ToolContent({ toolId }: ToolContentProps) {
         return <NanoBanana />;
       case "video-generator":
         return <ImageAnimator />;
+      case "motion-transfer":
+        return <MotionTransfer />;
       default:
         return null;
     }
