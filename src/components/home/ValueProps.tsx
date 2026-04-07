@@ -184,13 +184,6 @@ export function ValueProps() {
 
         <SocialProofTicker />
 
-        {/* Stats */}
-        <div className="grid grid-cols-3 gap-5 mb-20 max-w-3xl mx-auto">
-          {STATS.map((stat, i) => (
-            <AnimatedStatCard key={stat.label} stat={stat} index={i} />
-          ))}
-        </div>
-
         {/* Start Selling */}
         <Reveal>
           <div className="text-center mb-10">
