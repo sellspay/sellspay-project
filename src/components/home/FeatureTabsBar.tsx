@@ -251,9 +251,9 @@ export function FeatureTabsBar() {
                             background: 'linear-gradient(135deg, rgba(37,99,235,0.08) 0%, rgba(14,14,14,0.95) 50%, rgba(22,22,26,0.9) 100%)',
                           } : undefined}
                         >
-                          <div className="flex items-center gap-3">
-                            <div className={`w-1.5 h-1.5 rounded-full transition-colors ${isActive ? 'bg-primary' : 'bg-white/20'}`} />
-                            <span className={`text-sm font-semibold transition-colors ${isActive ? 'text-white' : 'text-white/50 group-hover:text-white/70'}`}>
+                          <div className="flex items-center gap-3.5">
+                            <div className={`w-2 h-2 rounded-full transition-all duration-300 ${isActive ? 'bg-primary shadow-[0_0_8px_rgba(37,99,235,0.6)]' : 'bg-white/20'}`} />
+                            <span className={`text-[15px] font-semibold transition-colors duration-200 ${isActive ? 'text-white' : 'text-white/50 group-hover:text-white/70'}`}>
                               {sub.name}
                             </span>
                           </div>
