@@ -36,10 +36,12 @@ export function FeatureTabsBar() {
 
             <Link
               to="/login"
-              className="mt-8 inline-flex items-center gap-2 rounded-full px-7 py-3 text-sm font-semibold text-white transition-all hover:brightness-110"
+              className="mt-8 inline-flex items-center gap-2 rounded-full px-8 py-3.5 text-sm font-bold text-white tracking-wide transition-all hover:brightness-110 hover:scale-[1.03] active:scale-[0.98]"
               style={{
-                background: 'linear-gradient(180deg, #3b82f6 0%, #1d4ed8 100%)',
-                boxShadow: '0 1px 24px rgba(59,130,246,0.3), inset 0 1px 0 rgba(255,255,255,0.15)',
+                background: 'linear-gradient(180deg, #60a5fa 0%, #3b82f6 30%, #1d4ed8 70%, #1e3a8a 100%)',
+                boxShadow: '0 4px 20px rgba(59,130,246,0.4), 0 1px 3px rgba(0,0,0,0.3), inset 0 2px 0 rgba(255,255,255,0.25), inset 0 -2px 4px rgba(0,0,0,0.2)',
+                border: '1px solid rgba(96,165,250,0.5)',
+                textShadow: '0 1px 2px rgba(0,0,0,0.3)',
               }}
             >
               Start Creating
