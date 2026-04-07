@@ -3,9 +3,9 @@ import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowRight, Sparkles, Send, CheckCircle2, Loader2, Zap, Palette, Code2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import aiBuilderFashion from '@/assets/ai-builder-result.jpg';
-import aiBuilderGaming from '@/assets/ai-builder-gaming.jpg';
-import aiBuilderOrganic from '@/assets/ai-builder-organic.jpg';
+import aiBuilderFashion from '@/assets/ai-builder-fashion-16x9.jpg';
+import aiBuilderGaming from '@/assets/ai-builder-gaming-16x9.jpg';
+import aiBuilderOrganic from '@/assets/ai-builder-organic-16x9.jpg';
 
 type Phase = 'idle' | 'generating' | 'done';
 
@@ -282,13 +282,13 @@ export function AIBuilderShowcase() {
                 style={{ boxShadow: '0 0 80px -20px hsl(var(--primary) / 0.25), 0 30px 60px -30px rgba(0,0,0,0.5)' }}
               >
                 {/* Image - clean, no overlays */}
-                <div className="relative overflow-hidden">
+                <div className="relative aspect-[16/9] overflow-hidden bg-card">
                   <img
                     src={EXAMPLES[exampleIdx].image}
                     alt="AI-generated storefront preview"
-                    className="block w-full h-auto"
-                    width={1440}
-                    height={600}
+                    className="h-full w-full object-cover object-center"
+                    width={1376}
+                    height={768}
                   />
                 </div>
 
