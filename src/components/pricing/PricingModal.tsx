@@ -2,11 +2,11 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/lib/auth";
 import { Check, Zap, Plus, Minus, Diamond, LinkIcon, Sparkles, X } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 
-/* ─────────────── Per-card feature lists ─────────────── */
+/* ─────────────── Plan data ─────────────── */
 const PLAN_CARDS = [
   {
     id: "starter",
@@ -16,14 +16,10 @@ const PLAN_CARDS = [
     tagline: "Start experimenting with digital selling.",
     badge: null,
     badgeColor: "",
-    accentClass: "text-zinc-400",
-    topBorder: "from-zinc-500 to-zinc-600",
+    accent: "zinc",
     credits: "0 credits / month",
     addOns: false,
     isPopular: false,
-    btnClass: "bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700",
-    creditPillBg: "bg-zinc-800/60 border-zinc-700",
-    creditPillText: "text-zinc-300",
     features: [
       "Create & Customize Storefront",
       "Sell Digital Products & Subs",
@@ -40,14 +36,10 @@ const PLAN_CARDS = [
     tagline: "Unlock AI-powered building tools.",
     badge: null,
     badgeColor: "",
-    accentClass: "text-cyan-400",
-    topBorder: "from-cyan-400 to-blue-500",
+    accent: "cyan",
     credits: "500 credits / month",
     addOns: false,
     isPopular: false,
-    btnClass: "bg-gradient-to-r from-cyan-500 to-blue-500 text-white border-transparent hover:opacity-90 shadow-lg shadow-cyan-500/20",
-    creditPillBg: "bg-cyan-950/50 border-cyan-800/40",
-    creditPillText: "text-cyan-300",
     features: [
       "Up to ~250 images",
       "VibeCoder AI Builder",
@@ -66,14 +58,10 @@ const PLAN_CARDS = [
     tagline: "Full AI suite for serious creators.",
     badge: "MOST POPULAR",
     badgeColor: "bg-gradient-to-r from-fuchsia-500 to-violet-500",
-    accentClass: "text-fuchsia-400",
-    topBorder: "from-fuchsia-500 to-violet-500",
+    accent: "fuchsia",
     credits: "2,500 credits / month",
     addOns: true,
     isPopular: true,
-    btnClass: "bg-gradient-to-r from-fuchsia-500 to-violet-500 text-white border-transparent hover:opacity-90 shadow-lg shadow-fuchsia-500/20",
-    creditPillBg: "bg-fuchsia-950/50 border-fuchsia-700/40",
-    creditPillText: "text-fuchsia-300",
     features: [
       "Up to ~1,250 images",
       "Up to ~125 videos",
@@ -95,14 +83,10 @@ const PLAN_CARDS = [
     tagline: "Unlimited power for studios & teams.",
     badge: "BEST VALUE",
     badgeColor: "bg-gradient-to-r from-amber-500 to-orange-500",
-    accentClass: "text-amber-400",
-    topBorder: "from-amber-400 to-orange-500",
+    accent: "amber",
     credits: "6,000 credits / month",
     addOns: true,
     isPopular: false,
-    btnClass: "bg-gradient-to-r from-amber-500 to-orange-500 text-white border-transparent hover:opacity-90 shadow-lg shadow-amber-500/20",
-    creditPillBg: "bg-amber-950/50 border-amber-700/40",
-    creditPillText: "text-amber-300",
     features: [
       "Up to ~3,000 images",
       "Up to ~300 videos",
@@ -118,41 +102,95 @@ const PLAN_CARDS = [
   },
 ];
 
+const ACCENT_STYLES: Record<string, {
+  border: string; glow: string; check: string; btn: string;
+  pillBg: string; pillText: string; pillIcon: string; topBar: string;
+}> = {
+  zinc: {
+    border: "border-white/[0.08]",
+    glow: "",
+    check: "text-zinc-400",
+    btn: "bg-white/[0.06] hover:bg-white/[0.1] text-white/80 border border-white/[0.1]",
+    pillBg: "bg-white/[0.04] border-white/[0.08]",
+    pillText: "text-zinc-300",
+    pillIcon: "text-zinc-400",
+    topBar: "from-zinc-600 to-zinc-500",
+  },
+  cyan: {
+    border: "border-cyan-500/20",
+    glow: "",
+    check: "text-cyan-400",
+    btn: "bg-gradient-to-r from-cyan-500 to-blue-500 text-white hover:brightness-110",
+    pillBg: "bg-cyan-500/[0.08] border-cyan-500/20",
+    pillText: "text-cyan-300",
+    pillIcon: "text-cyan-400",
+    topBar: "from-cyan-400 to-blue-500",
+  },
+  fuchsia: {
+    border: "border-fuchsia-500/30",
+    glow: "shadow-[0_0_40px_-12px_rgba(192,38,211,0.25)]",
+    check: "text-fuchsia-400",
+    btn: "bg-gradient-to-r from-fuchsia-500 to-violet-500 text-white hover:brightness-110",
+    pillBg: "bg-fuchsia-500/[0.08] border-fuchsia-500/20",
+    pillText: "text-fuchsia-300",
+    pillIcon: "text-fuchsia-400",
+    topBar: "from-fuchsia-500 to-violet-500",
+  },
+  amber: {
+    border: "border-amber-500/25",
+    glow: "shadow-[0_0_40px_-12px_rgba(245,158,11,0.2)]",
+    check: "text-amber-400",
+    btn: "bg-gradient-to-r from-amber-500 to-orange-500 text-white hover:brightness-110",
+    pillBg: "bg-amber-500/[0.08] border-amber-500/20",
+    pillText: "text-amber-300",
+    pillIcon: "text-amber-400",
+    topBar: "from-amber-400 to-orange-500",
+  },
+};
+
 /* ─────────────── FAQ data ─────────────── */
 const FAQS = [
   { q: "Can I cancel my subscription any time?", a: "Yes. You can cancel anytime from your billing settings. Your credits remain active until the end of your billing cycle." },
   { q: "How do I cancel my subscription?", a: "Go to Settings → Billing → Manage Subscription. Click 'Cancel Subscription'. Your plan will remain active until the end of the current period." },
-  { q: "Do my monthly credits roll over?", a: "Unused credits roll over for one billing cycle. After that, unspent credits expire. This encourages active usage while giving you flexibility." },
-  { q: "What's the difference between monthly and annual plans?", a: "Annual plans save up to 50% compared to monthly billing. You pay once per year and get all the same features. Credits are still distributed monthly." },
+  { q: "Do my monthly credits roll over?", a: "Unused credits roll over for one billing cycle. After that, unspent credits expire." },
+  { q: "What's the difference between monthly and annual plans?", a: "Annual plans save up to 50% compared to monthly billing. You pay once per year. Credits are still distributed monthly." },
   { q: "What are add-ons?", a: "Add-on Credit Packs let you purchase extra credits on top of your plan's monthly allocation. Available on Creator and Agency plans." },
   { q: "What happens when I upgrade?", a: "You'll immediately get access to the new plan's features and a pro-rated credit allocation. Any existing credits carry over." },
   { q: "What happens when I downgrade/cancel?", a: "Your current plan stays active until the end of the billing period. After that, you'll move to the lower plan. Your storefront remains live." },
   { q: "How does the 0% fee work?", a: "On the Agency plan, SellsPay takes $0 from your sales. You keep 100% of your revenue (minus standard Stripe processing fees of ~2.9% + 30¢)." },
 ];
 
-/* ─────────────── Light mode card config ─────────────── */
-const LIGHT_OVERRIDES: Record<string, { creditPillBg: string; creditPillText: string; btnClass: string }> = {
-  starter: {
-    creditPillBg: "bg-zinc-100 border-zinc-200",
-    creditPillText: "text-zinc-700",
-    btnClass: "bg-background text-foreground border border-border hover:bg-muted",
-  },
-  basic: {
-    creditPillBg: "bg-blue-50 border-blue-200",
-    creditPillText: "text-blue-700",
-    btnClass: "bg-background text-foreground border border-border hover:bg-muted",
-  },
-  creator: {
-    creditPillBg: "bg-fuchsia-50 border-fuchsia-200",
-    creditPillText: "text-fuchsia-700",
-    btnClass: "bg-gradient-to-r from-fuchsia-500 to-violet-500 text-white border-transparent hover:opacity-90 shadow-md",
-  },
-  agency: {
-    creditPillBg: "bg-amber-50 border-amber-200",
-    creditPillText: "text-amber-700",
-    btnClass: "bg-gradient-to-r from-amber-500 to-orange-500 text-white border-transparent hover:opacity-90 shadow-md",
-  },
-};
+/* ─────────────── Comparison rows ─────────────── */
+const CREDIT_ROWS = [
+  { label: "Credits", values: ["0", "500/mo", "2,500/mo", "6,000/mo"] },
+  { label: "Add-on Credit Packs", values: [false, false, true, true] },
+  { label: "Number of Images", values: ["0", "~250/mo", "~1,250/mo", "~3,000/mo"] },
+  { label: "Number of Videos", values: ["0", "0", "~125/mo", "~300/mo"] },
+  { label: "AI Code Iterations", values: ["0", "~166/mo", "~833/mo", "~2,000/mo"] },
+  { label: "Parallel Generations", values: ["1", "4", "8", "16"] },
+  { label: "Transaction Fee", values: ["10%", "8%", "5%", "0%"] },
+] as { label: string; values: (string | boolean)[] }[];
+
+const FEATURE_ROWS = [
+  { label: "Create & Customize Storefront", values: [true, true, true, true] },
+  { label: "Sell Digital Products & Subs", values: [true, true, true, true] },
+  { label: "Buy from Marketplace", values: [true, true, true, true] },
+  { label: "Community Access", values: [true, true, true, true] },
+  { label: "VibeCoder AI Builder", values: [false, true, true, true] },
+  { label: "Flash Models (Gemini Flash)", values: [false, true, true, true] },
+  { label: "Pro Models (GPT-5, Gemini Pro)", values: [false, false, true, true] },
+  { label: "Flagship Models (GPT-5.2)", values: [false, false, false, true] },
+  { label: "AI Image Generation", values: [false, false, true, true] },
+  { label: "AI Video Generation", values: [false, false, false, true] },
+  { label: "All Audio Tools", values: [false, true, true, true] },
+  { label: "Auto-Model Selection", values: [false, false, true, true] },
+  { label: "AI Storefront Editor", values: [false, true, true, true] },
+  { label: "Advanced Analytics", values: [false, false, true, true] },
+  { label: "Verified Badge", values: [false, false, "Grey", "Gold"] },
+  { label: "Priority Processing", values: [false, false, false, true] },
+  { label: "Priority Support", values: [false, false, false, true] },
+  { label: "Commercial Use Rights", values: [false, false, true, true] },
+] as { label: string; values: (string | boolean)[] }[];
 
 /* ─────────────── Component ─────────────── */
 
@@ -170,55 +208,53 @@ export function PricingModal({ open, onOpenChange, darkMode = false }: PricingMo
 
   const handleGetStarted = (planId: string) => {
     onOpenChange(false);
-    if (!user) {
-      navigate("/signup");
-    } else {
-      navigate("/billing");
-    }
+    navigate(user ? "/billing" : "/signup");
   };
-
-  // Theme tokens
-  const bg = darkMode ? "bg-[#0e0e10]" : "bg-background";
-  const headerBg = darkMode ? "bg-[#0e0e10]/95" : "bg-background/95";
-  const textPrimary = darkMode ? "text-white" : "text-foreground";
-  const textSecondary = darkMode ? "text-zinc-400" : "text-muted-foreground";
-  const textTertiary = darkMode ? "text-zinc-500" : "text-muted-foreground/30";
-  const borderBase = darkMode ? "border-zinc-800" : "border-border";
-  const borderFaint = darkMode ? "border-zinc-800/50" : "border-border/30";
-  const cardBg = darkMode ? "bg-zinc-900/50" : "bg-card";
-  const mutedBg = darkMode ? "bg-zinc-800" : "bg-muted";
-  const toggleActive = darkMode ? "bg-zinc-700 text-white shadow-sm" : "bg-background text-foreground shadow-sm";
-  const toggleInactive = darkMode ? "text-zinc-400 hover:text-zinc-200" : "text-muted-foreground hover:text-foreground";
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-       <DialogContent className={cn(
-        "max-w-[1400px] w-[98vw] p-0 rounded-2xl overflow-hidden max-h-[95vh] flex flex-col border-0",
-        bg,
-        darkMode
-          ? "border border-zinc-800 shadow-xl"
-          : "border-border shadow-2xl"
-      )}>
-        
+      <DialogContent
+        className="max-w-[1400px] w-[98vw] p-0 rounded-2xl overflow-hidden max-h-[95vh] flex flex-col border border-white/[0.08] shadow-2xl"
+        style={{ background: '#050505' }}
+      >
+        <VisuallyHidden><DialogTitle>Pricing Plans</DialogTitle></VisuallyHidden>
+
+        {/* Close button */}
+        <button
+          onClick={() => onOpenChange(false)}
+          className="absolute top-4 right-4 z-30 w-8 h-8 rounded-full bg-white/[0.06] hover:bg-white/[0.12] flex items-center justify-center text-white/50 hover:text-white transition-colors"
+        >
+          <X className="h-4 w-4" />
+        </button>
+
         {/* Scrollable content */}
-        <div className={cn("overflow-y-auto flex-1", darkMode ? "dark-scrollbar" : "custom-scrollbar")}>
+        <div className="overflow-y-auto flex-1 pricing-scroll">
+
           {/* Header */}
-          <div className={cn("text-center pt-12 pb-6 px-8 sticky top-0 z-20", darkMode ? "bg-[#0e0e10]" : "bg-background")}>
-            <h2 className={cn("text-4xl font-extrabold tracking-tight", textPrimary)}>
+          <div className="text-center pt-14 pb-8 px-8 relative">
+            {/* Subtle top glow */}
+            <div className="absolute inset-x-0 top-0 h-40 pointer-events-none" style={{
+              background: 'radial-gradient(ellipse at top center, rgba(37,99,235,0.08) 0%, transparent 70%)'
+            }} />
+
+            <p className="text-[11px] font-bold uppercase tracking-[0.35em] text-primary/70 mb-4 relative">Pricing</p>
+            <h2 className="text-4xl sm:text-5xl font-extrabold tracking-tight text-white relative">
               Choose Your Plan
             </h2>
-            <p className={cn("mt-3 text-base max-w-lg mx-auto", textSecondary)}>
+            <p className="mt-3 text-base text-white/40 max-w-lg mx-auto relative">
               Scale your creative business with AI-powered tools.
             </p>
 
             {/* Billing Toggle */}
-            <div className="flex justify-center mt-6">
-              <div className={cn("inline-flex items-center rounded-full p-1 border", mutedBg, borderBase)}>
+            <div className="flex justify-center mt-8 relative">
+              <div className="inline-flex items-center rounded-full p-1 bg-white/[0.04] border border-white/[0.08]">
                 <button
                   onClick={() => setBillingPeriod("monthly")}
                   className={cn(
                     "px-6 py-2.5 rounded-full text-sm font-semibold transition-all duration-200",
-                    billingPeriod === "monthly" ? toggleActive : toggleInactive
+                    billingPeriod === "monthly"
+                      ? "bg-white/[0.1] text-white shadow-sm"
+                      : "text-white/40 hover:text-white/60"
                   )}
                 >
                   Monthly
@@ -227,15 +263,14 @@ export function PricingModal({ open, onOpenChange, darkMode = false }: PricingMo
                   onClick={() => setBillingPeriod("annually")}
                   className={cn(
                     "px-6 py-2.5 rounded-full text-sm font-semibold transition-all duration-200 flex items-center gap-2",
-                    billingPeriod === "annually" ? toggleActive : toggleInactive
+                    billingPeriod === "annually"
+                      ? "bg-white/[0.1] text-white shadow-sm"
+                      : "text-white/40 hover:text-white/60"
                   )}
                 >
                   Annually
-                  <span className={cn(
-                    "text-[10px] font-bold px-2 py-0.5 rounded-full",
-                    darkMode ? "text-emerald-400 bg-emerald-500/15" : "text-green-600 bg-green-100"
-                  )}>
-                    UP TO 50% OFF
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full text-emerald-400 bg-emerald-500/10 border border-emerald-500/20">
+                    SAVE 50%
                   </span>
                 </button>
               </div>
@@ -243,49 +278,33 @@ export function PricingModal({ open, onOpenChange, darkMode = false }: PricingMo
           </div>
 
           {/* ─── Plan Cards ─── */}
-          <div className="px-8 pb-10">
-            <div className="grid grid-cols-4 gap-5 max-w-[1300px] mx-auto items-stretch">
+          <div className="px-6 sm:px-8 pb-12">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 max-w-[1300px] mx-auto">
               {PLAN_CARDS.map((plan) => {
                 const price = billingPeriod === "annually" ? plan.yearlyPrice : plan.monthlyPrice;
                 const originalPrice = billingPeriod === "annually" && plan.monthlyPrice > 0 ? plan.monthlyPrice : null;
-                const light = !darkMode ? LIGHT_OVERRIDES[plan.id] : null;
-                const pillBg = light?.creditPillBg ?? plan.creditPillBg;
-                const pillText = light?.creditPillText ?? plan.creditPillText;
-                const btnCls = light?.btnClass ?? plan.btnClass;
+                const s = ACCENT_STYLES[plan.accent];
 
                 return (
                   <div
                     key={plan.id}
                     className={cn(
-                      "relative rounded-2xl flex flex-col",
-                      darkMode
-                        ? "bg-[#18181c] border border-zinc-700/50 shadow-lg"
-                        : "bg-card border overflow-hidden",
-                      plan.isPopular
-                        ? darkMode
-                          ? "!border-fuchsia-500/60 shadow-fuchsia-500/10"
-                          : "border-fuchsia-300 shadow-md shadow-fuchsia-500/10"
-                        : plan.id === "agency"
-                          ? darkMode
-                            ? "!border-amber-500/60 shadow-amber-500/10"
-                            : "border-amber-300 shadow-md shadow-amber-500/10"
-                          : plan.id === "basic"
-                            ? darkMode
-                              ? "!border-cyan-500/40"
-                              : "border-border"
-                            : ""
+                      "relative rounded-2xl flex flex-col border transition-colors",
+                      s.border,
+                      s.glow,
                     )}
+                    style={{ background: '#0a0a0a' }}
                   >
-                    {/* Top gradient strip */}
-                    <div className={cn("h-1.5 w-full bg-gradient-to-r rounded-t-2xl", plan.topBorder)} />
+                    {/* Top accent bar */}
+                    <div className={cn("h-1 w-full rounded-t-2xl bg-gradient-to-r", s.topBar)} />
 
-                    {/* Card header */}
+                    {/* Card content */}
                     <div className="p-6 pb-0">
                       <div className="flex items-start justify-between">
-                        <h3 className={cn("text-xl font-bold", textPrimary)}>{plan.name}</h3>
+                        <h3 className="text-lg font-bold text-white">{plan.name}</h3>
                         {plan.badge && (
                           <span className={cn(
-                            "px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider text-white",
+                            "px-2.5 py-1 rounded-full text-[9px] font-bold uppercase tracking-wider text-white",
                             plan.badgeColor
                           )}>
                             {plan.badge}
@@ -296,51 +315,47 @@ export function PricingModal({ open, onOpenChange, darkMode = false }: PricingMo
                       {/* Price */}
                       <div className="flex items-baseline gap-1.5 mt-4">
                         {originalPrice !== null && (
-                          <span className={cn("text-sm line-through", textSecondary)}>${originalPrice}</span>
+                          <span className="text-sm line-through text-white/30">${originalPrice}</span>
                         )}
-                        <span className={cn("text-4xl font-extrabold", textPrimary)}>${price}</span>
-                        <span className={cn("text-sm", textSecondary)}>/mo</span>
+                        <span className="text-4xl font-extrabold text-white">${price}</span>
+                        <span className="text-sm text-white/40">/mo</span>
                       </div>
 
-                      {/* CTA Button */}
+                      {/* CTA */}
                       <button
                         onClick={() => handleGetStarted(plan.id)}
                         className={cn(
-                          "mt-5 w-full py-3 rounded-xl text-sm font-bold transition-all",
-                          btnCls
+                          "mt-5 w-full py-3 rounded-xl text-sm font-bold transition-all cursor-pointer",
+                          s.btn
                         )}
                       >
                         Get Started
                       </button>
 
-                      <p className={cn("text-xs mt-4 leading-relaxed", textSecondary)}>{plan.tagline}</p>
+                      <p className="text-xs mt-4 leading-relaxed text-white/35">{plan.tagline}</p>
                     </div>
 
-                    {/* Credits banner */}
-                    <div className={cn("mx-5 mt-4 px-4 py-3 rounded-xl border", pillBg)}>
+                    {/* Credits pill */}
+                    <div className={cn("mx-5 mt-4 px-4 py-3 rounded-xl border", s.pillBg)}>
                       <div className="flex items-center gap-2">
-                        <Diamond className={cn("h-4 w-4", plan.accentClass)} />
-                        <span className={cn("text-sm font-bold", pillText)}>
-                          {plan.credits}
-                        </span>
+                        <Diamond className={cn("h-4 w-4", s.pillIcon)} />
+                        <span className={cn("text-sm font-bold", s.pillText)}>{plan.credits}</span>
                       </div>
                       {plan.addOns && (
                         <div className="flex items-center gap-1.5 mt-1.5">
-                          <LinkIcon className={cn("h-3 w-3", plan.accentClass)} />
-                          <span className={cn("text-[11px] font-semibold", pillText)}>
-                            Add credits as needed
-                          </span>
+                          <LinkIcon className={cn("h-3 w-3", s.pillIcon)} />
+                          <span className={cn("text-[11px] font-semibold", s.pillText)}>Add credits as needed</span>
                         </div>
                       )}
                     </div>
 
-                    {/* Feature checklist */}
+                    {/* Features */}
                     <div className="p-5 pt-4 flex-1">
-                      <ul className="space-y-3">
+                      <ul className="space-y-2.5">
                         {plan.features.map((feature, i) => (
                           <li key={i} className="flex items-start gap-2.5">
-                            <Check className={cn("h-4 w-4 shrink-0 mt-0.5", plan.accentClass)} />
-                            <span className={cn("text-sm leading-relaxed", textSecondary)}>{feature}</span>
+                            <Check className={cn("h-4 w-4 shrink-0 mt-0.5", s.check)} />
+                            <span className="text-[13px] leading-relaxed text-white/50">{feature}</span>
                           </li>
                         ))}
                       </ul>
@@ -351,8 +366,8 @@ export function PricingModal({ open, onOpenChange, darkMode = false }: PricingMo
             </div>
           </div>
 
-          {/* ─── Feature Comparison Table ─── */}
-          <div className="px-8 pb-10">
+          {/* ─── Comparison Table ─── */}
+          <div className="px-6 sm:px-8 pb-12">
             <div className="max-w-[1300px] mx-auto overflow-x-auto">
               <table className="w-full border-collapse min-w-[800px]">
                 <thead>
@@ -360,72 +375,51 @@ export function PricingModal({ open, onOpenChange, darkMode = false }: PricingMo
                     <th className="w-[220px]" />
                     {PLAN_CARDS.map((p) => (
                       <th key={p.id} className="text-center px-4 pb-4 min-w-[160px]">
-                        <span className={cn("text-sm font-bold", textPrimary)}>{p.name}</span>
+                        <span className="text-sm font-bold text-white">{p.name}</span>
                       </th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
+                  {/* Credits section */}
                   <tr>
                     <td colSpan={5} className="pt-6 pb-4 px-1">
                       <div className="flex items-center gap-2">
-                        <Zap className="h-4 w-4 text-cyan-400" />
-                        <span className="text-sm font-bold bg-gradient-to-r from-white via-cyan-300 to-blue-400 bg-clip-text text-transparent">Credits Usage</span>
+                        <Zap className="h-4 w-4 text-primary" />
+                        <span className="text-sm font-bold text-white">Credits Usage</span>
                       </div>
                     </td>
                   </tr>
-                  {([
-                    { label: "Credits", values: ["0", "500/mo", "2,500/mo", "6,000/mo"] },
-                    { label: "Add-on Credit Packs", values: [false, false, true, true] },
-                    { label: "Number of Images", values: ["0", "~250/mo", "~1,250/mo", "~3,000/mo"] },
-                    { label: "Number of Videos", values: ["0", "0", "~125/mo", "~300/mo"] },
-                    { label: "AI Code Iterations", values: ["0", "~166/mo", "~833/mo", "~2,000/mo"] },
-                    { label: "Parallel Generations", values: ["1", "4", "8", "16"] },
-                    { label: "Transaction Fee", values: ["10%", "8%", "5%", "0%"] },
-                  ] as { label: string; values: (string | boolean)[] }[]).map((row, i) => (
-                    <tr key={`cu-${i}`} className={cn("border-t", borderFaint)}>
-                      <td className={cn("py-3.5 px-1 text-sm", textSecondary)}>{row.label}</td>
+                  {CREDIT_ROWS.map((row, i) => (
+                    <tr key={`cu-${i}`} className="border-t border-white/[0.05]">
+                      <td className="py-3.5 px-1 text-sm text-white/40">{row.label}</td>
                       {row.values.map((val, j) => (
                         <td key={j} className="py-3.5 px-4 text-center">
-                          {val === true ? <Check className="h-4 w-4 text-emerald-400 mx-auto" /> : val === false ? <span className={textTertiary}>—</span> : <span className={cn("text-sm font-medium", textPrimary)}>{val}</span>}
+                          {val === true ? <Check className="h-4 w-4 text-emerald-400 mx-auto" />
+                            : val === false ? <span className="text-white/15">—</span>
+                            : <span className="text-sm font-medium text-white">{val}</span>}
                         </td>
                       ))}
                     </tr>
                   ))}
 
+                  {/* Features section */}
                   <tr>
                     <td colSpan={5} className="pt-12 pb-4 px-1">
                       <div className="flex items-center gap-2">
-                        <Sparkles className="h-4 w-4 text-cyan-400" />
-                        <span className="text-sm font-bold bg-gradient-to-r from-white via-cyan-300 to-blue-400 bg-clip-text text-transparent">Features</span>
+                        <Sparkles className="h-4 w-4 text-primary" />
+                        <span className="text-sm font-bold text-white">Features</span>
                       </div>
                     </td>
                   </tr>
-                  {([
-                    { label: "Create & Customize Storefront", values: [true, true, true, true] },
-                    { label: "Sell Digital Products & Subs", values: [true, true, true, true] },
-                    { label: "Buy from Marketplace", values: [true, true, true, true] },
-                    { label: "Community Access", values: [true, true, true, true] },
-                    { label: "VibeCoder AI Builder", values: [false, true, true, true] },
-                    { label: "Flash Models (Gemini Flash)", values: [false, true, true, true] },
-                    { label: "Pro Models (GPT-5, Gemini Pro)", values: [false, false, true, true] },
-                    { label: "Flagship Models (GPT-5.2)", values: [false, false, false, true] },
-                    { label: "AI Image Generation", values: [false, false, true, true] },
-                    { label: "AI Video Generation", values: [false, false, false, true] },
-                    { label: "All Audio Tools", values: [false, true, true, true] },
-                    { label: "Auto-Model Selection", values: [false, false, true, true] },
-                    { label: "AI Storefront Editor", values: [false, true, true, true] },
-                    { label: "Advanced Analytics", values: [false, false, true, true] },
-                    { label: "Verified Badge", values: [false, false, "Grey", "Gold"] },
-                    { label: "Priority Processing", values: [false, false, false, true] },
-                    { label: "Priority Support", values: [false, false, false, true] },
-                    { label: "Commercial Use Rights", values: [false, false, true, true] },
-                  ] as { label: string; values: (string | boolean)[] }[]).map((row, i) => (
-                    <tr key={`ft-${i}`} className={cn("border-t", borderFaint)}>
-                      <td className={cn("py-3.5 px-1 text-sm", textSecondary)}>{row.label}</td>
+                  {FEATURE_ROWS.map((row, i) => (
+                    <tr key={`ft-${i}`} className="border-t border-white/[0.05]">
+                      <td className="py-3.5 px-1 text-sm text-white/40">{row.label}</td>
                       {row.values.map((val, j) => (
                         <td key={j} className="py-3.5 px-4 text-center">
-                          {val === true ? <Check className="h-4 w-4 text-emerald-400 mx-auto" /> : val === false ? <span className={textTertiary}>—</span> : <span className={cn("text-sm font-medium", textPrimary)}>{val}</span>}
+                          {val === true ? <Check className="h-4 w-4 text-emerald-400 mx-auto" />
+                            : val === false ? <span className="text-white/15">—</span>
+                            : <span className="text-sm font-medium text-white">{val}</span>}
                         </td>
                       ))}
                     </tr>
@@ -435,53 +429,33 @@ export function PricingModal({ open, onOpenChange, darkMode = false }: PricingMo
             </div>
           </div>
 
-          {/* ─── FAQ Section ─── */}
-          <div className="px-8 pb-12">
-            <div className="max-w-[1000px] mx-auto">
+          {/* ─── FAQ ─── */}
+          <div className="px-6 sm:px-8 pb-14">
+            <div className="max-w-[900px] mx-auto">
               <div className="flex items-start gap-10">
-                <h3 className="text-2xl font-bold shrink-0 pt-3 bg-gradient-to-r from-white via-cyan-300 to-blue-400 bg-clip-text text-transparent">FAQs</h3>
-                <div className={cn("flex-1 divide-y", darkMode ? "divide-zinc-800" : "divide-border/50")}>
+                <h3 className="text-xl font-bold shrink-0 pt-3 text-white">FAQs</h3>
+                <div className="flex-1 divide-y divide-white/[0.06]">
                   {FAQS.map((faq, idx) => (
                     <div key={idx}>
                       <button
                         onClick={() => setOpenFaq(openFaq === idx ? null : idx)}
-                        className="w-full flex items-center justify-between py-5 text-left group"
+                        className="w-full flex items-center justify-between py-4 text-left group cursor-pointer"
                       >
-                        <span className={cn(
-                          "text-sm font-medium transition-colors",
-                          textPrimary,
-                          "group-hover:text-cyan-400"
-                        )}>
+                        <span className="text-sm font-medium text-white/70 group-hover:text-white transition-colors">
                           {faq.q}
                         </span>
                         <div className={cn(
-                          "w-7 h-7 rounded-full flex items-center justify-center shrink-0 ml-4 transition-colors",
-                          openFaq === idx
-                            ? darkMode ? "bg-cyan-500 text-white" : "bg-primary text-primary-foreground"
-                            : darkMode ? "bg-zinc-800 text-zinc-400" : "bg-primary/10 text-primary"
+                          "w-6 h-6 rounded-full flex items-center justify-center shrink-0 ml-4 transition-colors",
+                          openFaq === idx ? "bg-primary text-white" : "bg-white/[0.06] text-white/40"
                         )}>
-                          {openFaq === idx ? (
-                            <Minus className="h-3.5 w-3.5" />
-                          ) : (
-                            <Plus className="h-3.5 w-3.5" />
-                          )}
+                          {openFaq === idx ? <Minus className="h-3 w-3" /> : <Plus className="h-3 w-3" />}
                         </div>
                       </button>
-                      <AnimatePresence>
-                        {openFaq === idx && (
-                          <motion.div
-                            initial={{ height: 0, opacity: 0 }}
-                            animate={{ height: "auto", opacity: 1 }}
-                            exit={{ height: 0, opacity: 0 }}
-                            transition={{ duration: 0.2 }}
-                            className="overflow-hidden"
-                          >
-                            <p className={cn("pb-5 text-sm leading-relaxed pr-10", textSecondary)}>
-                              {faq.a}
-                            </p>
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
+                      {openFaq === idx && (
+                        <div className="pb-4 overflow-hidden">
+                          <p className="text-sm leading-relaxed text-white/40 pr-10">{faq.a}</p>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
