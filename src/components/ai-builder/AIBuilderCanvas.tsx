@@ -700,6 +700,10 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false, isGuest =
   // Code should be derived from the active project (messages/code snapshots). Otherwise, deleted
   // projects can "reappear" on refresh due to leftover profile-scoped cached code.
   useEffect(() => {
+    if (!profileId) {
+      setLoading(false);
+      return;
+    }
     const loadData = async () => {
       const [layoutResp, profileResp] = await Promise.all([
         supabase
