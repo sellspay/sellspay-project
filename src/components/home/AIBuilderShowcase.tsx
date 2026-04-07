@@ -301,27 +301,25 @@ export function AIBuilderShowcase() {
 
       {/* Stats + CTA in centered container */}
       <div className="relative mx-auto w-full max-w-[1100px] px-4 sm:px-6 lg:px-8">
-        {/* Stats row */}
-        <div className="mx-auto mt-6 grid max-w-[720px] grid-cols-3 gap-3">
+        {/* Feature highlights */}
+        <div className="mx-auto mt-10 flex flex-col sm:flex-row items-center justify-center gap-8 sm:gap-12">
           {[
-            { value: '10s', label: 'avg. build' },
-            { value: '∞', label: 'styles' },
-            { value: '0', label: 'code needed' },
-          ].map((stat) => (
+            { icon: Zap, text: 'Generates in ~10 seconds' },
+            { icon: Palette, text: 'Unlimited design styles' },
+            { icon: Code2, text: 'Zero code required' },
+          ].map((item, i) => (
             <motion.div
-              key={stat.label}
-              initial={{ opacity: 0, y: 16 }}
+              key={item.text}
+              initial={{ opacity: 0, y: 12 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              transition={{ duration: 0.4, delay: 0.2 }}
-              className="rounded-[20px] border border-border/70 bg-card/60 p-4 text-center backdrop-blur-xl"
+              transition={{ duration: 0.4, delay: 0.1 * i }}
+              className="flex items-center gap-3"
             >
-              <div className="text-xl font-black tracking-[-0.04em] text-foreground sm:text-2xl">
-                {stat.value}
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary">
+                <item.icon className="h-4 w-4" />
               </div>
-              <div className="mt-1 text-[10px] font-medium uppercase tracking-[0.16em] text-muted-foreground">
-                {stat.label}
-              </div>
+              <span className="text-sm font-medium text-muted-foreground">{item.text}</span>
             </motion.div>
           ))}
         </div>
