@@ -45,15 +45,26 @@ export function AIBuilderShowcase() {
     return () => obs.disconnect();
   }, []);
 
+  // Auto-replay every 10 seconds after done
+  useEffect(() => {
+    if (phase !== 'done') return;
+    const timer = setTimeout(() => {
+      setPhase('idle');
+      setTyped('');
+      setStepIdx(0);
+      setProgress(0);
+      setTimeout(() => startSequence(), 300);
+    }, 10000);
+    return () => clearTimeout(timer);
+  }, [phase]);
+
   const startSequence = () => {
-    // Phase 1: type the prompt
     let i = 0;
     const typeInterval = setInterval(() => {
       i++;
       setTyped(PROMPT_TEXT.slice(0, i));
       if (i >= PROMPT_TEXT.length) {
         clearInterval(typeInterval);
-        // small pause then start generating
         setTimeout(() => {
           setPhase('generating');
           animateGeneration();
@@ -80,18 +91,6 @@ export function AIBuilderShowcase() {
         setTimeout(() => setPhase('done'), 400);
       }
     }, 60);
-  };
-
-  const handleReplay = () => {
-    setPhase('idle');
-    setTyped('');
-    setStepIdx(0);
-    setProgress(0);
-    hasAnimated.current = false;
-    setTimeout(() => {
-      hasAnimated.current = true;
-      startSequence();
-    }, 300);
   };
 
   return (
