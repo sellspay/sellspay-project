@@ -44,7 +44,7 @@ export default function Footer() {
               <img
                 src={sellspayLogo}
                 alt="SellsPay"
-                className="h-8 w-auto opacity-90 group-hover:opacity-100 transition-opacity brightness-200"
+                className="h-8 w-auto opacity-90 group-hover:opacity-100 transition-opacity"
               />
             </Link>
             <p className="text-sm text-muted-foreground leading-relaxed max-w-[220px]">
