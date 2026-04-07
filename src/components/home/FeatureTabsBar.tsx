@@ -24,13 +24,14 @@ export function FeatureTabsBar() {
         {/* Heading + CTA */}
         <Reveal>
           <div className="mb-20 sm:mb-24">
-            <h2
-              className="text-[clamp(2.5rem,6vw,4.5rem)] font-extralight tracking-[-0.03em] leading-[1.1] text-white/90 max-w-2xl"
-              style={{ fontFamily: "'DM Serif Display', Georgia, serif" }}
-            >
-              Why creators choose
+            <h2 className="text-[clamp(2.5rem,6vw,4.5rem)] tracking-[-0.03em] leading-[1.1] max-w-2xl">
+              <span className="font-extralight text-white/90" style={{ fontFamily: "'DM Serif Display', Georgia, serif" }}>
+                Why creators choose
+              </span>
               <br />
-              <span className="text-white font-semibold">SellsPay</span>
+              <span className="text-white font-semibold" style={{ fontFamily: "'Inter', system-ui, sans-serif" }}>
+                SellsPay
+              </span>
             </h2>
 
             <Link
