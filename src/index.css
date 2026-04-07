@@ -96,49 +96,49 @@
 
 /* ── Studio Dark Workspace Override ── */
 .studio-dark {
-  --background: 0 0% 100%;
-  --foreground: 0 0% 9%;
-  --card: 0 0% 100%;
-  --card-foreground: 0 0% 9%;
-  --popover: 0 0% 100%;
-  --popover-foreground: 0 0% 9%;
+  --background: 0 0% 0%;
+  --foreground: 0 0% 96%;
+  --card: 0 0% 4%;
+  --card-foreground: 0 0% 96%;
+  --popover: 0 0% 4%;
+  --popover-foreground: 0 0% 96%;
   --primary: 217 91% 60%;
   --primary-foreground: 0 0% 100%;
-  --secondary: 210 20% 97%;
-  --secondary-foreground: 0 0% 9%;
-  --muted: 210 15% 96%;
-  --muted-foreground: 0 0% 45%;
-  --accent: 210 15% 96%;
-  --accent-foreground: 0 0% 9%;
+  --secondary: 0 0% 8%;
+  --secondary-foreground: 0 0% 94%;
+  --muted: 0 0% 7%;
+  --muted-foreground: 0 0% 62%;
+  --accent: 0 0% 10%;
+  --accent-foreground: 0 0% 96%;
   --destructive: 0 72% 51%;
   --destructive-foreground: 0 0% 98%;
-  --border: 0 0% 90%;
-  --input: 0 0% 93%;
+  --border: 0 0% 14%;
+  --input: 0 0% 12%;
   --ring: 217 91% 60%;
-  --sidebar-background: 0 0% 100%;
-  --sidebar-foreground: 0 0% 9%;
+  --sidebar-background: 0 0% 3%;
+  --sidebar-foreground: 0 0% 96%;
   --sidebar-primary: 217 91% 60%;
   --sidebar-primary-foreground: 0 0% 100%;
-  --sidebar-accent: 210 15% 96%;
-  --sidebar-accent-foreground: 0 0% 9%;
-  --sidebar-border: 0 0% 92%;
+  --sidebar-accent: 0 0% 8%;
+  --sidebar-accent-foreground: 0 0% 96%;
+  --sidebar-border: 0 0% 12%;
   --sidebar-ring: 217 91% 60%;
   --studio-surface: 0 0% 0%;
-  --studio-scrollbar-track: 0 0% 7%;
-  --studio-scrollbar-thumb: 220 38% 34%;
-  --studio-scrollbar-thumb-hover: 220 68% 54%;
-  --studio-nav-text: 240 6% 66%;
+  --studio-scrollbar-track: 0 0% 5%;
+  --studio-scrollbar-thumb: 0 0% 18%;
+  --studio-scrollbar-thumb-hover: 0 0% 26%;
+  --studio-nav-text: 0 0% 66%;
   --studio-nav-text-hover: 0 0% 91%;
   --studio-nav-text-active: 0 0% 99%;
-  --studio-nav-muted: 240 4% 52%;
-  --studio-nav-card: 240 12% 6%;
-  --studio-nav-hover: 222 18% 12%;
-  --studio-nav-icon: 228 18% 7%;
-  --studio-nav-icon-border: 220 12% 18%;
-  --studio-nav-icon-active-bg: 225 33% 10%;
-  --studio-nav-active-bg: 224 30% 10%;
-  --studio-nav-active-bg-strong: 220 37% 14%;
-  --studio-nav-active-border: 190 95% 54%;
+  --studio-nav-muted: 0 0% 52%;
+  --studio-nav-card: 0 0% 6%;
+  --studio-nav-hover: 0 0% 10%;
+  --studio-nav-icon: 0 0% 5%;
+  --studio-nav-icon-border: 0 0% 14%;
+  --studio-nav-icon-active-bg: 0 0% 8%;
+  --studio-nav-active-bg: 0 0% 9%;
+  --studio-nav-active-bg-strong: 0 0% 12%;
+  --studio-nav-active-border: 217 91% 60%;
   --studio-nav-active-glow: 217 91% 60%;
   --studio-nav-active-sheen: 0 0% 100%;
 }
@@ -354,6 +354,14 @@
   --border: 0 0% 14%;
   --input: 0 0% 12%;
   --ring: 217 91% 60%;
+  --sidebar-background: 0 0% 3%;
+  --sidebar-foreground: 0 0% 96%;
+  --sidebar-primary: 217 91% 60%;
+  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-accent: 0 0% 8%;
+  --sidebar-accent-foreground: 0 0% 96%;
+  --sidebar-border: 0 0% 12%;
+  --sidebar-ring: 217 91% 60%;
 }
 
 @layer base {
