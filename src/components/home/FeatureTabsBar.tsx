@@ -26,7 +26,7 @@ export function FeatureTabsBar() {
           <div className="mb-20 sm:mb-24">
             <h2
               className="text-[clamp(2.5rem,6vw,4.5rem)] font-extralight tracking-[-0.03em] leading-[1.1] text-white/90 max-w-2xl"
-              style={{ fontFamily: "'Inter', system-ui, sans-serif" }}
+              style={{ fontFamily: "'DM Serif Display', Georgia, serif" }}
             >
               Why creators choose
               <br />
