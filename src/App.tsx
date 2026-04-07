@@ -1,4 +1,4 @@
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useEffect } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -11,7 +11,6 @@ import ScrollToTop from "@/components/ScrollToTop";
 import { GlobalErrorBoundary } from "@/components/GlobalErrorBoundary";
 import { Loader2 } from "lucide-react";
 
-// Lazy-loaded pages — prevents massive bundle from crashing the preview
 const Home = lazy(() => import("./pages/Home"));
 const Login = lazy(() => import("./pages/Login"));
 const OAuthCallback = lazy(() => import("./pages/OAuthCallback"));
@@ -71,7 +70,6 @@ function AtUsernameRoute() {
   const { atUsername } = useParams<{ atUsername?: string }>();
   const value = atUsername ?? "";
 
-  // Only treat /@username as a profile route; otherwise fall through to 404
   if (!value.startsWith("@") || value.length < 2) {
     return (
       <Suspense fallback={<PageLoader />}>
@@ -89,73 +87,81 @@ function AtUsernameRoute() {
   );
 }
 
-const App = () => (
-  <GlobalErrorBoundary>
-  <QueryClientProvider client={queryClient}>
-    <AuthProvider>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <UsernameSetupDialog />
-        <BrowserRouter>
-          <ScrollToTop />
-          <Suspense fallback={<PageLoader />}>
-            <Routes>
-              {/* Auth pages without layout */}
-              <Route path="/login" element={<Login />} />
-              <Route path="/signup" element={<Signup />} />
-              <Route path="/reset-password" element={<ResetPassword />} />
-              <Route path="/~oauth/callback" element={<OAuthCallback />} />
-              
-              {/* Main pages with layout */}
-              <Route path="/" element={<MainLayout darkMode><Home /></MainLayout>} />
-              <Route path="/products" element={<MainLayout><Products /></MainLayout>} />
-              <Route path="/product/:idOrSlug" element={<MainLayout><ProductDetail /></MainLayout>} />
-              <Route path="/p/:idOrSlug" element={<MainLayout><ProductDetail /></MainLayout>} />
-              <Route path="/create-product" element={<MainLayout><CreateProduct /></MainLayout>} />
-              <Route path="/edit-product/:id" element={<MainLayout><EditProduct /></MainLayout>} />
-              <Route path="/creators" element={<MainLayout><Creators /></MainLayout>} />
-              <Route path="/profile" element={<MainLayout hideFooter><Profile /></MainLayout>} />
-              <Route path="/settings" element={<MainLayout><Settings /></MainLayout>} />
-              <Route path="/admin" element={<MainLayout><Admin /></MainLayout>} />
-              <Route path="/community" element={<MainLayout><Community /></MainLayout>} />
-              <Route path="/community/updates" element={<MainLayout><Updates /></MainLayout>} />
-              <Route path="/community/discord" element={<MainLayout><Discord /></MainLayout>} />
-              <Route path="/community/spotlight" element={<MainLayout><Spotlight /></MainLayout>} />
-              <Route path="/faq" element={<MainLayout><FAQ /></MainLayout>} />
-              <Route path="/support" element={<MainLayout><Support /></MainLayout>} />
-              <Route path="/hire-professionals" element={<MainLayout><HireProfessionals /></MainLayout>} />
-              <Route path="/dashboard" element={<MainLayout><Dashboard /></MainLayout>} />
-              <Route path="/notifications" element={<MainLayout><Notifications /></MainLayout>} />
-              <Route path="/subscription-plans" element={<SubscriptionPlans />} />
-              <Route path="/pricing" element={<Pricing />} />
-              <Route path="/billing" element={<Billing />} />
-              <Route path="/terms" element={<MainLayout><Terms /></MainLayout>} />
-              <Route path="/privacy" element={<MainLayout><Privacy /></MainLayout>} />
-              <Route path="/refunds" element={<MainLayout><Refunds /></MainLayout>} />
-              <Route path="/prohibited-items" element={<MainLayout><ProhibitedItems /></MainLayout>} />
-              <Route path="/onboarding/seller-agreement" element={<MainLayout><SellerAgreement /></MainLayout>} />
-              <Route path="/cart" element={<MainLayout><Cart /></MainLayout>} />
-              <Route path="/ai-builder" element={<AIBuilder />} />
-              {/* Instagram-style profile route: /@username */}
-              <Route path="/:atUsername" element={<AtUsernameRoute />} />
-              
-              {/* Studio */}
-              <Route path="/studio" element={<Tools />} />
-              <Route path="/studio/:toolId" element={<Tools />} />
-              {/* Legacy /tools redirects */}
-              <Route path="/tools" element={<Tools />} />
-              <Route path="/tools/*" element={<Tools />} />
-              
-              {/* Catch-all */}
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </Suspense>
-        </BrowserRouter>
-      </TooltipProvider>
-    </AuthProvider>
-  </QueryClientProvider>
-  </GlobalErrorBoundary>
-);
+function App() {
+  useEffect(() => {
+    document.documentElement.classList.add("dark");
+    document.body.classList.add("dark");
+
+    return () => {
+      document.documentElement.classList.remove("dark");
+      document.body.classList.remove("dark");
+    };
+  }, []);
+
+  return (
+    <GlobalErrorBoundary>
+      <div className="dark min-h-screen bg-background text-foreground">
+        <QueryClientProvider client={queryClient}>
+          <AuthProvider>
+            <TooltipProvider>
+              <Toaster />
+              <Sonner />
+              <UsernameSetupDialog />
+              <BrowserRouter>
+                <ScrollToTop />
+                <Suspense fallback={<PageLoader />}>
+                  <Routes>
+                    <Route path="/login" element={<Login />} />
+                    <Route path="/signup" element={<Signup />} />
+                    <Route path="/reset-password" element={<ResetPassword />} />
+                    <Route path="/~oauth/callback" element={<OAuthCallback />} />
+
+                    <Route path="/" element={<MainLayout darkMode><Home /></MainLayout>} />
+                    <Route path="/products" element={<MainLayout><Products /></MainLayout>} />
+                    <Route path="/product/:idOrSlug" element={<MainLayout><ProductDetail /></MainLayout>} />
+                    <Route path="/p/:idOrSlug" element={<MainLayout><ProductDetail /></MainLayout>} />
+                    <Route path="/create-product" element={<MainLayout><CreateProduct /></MainLayout>} />
+                    <Route path="/edit-product/:id" element={<MainLayout><EditProduct /></MainLayout>} />
+                    <Route path="/creators" element={<MainLayout><Creators /></MainLayout>} />
+                    <Route path="/profile" element={<MainLayout hideFooter><Profile /></MainLayout>} />
+                    <Route path="/settings" element={<MainLayout><Settings /></MainLayout>} />
+                    <Route path="/admin" element={<MainLayout><Admin /></MainLayout>} />
+                    <Route path="/community" element={<MainLayout><Community /></MainLayout>} />
+                    <Route path="/community/updates" element={<MainLayout><Updates /></MainLayout>} />
+                    <Route path="/community/discord" element={<MainLayout><Discord /></MainLayout>} />
+                    <Route path="/community/spotlight" element={<MainLayout><Spotlight /></MainLayout>} />
+                    <Route path="/faq" element={<MainLayout><FAQ /></MainLayout>} />
+                    <Route path="/support" element={<MainLayout><Support /></MainLayout>} />
+                    <Route path="/hire-professionals" element={<MainLayout><HireProfessionals /></MainLayout>} />
+                    <Route path="/dashboard" element={<MainLayout><Dashboard /></MainLayout>} />
+                    <Route path="/notifications" element={<MainLayout><Notifications /></MainLayout>} />
+                    <Route path="/subscription-plans" element={<SubscriptionPlans />} />
+                    <Route path="/pricing" element={<Pricing />} />
+                    <Route path="/billing" element={<Billing />} />
+                    <Route path="/terms" element={<MainLayout><Terms /></MainLayout>} />
+                    <Route path="/privacy" element={<MainLayout><Privacy /></MainLayout>} />
+                    <Route path="/refunds" element={<MainLayout><Refunds /></MainLayout>} />
+                    <Route path="/prohibited-items" element={<MainLayout><ProhibitedItems /></MainLayout>} />
+                    <Route path="/onboarding/seller-agreement" element={<MainLayout><SellerAgreement /></MainLayout>} />
+                    <Route path="/cart" element={<MainLayout><Cart /></MainLayout>} />
+                    <Route path="/ai-builder" element={<AIBuilder />} />
+                    <Route path="/:atUsername" element={<AtUsernameRoute />} />
+
+                    <Route path="/studio" element={<Tools />} />
+                    <Route path="/studio/:toolId" element={<Tools />} />
+                    <Route path="/tools" element={<Tools />} />
+                    <Route path="/tools/*" element={<Tools />} />
+
+                    <Route path="*" element={<NotFound />} />
+                  </Routes>
+                </Suspense>
+              </BrowserRouter>
+            </TooltipProvider>
+          </AuthProvider>
+        </QueryClientProvider>
+      </div>
+    </GlobalErrorBoundary>
+  );
+}
 
 export default App;
