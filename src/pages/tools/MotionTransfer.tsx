@@ -368,6 +368,59 @@ export default function MotionTransfer() {
               />
             </div>
 
+            {/* ── Model Selector ── */}
+            <div>
+              <label className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500 mb-1.5 block">Model</label>
+              <div className="relative">
+                <button
+                  onClick={() => setModelSelectorOpen(!modelSelectorOpen)}
+                  className="w-full flex items-center justify-between rounded-xl px-3 py-2.5 text-[12px] font-medium text-white transition"
+                  style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}
+                >
+                  <span className="flex items-center gap-2">
+                    <Zap className="h-3 w-3 text-purple-400" />
+                    {selectedModelInfo?.name ?? videoModel}
+                    {selectedModelInfo?.tag && (
+                      <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-purple-500/15 text-purple-400 font-semibold">{selectedModelInfo.tag}</span>
+                    )}
+                  </span>
+                  <ChevronDown className={`h-3.5 w-3.5 text-zinc-500 transition-transform ${modelSelectorOpen ? "rotate-180" : ""}`} />
+                </button>
+                <AnimatePresence>
+                  {modelSelectorOpen && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -4 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -4 }}
+                      className="absolute z-50 mt-1 w-full rounded-xl overflow-hidden shadow-2xl"
+                      style={{ background: "#18181b", border: "1px solid rgba(255,255,255,0.08)" }}
+                    >
+                      {(Object.entries(getVideoModelsByCategory()) as [string, typeof VIDEO_MODELS][]).map(([cat, models]) => (
+                        <div key={cat}>
+                          <div className="px-3 pt-2 pb-1 text-[9px] font-bold uppercase tracking-wider text-zinc-500">
+                            {VIDEO_MODEL_CATEGORIES[cat as keyof typeof VIDEO_MODEL_CATEGORIES]?.emoji} {VIDEO_MODEL_CATEGORIES[cat as keyof typeof VIDEO_MODEL_CATEGORIES]?.label}
+                          </div>
+                          {models.filter(m => m.available).map((m) => (
+                            <button
+                              key={m.id}
+                              onClick={() => { setVideoModel(m.id); setModelSelectorOpen(false); }}
+                              className="w-full flex items-center justify-between px-3 py-2 text-[11px] hover:bg-white/[0.04] transition"
+                            >
+                              <span className="flex items-center gap-2">
+                                <span className={`font-medium ${videoModel === m.id ? "text-purple-400" : "text-zinc-300"}`}>{m.name}</span>
+                                {m.tag && <span className="text-[8px] px-1 py-0.5 rounded bg-white/[0.06] text-zinc-500">{m.tag}</span>}
+                              </span>
+                              <span className="text-[10px] text-zinc-600">{m.creditCost} cr</span>
+                            </button>
+                          ))}
+                        </div>
+                      ))}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            </div>
+
             {/* ── Controls Row ── */}
             <div className="grid grid-cols-2 gap-2.5">
               {/* Motion Strength */}
