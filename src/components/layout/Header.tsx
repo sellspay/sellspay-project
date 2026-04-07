@@ -529,12 +529,8 @@ export default function Header() {
                       onClick={() => setActiveDropdown(null)}
                       className="group flex flex-col items-center text-center"
                     >
-                      <div className={cn(
-                        "w-full aspect-[4/3] rounded-2xl flex items-center justify-center mb-3 transition-all duration-200",
-                        `bg-gradient-to-br ${card.gradient}`,
-                        "group-hover:shadow-lg group-hover:scale-[1.03]"
-                      )}>
-                        <span className="text-3xl">{card.icon}</span>
+                      <div className="w-full aspect-[4/3] rounded-2xl overflow-hidden mb-3 transition-all duration-200 group-hover:shadow-lg group-hover:scale-[1.03]">
+                        <img src={card.image} alt={card.name} className="w-full h-full object-cover" loading="lazy" />
                       </div>
                       <span className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors">{card.name}</span>
                       <span className="text-xs text-muted-foreground mt-0.5">{card.subtitle}</span>
