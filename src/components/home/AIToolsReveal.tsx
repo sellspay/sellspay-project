@@ -26,14 +26,8 @@ type Step = {
   media?: PanelMedia;
 };
 
-const REVEAL_SURFACE = "#000000";
+const REVEAL_SURFACE = "hsl(0 0% 0%)";
 const REVEAL_FOREGROUND = "hsl(0 0% 95%)";
-const REVEAL_DARK = "#000000";
-const REVEAL_DARK_TEXT = "hsl(0 0% 100%)";
-const REVEAL_VIDEO = "hsl(15 76% 61%)";
-const REVEAL_VIDEO_TEXT = "hsl(0 0% 4%)";
-const REVEAL_IMAGE = "hsl(202 76% 61%)";
-const REVEAL_IMAGE_TEXT = "hsl(0 0% 4%)";
 
 const DEFAULT_STEPS: Step[] = [
   {
@@ -51,21 +45,21 @@ const DEFAULT_STEPS: Step[] = [
     image: aiPanel2,
   },
   {
-    bg: REVEAL_DARK,
-    text: REVEAL_DARK_TEXT,
+    bg: REVEAL_SURFACE,
+    text: REVEAL_FOREGROUND,
     headline: ["Audio Made", "Simple"],
     subtitle: "Isolate vocals, split stems, and generate sound effects with studio-grade AI tools. Professional audio processing at the click of a button.",
     image: aiPanel3,
   },
   {
-    bg: REVEAL_VIDEO,
-    text: REVEAL_VIDEO_TEXT,
+    bg: REVEAL_SURFACE,
+    text: REVEAL_FOREGROUND,
     headline: ["Generate", "Videos"],
     subtitle: "Turn text prompts into cinematic videos. Create product demos, social content, and promotional clips powered by cutting-edge AI models.",
   },
   {
-    bg: REVEAL_IMAGE,
-    text: REVEAL_IMAGE_TEXT,
+    bg: REVEAL_SURFACE,
+    text: REVEAL_FOREGROUND,
     headline: ["Generate", "images"],
     subtitle: "Build your store's hero in seconds with our AI image generation models. Create stunning product visuals, banners, and promotional art — no design skills needed.",
     image: aiPanel5,
@@ -79,7 +73,7 @@ const DEFAULT_STEPS: Step[] = [
   },
 ];
 
-const CARD_COLORS = [REVEAL_SURFACE, REVEAL_SURFACE, REVEAL_DARK, REVEAL_VIDEO, REVEAL_IMAGE, REVEAL_SURFACE];
+const CARD_COLORS = Array.from({ length: DEFAULT_STEPS.length }, () => REVEAL_SURFACE);
 const STEP_DISTANCE_DESKTOP = 500;
 const STEP_DISTANCE_MOBILE = 300;
 const STACK_Y = 14;
@@ -457,9 +451,7 @@ export function AIToolsReveal() {
                       <div className="h-full w-full flex items-center justify-center">
                         <span
                           className="text-base sm:text-xl md:text-2xl lg:text-3xl font-medium"
-                          style={{
-                            color: CARD_COLORS[idx] === "#1a1a1a" ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.15)",
-                          }}
+                          style={{ color: "rgba(255,255,255,0.18)" }}
                         >
                           Panel {idx + 1}
                         </span>
