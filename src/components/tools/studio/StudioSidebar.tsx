@@ -171,7 +171,7 @@ const DEFAULT_PINNED = [
 
 const PINNED_TOOLS_STORAGE_KEY = "studio-pinned-tools-v2";
 const PINNED_TOOLS_VERSION_KEY = "studio-pinned-tools-version";
-const PINNED_TOOLS_VERSION = "visual-only-v2";
+const PINNED_TOOLS_VERSION = "motion-transfer-v3";
 
 export function StudioSidebar({
   collapsed, onToggleCollapse, activeSection, onSectionChange,
