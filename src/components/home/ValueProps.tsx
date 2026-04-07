@@ -1,8 +1,7 @@
 import { Reveal } from './Reveal';
-import { motion, useMotionValue, useTransform, useSpring } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { Star, Sparkles, Zap, TrendingUp, Users, ArrowRight, Play, Image, Music, Video, Wand2 } from 'lucide-react';
-import { useRef } from 'react';
+import { Star, Sparkles, Zap, TrendingUp, Users, ArrowRight, Image, Music, Video, Wand2 } from 'lucide-react';
 
 const STATS = [
   { value: '10K+', label: 'Creators', icon: Users, accent: '#3b82f6' },
@@ -38,115 +37,36 @@ const REVIEWS = [
 ];
 
 const AI_TOOLS = [
-  { icon: Image, label: 'Image Gen', desc: 'Create stunning visuals' },
-  { icon: Video, label: 'Video Gen', desc: 'AI-powered videos' },
-  { icon: Music, label: 'Audio Tools', desc: 'Produce & edit audio' },
-  { icon: Wand2, label: 'SFX Engine', desc: 'Generate sound effects' },
+  { icon: Image, label: 'Image Gen' },
+  { icon: Video, label: 'Video Gen' },
+  { icon: Music, label: 'Audio Tools' },
+  { icon: Wand2, label: 'SFX Engine' },
 ];
-
-function StatCard({ stat, index }: { stat: typeof STATS[0]; index: number }) {
-  const ref = useRef<HTMLDivElement>(null);
-  const mouseX = useMotionValue(0);
-  const mouseY = useMotionValue(0);
-  const glowX = useSpring(mouseX, { stiffness: 300, damping: 30 });
-  const glowY = useSpring(mouseY, { stiffness: 300, damping: 30 });
-
-  return (
-    <motion.div
-      ref={ref}
-      initial={{ opacity: 0, y: 30 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true }}
-      transition={{ duration: 0.6, delay: index * 0.1 }}
-      whileHover={{ y: -4, scale: 1.02 }}
-      onMouseMove={(e) => {
-        const rect = ref.current?.getBoundingClientRect();
-        if (!rect) return;
-        mouseX.set(e.clientX - rect.left);
-        mouseY.set(e.clientY - rect.top);
-      }}
-      className="relative text-center py-8 px-6 rounded-2xl group cursor-default overflow-hidden"
-      style={{
-        background: 'linear-gradient(145deg, rgba(255,255,255,0.04), rgba(255,255,255,0.01))',
-        border: '1px solid rgba(255,255,255,0.07)',
-      }}
-    >
-      {/* Hover glow */}
-      <motion.div
-        className="absolute w-32 h-32 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"
-        style={{
-          x: glowX,
-          y: glowY,
-          translateX: '-50%',
-          translateY: '-50%',
-          background: `radial-gradient(circle, ${stat.accent}22, transparent 70%)`,
-        }}
-      />
-      <div className="relative z-10">
-        <div
-          className="w-10 h-10 rounded-xl mx-auto mb-4 flex items-center justify-center"
-          style={{
-            background: `linear-gradient(135deg, ${stat.accent}18, ${stat.accent}08)`,
-            border: `1px solid ${stat.accent}20`,
-          }}
-        >
-          <stat.icon className="w-4.5 h-4.5" style={{ color: stat.accent }} />
-        </div>
-        <p className="text-4xl sm:text-5xl font-bold tracking-tight mb-1.5" style={{ color: '#f0f0f0' }}>
-          {stat.value}
-        </p>
-        <p className="text-[11px] uppercase tracking-[0.2em] font-medium" style={{ color: 'rgba(255,255,255,0.35)' }}>
-          {stat.label}
-        </p>
-      </div>
-    </motion.div>
-  );
-}
 
 export function ValueProps() {
   return (
     <section className="relative pt-40 pb-32 sm:pt-48 sm:pb-40" style={{ background: '#000' }}>
-      {/* Top gradient that bleeds upward — no overflow-hidden so it shows over previous section */}
+      {/* Top fade */}
       <div
         className="absolute -top-40 left-0 right-0 h-80 pointer-events-none"
-        style={{
-          background: 'linear-gradient(to bottom, transparent, #000000)',
-        }}
+        style={{ background: 'linear-gradient(to bottom, transparent, #000000)' }}
       />
 
       {/* Ambient glows */}
-      <div
-        className="absolute top-20 left-1/2 -translate-x-1/2 w-[1400px] h-[700px] pointer-events-none"
-        style={{
-          background: 'radial-gradient(ellipse 50% 35% at 50% 20%, rgba(59,130,246,0.08) 0%, transparent 70%)',
-        }}
-      />
-      <div
-        className="absolute top-1/2 -left-20 w-[500px] h-[500px] pointer-events-none"
-        style={{
-          background: 'radial-gradient(circle, rgba(139,92,246,0.06) 0%, transparent 60%)',
-          filter: 'blur(60px)',
-        }}
-      />
-      <div
-        className="absolute bottom-20 right-0 w-[600px] h-[400px] pointer-events-none"
-        style={{
-          background: 'radial-gradient(circle, rgba(34,211,238,0.05) 0%, transparent 60%)',
-          filter: 'blur(60px)',
-        }}
+      <div className="absolute top-20 left-1/2 -translate-x-1/2 w-[1400px] h-[700px] pointer-events-none"
+        style={{ background: 'radial-gradient(ellipse 50% 35% at 50% 20%, rgba(59,130,246,0.08) 0%, transparent 70%)' }}
       />
 
-      <div className="relative z-10 px-6 sm:px-8 lg:px-12 max-w-[1200px] mx-auto">
+      <div className="relative z-10 max-w-[1100px] mx-auto px-6 sm:px-8">
         {/* Badge */}
         <Reveal>
-          <div className="flex items-center gap-2 mb-10">
+          <div className="text-center mb-8">
             <span
               className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-[11px] font-semibold uppercase tracking-[0.2em]"
               style={{
                 background: 'linear-gradient(135deg, rgba(59,130,246,0.12), rgba(139,92,246,0.12))',
                 border: '1px solid rgba(255,255,255,0.1)',
                 color: 'rgba(255,255,255,0.7)',
-                boxShadow: '0 0 20px rgba(59,130,246,0.08)',
               }}
             >
               <Sparkles className="w-3.5 h-3.5 text-blue-400" />
@@ -155,10 +75,10 @@ export function ValueProps() {
           </div>
         </Reveal>
 
-        {/* Heading */}
+        {/* Heading — centered */}
         <Reveal>
           <h2
-            className="text-5xl sm:text-6xl lg:text-7xl xl:text-[5.5rem] font-extralight tracking-tight leading-[1.05] mb-7"
+            className="text-center text-5xl sm:text-6xl lg:text-7xl xl:text-[5.5rem] font-extralight tracking-tight leading-[1.05] mb-6"
             style={{ color: '#e8e8e8' }}
           >
             Thousands of creators{' '}
@@ -177,151 +97,166 @@ export function ValueProps() {
           </h2>
         </Reveal>
 
-        {/* Subtitle */}
+        {/* Subtitle — centered */}
         <Reveal>
-          <p className="text-lg sm:text-xl max-w-2xl leading-relaxed mb-20" style={{ color: 'rgba(255,255,255,0.45)' }}>
+          <p className="text-center text-lg sm:text-xl max-w-2xl mx-auto leading-relaxed mb-20" style={{ color: 'rgba(255,255,255,0.45)' }}>
             Stop jumping between platforms. Your storefront, tools, and payments —{' '}
             <span className="font-semibold" style={{ color: '#818cf8' }}>unified.</span>
           </p>
         </Reveal>
 
-        {/* Stats Row */}
-        <div className="grid grid-cols-3 gap-5 mb-28 max-w-3xl">
+        {/* Stats Row — centered */}
+        <div className="grid grid-cols-3 gap-5 mb-20 max-w-3xl mx-auto">
           {STATS.map((stat, i) => (
-            <StatCard key={stat.label} stat={stat} index={i} />
-          ))}
-        </div>
-
-        {/* Divider line */}
-        <div className="mb-24">
-          <div
-            className="w-full h-px"
-            style={{
-              background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent)',
-            }}
-          />
-        </div>
-
-        {/* Two-column: Selling + AI Studio */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 lg:gap-20 mb-28">
-          {/* Left — value prop */}
-          <Reveal>
-            <div className="flex flex-col justify-center">
-              <h3 className="text-4xl sm:text-5xl font-bold tracking-tight mb-6" style={{ color: '#f0f0f0' }}>
-                Start Selling<span style={{ color: '#3b82f6' }}>.</span>
-              </h3>
-              <div
-                className="w-20 h-[2px] mb-8 rounded-full"
-                style={{ background: 'linear-gradient(90deg, #3b82f6, #8b5cf6, transparent)' }}
-              />
-              <p className="text-base sm:text-lg leading-[1.8] mb-5" style={{ color: 'rgba(255,255,255,0.5)' }}>
-                We built SellsPay for creators who are tired of stitching together five different services just to sell a preset pack.
-              </p>
-              <p className="text-base sm:text-lg leading-[1.8] mb-10" style={{ color: 'rgba(255,255,255,0.5)' }}>
-                Sell. Create with AI tools. Get paid instantly. No more going site to site.
-              </p>
-              <Link
-                to="/auth"
-                className="btn-premium inline-flex items-center gap-2.5 px-7 py-3 rounded-full text-sm font-semibold text-white self-start"
-              >
-                Get Started Free
-                <ArrowRight className="w-4 h-4" />
-              </Link>
-            </div>
-          </Reveal>
-
-          {/* Right — AI Studio card */}
-          <Reveal delay={100}>
             <motion.div
-              whileHover={{ y: -6 }}
-              transition={{ duration: 0.4, ease: 'easeOut' }}
-              className="rounded-[28px] p-[1px] relative overflow-hidden"
+              key={stat.label}
+              initial={{ opacity: 0, y: 24 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5, delay: i * 0.1 }}
+              whileHover={{ y: -3 }}
+              className="text-center py-7 px-5 rounded-2xl"
               style={{
-                background: 'linear-gradient(145deg, rgba(59,130,246,0.3), rgba(139,92,246,0.2), rgba(255,255,255,0.05))',
+                background: 'linear-gradient(145deg, rgba(255,255,255,0.04), rgba(255,255,255,0.015))',
+                border: '1px solid rgba(255,255,255,0.07)',
               }}
             >
               <div
-                className="rounded-[27px] p-8 sm:p-10 relative overflow-hidden"
+                className="w-9 h-9 rounded-lg mx-auto mb-4 flex items-center justify-center"
                 style={{
-                  background: 'linear-gradient(145deg, #0a0f1a, #080810)',
+                  background: `${stat.accent}12`,
+                  border: `1px solid ${stat.accent}20`,
                 }}
               >
-                {/* Corner glow */}
-                <div
-                  className="absolute -top-20 -right-20 w-60 h-60 pointer-events-none"
-                  style={{
-                    background: 'radial-gradient(circle, rgba(59,130,246,0.2), transparent 60%)',
-                    filter: 'blur(30px)',
-                  }}
-                />
-                <div
-                  className="absolute -bottom-16 -left-16 w-48 h-48 pointer-events-none"
-                  style={{
-                    background: 'radial-gradient(circle, rgba(139,92,246,0.12), transparent 60%)',
-                    filter: 'blur(30px)',
-                  }}
-                />
+                <stat.icon className="w-4 h-4" style={{ color: stat.accent }} />
+              </div>
+              <p className="text-3xl sm:text-4xl font-bold tracking-tight mb-1" style={{ color: '#f0f0f0' }}>
+                {stat.value}
+              </p>
+              <p className="text-[11px] uppercase tracking-[0.2em] font-medium" style={{ color: 'rgba(255,255,255,0.35)' }}>
+                {stat.label}
+              </p>
+            </motion.div>
+          ))}
+        </div>
 
-                <div className="relative z-10">
-                  <div className="flex items-center gap-2.5 mb-6">
+        {/* Start Selling — centered block */}
+        <Reveal>
+          <div className="text-center mb-10">
+            <h3 className="text-3xl sm:text-4xl font-bold tracking-tight mb-5" style={{ color: '#f0f0f0' }}>
+              Start Selling<span style={{ color: '#3b82f6' }}>.</span>
+            </h3>
+            <div className="w-16 h-[2px] mx-auto mb-6 rounded-full" style={{ background: 'linear-gradient(90deg, #3b82f6, #8b5cf6)' }} />
+            <p className="text-base sm:text-lg leading-[1.8] max-w-xl mx-auto mb-4" style={{ color: 'rgba(255,255,255,0.5)' }}>
+              We built SellsPay for creators who are tired of stitching together five different services just to sell a preset pack.
+            </p>
+            <p className="text-base sm:text-lg leading-[1.8] max-w-xl mx-auto mb-8" style={{ color: 'rgba(255,255,255,0.5)' }}>
+              Sell. Create with AI tools. Get paid instantly. No more going site to site.
+            </p>
+            <Link to="/auth" className="btn-premium inline-flex items-center gap-2.5 px-7 py-3 rounded-full text-sm font-semibold text-white">
+              Get Started Free
+              <ArrowRight className="w-4 h-4" />
+            </Link>
+          </div>
+        </Reveal>
+
+        {/* AI Studio Banner — full width */}
+        <Reveal>
+          <motion.div
+            whileHover={{ y: -4 }}
+            transition={{ duration: 0.4, ease: 'easeOut' }}
+            className="mt-20 mb-28 rounded-[28px] p-[1px] relative overflow-hidden"
+            style={{
+              background: 'linear-gradient(135deg, rgba(59,130,246,0.35), rgba(139,92,246,0.25), rgba(34,211,238,0.15), rgba(255,255,255,0.05))',
+            }}
+          >
+            <div
+              className="rounded-[27px] relative overflow-hidden"
+              style={{ background: 'linear-gradient(135deg, #080d1a, #0a0810, #060812)' }}
+            >
+              {/* Ambient glows inside banner */}
+              <div className="absolute -top-24 -left-24 w-72 h-72 pointer-events-none"
+                style={{ background: 'radial-gradient(circle, rgba(59,130,246,0.18), transparent 60%)', filter: 'blur(40px)' }}
+              />
+              <div className="absolute -bottom-20 -right-20 w-64 h-64 pointer-events-none"
+                style={{ background: 'radial-gradient(circle, rgba(139,92,246,0.14), transparent 60%)', filter: 'blur(40px)' }}
+              />
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-48 pointer-events-none"
+                style={{ background: 'radial-gradient(ellipse, rgba(34,211,238,0.06), transparent 60%)', filter: 'blur(50px)' }}
+              />
+
+              {/* Banner content */}
+              <div className="relative z-10 flex flex-col lg:flex-row items-center gap-10 px-10 py-12 sm:px-14 sm:py-16">
+                {/* Left text */}
+                <div className="flex-1 text-center lg:text-left">
+                  <div className="flex items-center gap-2.5 mb-5 justify-center lg:justify-start">
                     <div
                       className="w-8 h-8 rounded-lg flex items-center justify-center"
                       style={{
                         background: 'linear-gradient(135deg, #3b82f6, #8b5cf6)',
-                        boxShadow: '0 4px 12px rgba(59,130,246,0.3)',
+                        boxShadow: '0 4px 16px rgba(59,130,246,0.35)',
                       }}
                     >
                       <Sparkles className="w-4 h-4 text-white" />
                     </div>
-                    <span className="text-xs font-bold uppercase tracking-[0.15em]" style={{ color: 'rgba(255,255,255,0.6)' }}>
+                    <span className="text-xs font-bold uppercase tracking-[0.15em]" style={{ color: 'rgba(255,255,255,0.55)' }}>
                       AI Studio
                     </span>
                   </div>
 
-                  <h3 className="text-3xl sm:text-4xl font-bold tracking-tight mb-3" style={{ color: '#f0f0f0' }}>
+                  <h3 className="text-4xl sm:text-5xl font-bold tracking-tight mb-3" style={{ color: '#f0f0f0' }}>
                     Create with AI.
                   </h3>
-                  <p className="text-xl font-light mb-6" style={{ color: 'rgba(255,255,255,0.35)' }}>
+                  <p className="text-xl sm:text-2xl font-light mb-5" style={{ color: 'rgba(255,255,255,0.3)' }}>
                     Sell instantly.
                   </p>
-                  <p className="text-sm leading-relaxed mb-8" style={{ color: 'rgba(255,255,255,0.45)' }}>
-                    Generate images, videos, audio, SFX — everything you need to build and sell digital products, powered by cutting-edge AI.
+                  <p className="text-sm sm:text-base leading-relaxed max-w-lg mb-8" style={{ color: 'rgba(255,255,255,0.45)' }}>
+                    Generate images, videos, audio & SFX — everything you need to build and sell digital products, powered by cutting-edge AI models.
                   </p>
-
-                  {/* Tool chips */}
-                  <div className="grid grid-cols-2 gap-3 mb-8">
-                    {AI_TOOLS.map((tool) => (
-                      <div
-                        key={tool.label}
-                        className="flex items-center gap-3 px-4 py-3 rounded-xl"
-                        style={{
-                          background: 'rgba(255,255,255,0.03)',
-                          border: '1px solid rgba(255,255,255,0.06)',
-                        }}
-                      >
-                        <tool.icon className="w-4 h-4 flex-shrink-0" style={{ color: '#818cf8' }} />
-                        <div>
-                          <p className="text-xs font-semibold" style={{ color: 'rgba(255,255,255,0.7)' }}>{tool.label}</p>
-                          <p className="text-[10px]" style={{ color: 'rgba(255,255,255,0.3)' }}>{tool.desc}</p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-
                   <Link
                     to="/studio"
-                    className="btn-premium inline-flex items-center gap-2 px-6 py-2.5 rounded-full text-sm font-semibold text-white"
+                    className="btn-premium inline-flex items-center gap-2 px-7 py-3 rounded-full text-sm font-semibold text-white"
                   >
                     Explore AI Studio
                     <ArrowRight className="w-4 h-4" />
                   </Link>
                 </div>
-              </div>
-            </motion.div>
-          </Reveal>
-        </div>
 
-        {/* Reviews header */}
+                {/* Right — tool grid */}
+                <div className="grid grid-cols-2 gap-3 flex-shrink-0 w-full lg:w-auto lg:max-w-[280px]">
+                  {AI_TOOLS.map((tool, i) => (
+                    <motion.div
+                      key={tool.label}
+                      initial={{ opacity: 0, scale: 0.9 }}
+                      whileInView={{ opacity: 1, scale: 1 }}
+                      viewport={{ once: true }}
+                      transition={{ duration: 0.4, delay: 0.2 + i * 0.08 }}
+                      whileHover={{ scale: 1.05 }}
+                      className="flex flex-col items-center justify-center gap-2.5 py-6 px-4 rounded-2xl text-center"
+                      style={{
+                        background: 'rgba(255,255,255,0.04)',
+                        border: '1px solid rgba(255,255,255,0.07)',
+                      }}
+                    >
+                      <div
+                        className="w-10 h-10 rounded-xl flex items-center justify-center"
+                        style={{
+                          background: 'linear-gradient(135deg, rgba(59,130,246,0.15), rgba(139,92,246,0.1))',
+                          border: '1px solid rgba(255,255,255,0.08)',
+                        }}
+                      >
+                        <tool.icon className="w-5 h-5" style={{ color: '#818cf8' }} />
+                      </div>
+                      <p className="text-xs font-semibold" style={{ color: 'rgba(255,255,255,0.65)' }}>{tool.label}</p>
+                    </motion.div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        </Reveal>
+
+        {/* Reviews */}
         <Reveal>
           <div className="text-center mb-12">
             <p className="text-[11px] font-semibold uppercase tracking-[0.25em] mb-4" style={{ color: 'rgba(255,255,255,0.3)' }}>
@@ -340,7 +275,6 @@ export function ValueProps() {
           </div>
         </Reveal>
 
-        {/* Review cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
           {REVIEWS.map((review, i) => (
             <Reveal key={review.name} delay={i * 100}>
@@ -353,14 +287,10 @@ export function ValueProps() {
                   border: '1px solid rgba(255,255,255,0.07)',
                 }}
               >
-                {/* Hover accent line */}
                 <div
                   className="absolute top-0 left-0 right-0 h-[2px] opacity-0 group-hover:opacity-100 transition-opacity duration-500"
-                  style={{
-                    background: `linear-gradient(90deg, transparent, ${review.accent}, transparent)`,
-                  }}
+                  style={{ background: `linear-gradient(90deg, transparent, ${review.accent}, transparent)` }}
                 />
-
                 <div className="flex gap-0.5 mb-5">
                   {Array.from({ length: review.stars }).map((_, s) => (
                     <Star key={s} className="w-4 h-4 fill-amber-400 text-amber-400" />
