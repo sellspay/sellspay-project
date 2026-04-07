@@ -112,6 +112,24 @@ export default function ImageAnimator() {
   };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+
+  const handleVideoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 200 * 1024 * 1024) { toast.error("File too large. Max 200MB."); return; }
+    if (!file.type.startsWith("video/")) { toast.error("Please upload a video file."); return; }
+    setSourceVideoName(file.name);
+    const upload = async () => {
+      const path = `video-ref/${Date.now()}-${file.name}`;
+      const { data: upData, error: upErr } = await supabase.storage.from("tool-assets").upload(path, file, { contentType: file.type });
+      if (upErr) { toast.error("Failed to upload video"); setSourceVideoName(null); return; }
+      const { data: urlData } = supabase.storage.from("tool-assets").getPublicUrl(upData.path);
+      setSourceVideo(urlData.publicUrl);
+      toast.success("Video uploaded!");
+    };
+    upload();
+  };
+
     const file = e.target.files?.[0];
     if (!file) return;
     if (file.size > 20 * 1024 * 1024) { toast.error("File too large. Max 20MB."); return; }
