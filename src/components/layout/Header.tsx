@@ -255,11 +255,8 @@ export default function Header() {
                 </button>
               </div>
 
-              {/* Divider */}
-              <div className={cn(
-                "h-6 w-[1px] mx-2",
-                "bg-gradient-to-b from-transparent via-border to-transparent"
-              )} />
+              {/* Spacer between nav groups */}
+              <div className="w-3" />
 
               {/* Hire Professionals */}
               {user && (
@@ -475,18 +472,17 @@ export default function Header() {
                 </DropdownMenu>
               ) : (
                 <div className="hidden lg:flex items-center gap-3">
+                  <Link 
+                    to="/login"
+                    className="text-sm font-medium text-foreground/70 hover:text-foreground transition-colors"
+                  >
+                    Sign In
+                  </Link>
                   <Button 
                     asChild 
                     className="h-10 px-6 text-sm font-medium rounded-full"
                   >
                     <Link to="/signup">Get Started</Link>
-                  </Button>
-                  <Button 
-                    variant="outline"
-                    asChild 
-                    className="h-10 px-6 text-sm font-medium rounded-full border-foreground/20 text-foreground hover:bg-foreground/10"
-                  >
-                    <Link to="/login">Sign In</Link>
                   </Button>
                 </div>
               )}
