@@ -27,12 +27,12 @@ import { PricingModal } from '@/components/pricing/PricingModal';
 
 // Marketplace product cards — CapCut style with thumbnails
 const marketplaceCards = [
-  { name: 'LUTs', subtitle: 'Color grading presets', path: '/products?type=lut', icon: '🎨', gradient: 'from-violet-100 to-indigo-100' },
-  { name: 'Presets', subtitle: 'Editing presets', path: '/products?type=preset', icon: '✨', gradient: 'from-pink-100 to-rose-100' },
-  { name: 'SFX', subtitle: 'Sound effects', path: '/products?type=sfx', icon: '🔊', gradient: 'from-amber-100 to-orange-100' },
-  { name: 'Templates', subtitle: 'Project files', path: '/products?type=template', icon: '📁', gradient: 'from-sky-100 to-blue-100' },
-  { name: 'Overlays', subtitle: 'Video overlays', path: '/products?type=overlay', icon: '🎬', gradient: 'from-emerald-100 to-teal-100' },
-  { name: 'Tutorials', subtitle: 'Learn from pros', path: '/products?type=tutorial', icon: '📚', gradient: 'from-purple-100 to-fuchsia-100' },
+  { name: 'LUTs', subtitle: 'Color grading presets', path: '/products?type=lut', icon: '🎨', gradient: 'from-violet-500/20 to-indigo-500/20' },
+  { name: 'Presets', subtitle: 'Editing presets', path: '/products?type=preset', icon: '✨', gradient: 'from-pink-500/20 to-rose-500/20' },
+  { name: 'SFX', subtitle: 'Sound effects', path: '/products?type=sfx', icon: '🔊', gradient: 'from-amber-500/20 to-orange-500/20' },
+  { name: 'Templates', subtitle: 'Project files', path: '/products?type=template', icon: '📁', gradient: 'from-sky-500/20 to-blue-500/20' },
+  { name: 'Overlays', subtitle: 'Video overlays', path: '/products?type=overlay', icon: '🎬', gradient: 'from-emerald-500/20 to-teal-500/20' },
+  { name: 'Tutorials', subtitle: 'Learn from pros', path: '/products?type=tutorial', icon: '📚', gradient: 'from-purple-500/20 to-fuchsia-500/20' },
 ];
 
 // AI Studio tools — all tools organized like CapCut
