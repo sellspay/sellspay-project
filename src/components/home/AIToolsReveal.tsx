@@ -183,12 +183,13 @@ export function AIToolsReveal() {
       if (!text || cards.length === 0) return;
 
       const headlineEl = text.querySelector("[data-headline]") as HTMLElement | null;
+      const textContainer = text; // Apply text color to entire container so subtitle inherits
       const totalScrollDistance = ENTRY_BUFFER + (panelCount - 1) * stepDistance + EXIT_BUFFER;
       const animDuration = 1 - HOLD_RATIO; // 0.6
 
       // Set initial states
       gsap.set(section, { backgroundColor: steps[0].bg });
-      if (headlineEl) gsap.set(headlineEl, { color: steps[0].text });
+      gsap.set(textContainer, { color: steps[0].text });
 
       cards.forEach((card, i) => {
         gsap.set(card, {
