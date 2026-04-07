@@ -26,10 +26,10 @@ type Step = {
 };
 
 const BG_BLACK = "#000000";
-const BG_WHITE = "#f5f5f5";
-const BG_BLUE = "#d0e8f7";
-const BG_GREEN = "#c8f0d4";
-const BG_RED = "#f5c6c6";
+const BG_WHITE = "#f0f0f0";
+const BG_BLUE = "#38bdf8";
+const BG_GREEN = "#34d399";
+const BG_RED = "#f87171";
 const TEXT_LIGHT = "#f0f0f0";
 const TEXT_DARK = "#0a0a0a";
 
