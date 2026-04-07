@@ -3,6 +3,7 @@ import { ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toolsRegistry, type ToolRegistryEntry } from "@/components/tools/toolsRegistry";
 import { toolThumbnails } from "./toolThumbnails";
+import { InspirationsGallery } from "./InspirationsGallery";
 import bannerHero1 from "@/assets/tools/banner-hero-1.jpg";
 import bannerHero2 from "@/assets/tools/banner-hero-2.jpg";
 import bannerHero3 from "@/assets/tools/banner-hero-3.jpg";
