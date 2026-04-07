@@ -115,19 +115,24 @@ export default function SlidingBanner() {
             }}
           >
             {logos.map((logo, index) => (
-              <img
+              <div
                 key={index}
-                src={logo.src}
-                alt={logo.name}
-                style={{
-                  height: '32px',
-                  width: 'auto',
-                  objectFit: 'contain',
-                  filter: 'grayscale(1) brightness(2)',
-                  opacity: 0.6,
-                  flex: '0 0 auto',
-                }}
-              />
+                className="flex items-center justify-center rounded-lg bg-white/[0.06] border border-white/[0.08] px-5 py-3"
+                style={{ flex: '0 0 auto' }}
+              >
+                <img
+                  src={logo.src}
+                  alt={logo.name}
+                  style={{
+                    height: '28px',
+                    width: 'auto',
+                    objectFit: 'contain',
+                    filter: 'grayscale(1) brightness(1.8)',
+                    opacity: 0.7,
+                    flex: '0 0 auto',
+                  }}
+                />
+              </div>
             ))}
           </div>
         </div>
