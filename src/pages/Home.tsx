@@ -161,6 +161,7 @@ export default function Home() {
       <SlidingBanner />
       <FeatureTabsBar />
       <AIToolsReveal />
+      <AIBuilderShowcase />
       <ValueProps />
     </div>
   );
