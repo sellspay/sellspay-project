@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowRight, Sparkles, Send, CheckCircle2, Loader2 } from 'lucide-react';
+import { ArrowRight, Sparkles, Send, CheckCircle2, Loader2, Zap, Palette, Code2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import aiBuilderResult from '@/assets/ai-builder-result.jpg';
 
