@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { Bell, Image, Music, Video, X, ExternalLink } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { useNavigate } from "react-router-dom";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { TOOL_GEN_END, type ToolGenDetail } from "@/utils/toolGenerationEvent";
@@ -31,6 +32,7 @@ const TYPE_ICON: Record<string, typeof Image> = {
 export function GenerationNotifications({ collapsed, onNavigateToTool }: GenerationNotificationsProps) {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [open, setOpen] = useState(false);
+  const navigate = useNavigate();
 
   const unreadCount = notifications.filter(n => !n.read).length;
 
@@ -146,7 +148,11 @@ export function GenerationNotifications({ collapsed, onNavigateToTool }: Generat
                 <button
                   key={n.id}
                   onClick={() => {
-                    onNavigateToTool(n.toolId, n.assetUrl);
+                    if (n.assetUrl) {
+                      navigate(`/studio/${n.toolId}`, { state: { viewAssetUrl: n.assetUrl, viewAssetType: n.assetType } });
+                    } else {
+                      onNavigateToTool(n.toolId);
+                    }
                     setOpen(false);
                   }}
                   className="flex items-start gap-3 w-full px-4 py-3 hover:bg-white/[0.04] transition-colors text-left group"
