@@ -13,6 +13,8 @@ interface Notification {
   success: boolean;
   timestamp: number;
   read: boolean;
+  assetUrl?: string;
+  assetType?: string;
 }
 
 interface GenerationNotificationsProps {
@@ -34,7 +36,7 @@ export function GenerationNotifications({ collapsed, onNavigateToTool }: Generat
 
   useEffect(() => {
     const handler = (e: Event) => {
-      const detail = (e as CustomEvent<ToolGenDetail & { success: boolean }>).detail;
+      const detail = (e as CustomEvent<ToolGenDetail & { success: boolean; assetUrl?: string; assetType?: string }>).detail;
       const n: Notification = {
         id: `${Date.now()}-${Math.random()}`,
         toolId: detail.toolId,
@@ -42,6 +44,8 @@ export function GenerationNotifications({ collapsed, onNavigateToTool }: Generat
         success: detail.success,
         timestamp: Date.now(),
         read: false,
+        assetUrl: detail.assetUrl,
+        assetType: detail.assetType,
       };
       setNotifications(prev => [n, ...prev].slice(0, 50));
     };
@@ -142,7 +146,7 @@ export function GenerationNotifications({ collapsed, onNavigateToTool }: Generat
                 <button
                   key={n.id}
                   onClick={() => {
-                    onNavigateToTool(n.toolId);
+                    onNavigateToTool(n.toolId, n.assetUrl);
                     setOpen(false);
                   }}
                   className="flex items-start gap-3 w-full px-4 py-3 hover:bg-white/[0.04] transition-colors text-left group"
