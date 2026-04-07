@@ -111,6 +111,7 @@ export default function ImageAnimator() {
           image_url: imageUrl,
           video_url: mode === "video-ref" ? sourceVideo : undefined,
           mode: mode === "video-ref" ? "video-reference" : "image-to-video",
+          model: videoModel,
           duration,
           aspect_ratio: "16:9",
         },
