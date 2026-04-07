@@ -511,7 +511,7 @@ export default function Header() {
           onMouseEnter={handleEnterPanel}
           onMouseLeave={handleLeavePanel}
         >
-          <div className="bg-background">
+          <div className="backdrop-blur-xl bg-white/[0.04] border-t border-white/[0.06]">
             <div className="mx-auto max-w-6xl px-8 py-8">
               {activeDropdown === 'marketplace' && (
                 <div className="grid grid-cols-6 gap-5">
