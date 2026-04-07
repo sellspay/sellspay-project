@@ -217,9 +217,31 @@ serve(async (req) => {
             console.log("Result data keys:", Object.keys(resultData));
             videoUrl = resultData.video?.url;
             console.log("Video URL:", videoUrl);
+            if (!videoUrl) {
+              console.error("No video URL in result data:", JSON.stringify(resultData));
+              const errMsg = "Video generation completed but no video URL returned";
+              await supabase.from("video_generation_queue").update({ status: "failed", error_message: errMsg }).eq("id", requestId);
+              await supabase.rpc("add_credits", { p_user_id: user.id, p_amount: VIDEO_COST, p_action: "refund", p_description: "Refund: no video URL in result" });
+              return new Response(JSON.stringify({ error: errMsg, request_id: requestId }), {
+                status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+              });
+            }
           } else {
             const errTxt = await resultResponse.text();
             console.error("Result fetch error:", resultResponse.status, errTxt);
+            // Parse error for user-friendly message
+            let errMsg = `Video generation failed (${resultResponse.status})`;
+            try {
+              const errJson = JSON.parse(errTxt);
+              if (errJson.detail?.[0]?.msg) {
+                errMsg = errJson.detail[0].msg;
+              }
+            } catch {}
+            await supabase.from("video_generation_queue").update({ status: "failed", error_message: errMsg }).eq("id", requestId);
+            await supabase.rpc("add_credits", { p_user_id: user.id, p_amount: VIDEO_COST, p_action: "refund", p_description: `Refund: result fetch failed (${resultResponse.status})` });
+            return new Response(JSON.stringify({ error: errMsg, request_id: requestId }), {
+              status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
           }
           break;
         } else if (statusResult.status === "FAILED") {
