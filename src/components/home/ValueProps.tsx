@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 import { Sparkles, ArrowRight, Image, Music, Video, Wand2, ShieldCheck, CreditCard, Globe, Lock, Mic, Scissors, AudioLines, Volume2 } from 'lucide-react';
 import { useState } from 'react';
 import studioImageGen from '@/assets/home/studio-image-gen.jpg';
-import studioVideoGenHQ from '@/assets/home/studio-kungfu-impact-sync.mp4.asset.json';
+import studioVideoGenHQ from '@/assets/kung-fu-fight.mp4.asset.json';
 import studioMotionSync from '@/assets/home/studio-motion-sync.mp4.asset.json';
 
 /* ─── Data ─── */
