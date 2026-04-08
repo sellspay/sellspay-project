@@ -284,7 +284,6 @@ export function AIBuilderShowcase() {
                 className="overflow-hidden rounded-[24px] border border-border/50 bg-card/60 backdrop-blur-xl"
                 style={{ boxShadow: '0 0 80px -20px hsl(var(--primary) / 0.25), 0 30px 60px -30px rgba(0,0,0,0.5)' }}
               >
-                {/* Image - clean, no overlays */}
                 <div className="relative aspect-[16/9] overflow-hidden bg-card">
                   <img
                     src={EXAMPLES[exampleIdx].image}
@@ -293,37 +292,36 @@ export function AIBuilderShowcase() {
                     width={1376}
                     height={768}
                   />
-                </div>
-
-                {/* Minimal floating overlay */}
-                <div className="absolute bottom-0 left-0 right-0 flex items-center justify-between px-5 py-3 sm:px-6 sm:py-4 bg-gradient-to-t from-black/70 via-black/40 to-transparent">
-                  <div className="flex items-center gap-2.5">
-                    <CheckCircle2 className="h-4 w-4 text-white/80" />
-                    <span className="text-xs font-semibold text-white/90 tracking-wide">
-                      {EXAMPLES[exampleIdx].title}
-                    </span>
-                    <span className="hidden sm:inline text-[10px] text-white/50 font-medium">
-                      · {EXAMPLES[exampleIdx].subtitle}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <div className="hidden sm:flex items-center gap-1">
-                      {EXAMPLES.map((_, i) => (
-                        <div
-                          key={i}
-                          className={`h-1 rounded-full transition-all duration-500 ${
-                            i === exampleIdx ? 'w-5 bg-white/90' : 'w-1 bg-white/30'
-                          }`}
-                        />
-                      ))}
+                  {/* Floating overlay inside image */}
+                  <div className="absolute bottom-0 left-0 right-0 flex items-center justify-between px-5 py-3 sm:px-6 sm:py-4 bg-gradient-to-t from-black/70 via-black/40 to-transparent">
+                    <div className="flex items-center gap-2.5">
+                      <CheckCircle2 className="h-4 w-4 text-white/80" />
+                      <span className="text-xs font-semibold text-white/90 tracking-wide">
+                        {EXAMPLES[exampleIdx].title}
+                      </span>
+                      <span className="hidden sm:inline text-[10px] text-white/50 font-medium">
+                        · {EXAMPLES[exampleIdx].subtitle}
+                      </span>
                     </div>
-                    <Link
-                      to="/ai-builder"
-                      className="inline-flex items-center gap-1.5 rounded-lg bg-white/15 backdrop-blur-sm border border-white/20 px-4 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-white transition-all hover:bg-white/25"
-                    >
-                      Try It
-                      <ArrowRight className="h-3 w-3" />
-                    </Link>
+                    <div className="flex items-center gap-3">
+                      <div className="hidden sm:flex items-center gap-1">
+                        {EXAMPLES.map((_, i) => (
+                          <div
+                            key={i}
+                            className={`h-1 rounded-full transition-all duration-500 ${
+                              i === exampleIdx ? 'w-5 bg-white/90' : 'w-1 bg-white/30'
+                            }`}
+                          />
+                        ))}
+                      </div>
+                      <Link
+                        to="/ai-builder"
+                        className="inline-flex items-center gap-1.5 rounded-lg bg-white/15 backdrop-blur-sm border border-white/20 px-4 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-white transition-all hover:bg-white/25"
+                      >
+                        Try It
+                        <ArrowRight className="h-3 w-3" />
+                      </Link>
+                    </div>
                   </div>
                 </div>
               </div>
