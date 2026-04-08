@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowRight, Sparkles, Send, CheckCircle2, Loader2, Zap, Palette, Code2 } from 'lucide-react';
+import { ArrowRight, Send, CheckCircle2, Loader2, Zap, Palette, Code2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import aiBuilderFashion from '@/assets/ai-builder-fashion-16x9.jpg';
 import aiBuilderGaming from '@/assets/ai-builder-gaming-16x9.jpg';
@@ -11,21 +11,21 @@ type Phase = 'idle' | 'generating' | 'done';
 
 const EXAMPLES = [
   {
-    prompt: 'Build me a luxury fashion boutique with dark theme, gold accents, hero video section, and a product grid with hover effects',
+    prompt: 'Build me a premium digital course storefront with dark theme, gold accents, course cards with pricing, and a hero section showcasing featured tutorials',
     image: aiBuilderFashion,
-    title: 'Luxury Fashion Boutique',
+    title: 'Digital Course Store',
     subtitle: 'Generated from your prompt · Dark & Gold theme',
   },
   {
-    prompt: 'Create a gaming gear store with dark purple and neon cyan colors, RGB keyboard hero banner, and product cards for peripherals with discount badges',
+    prompt: 'Create a design assets marketplace with dark purple and neon cyan colors, template preview cards with download badges, and a hero banner for UI kits',
     image: aiBuilderGaming,
-    title: 'Gaming Gear Store',
+    title: 'Design Assets Store',
     subtitle: 'Generated from your prompt · Neon & Purple theme',
   },
   {
-    prompt: 'Design an organic food marketplace with warm earth tones, farm-to-table hero section, and product cards showing artisan foods with pricing',
+    prompt: 'Design a Notion template shop with warm earth tones, product cards showing template previews with pricing, and a hero section for productivity bundles',
     image: aiBuilderOrganic,
-    title: 'Organic Food Market',
+    title: 'Template Shop',
     subtitle: 'Generated from your prompt · Natural & Warm theme',
   },
 ];
