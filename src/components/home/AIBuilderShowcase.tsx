@@ -146,10 +146,6 @@ export function AIBuilderShowcase() {
           transition={{ duration: 0.6 }}
           className="mx-auto max-w-2xl text-center"
         >
-          <div className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-card/70 px-4 py-2 text-xs font-medium uppercase tracking-[0.22em] text-muted-foreground backdrop-blur-md">
-            <Sparkles className="h-3.5 w-3.5 text-primary" />
-            AI-Powered
-          </div>
 
           <h2 className="mt-6 text-[clamp(3rem,8vw,6.5rem)] font-black leading-[0.9] tracking-[-0.07em] text-foreground">
             AI Builder
