@@ -17,6 +17,13 @@ export interface ProfileData {
   referral_code: string | null;
 }
 
+export interface SignInResult {
+  error: Error | null;
+  /** True when the credentials were valid but the account has 2FA enabled. The
+   *  user has been signed out; the global MFA modal will handle verification. */
+  mfaRequired?: boolean;
+}
+
 interface AuthContextType {
   user: User | null;
   session: Session | null;
@@ -27,7 +34,7 @@ interface AuthContextType {
   profileLoading: boolean;
   refreshProfile: () => Promise<void>;
   signUp: (email: string, password: string, metadata?: { full_name?: string; username?: string; phone?: string }) => Promise<{ error: Error | null }>;
-  signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
+  signIn: (email: string, password: string) => Promise<SignInResult>;
   signInWithGoogle: () => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<{ error: Error | null }>;
