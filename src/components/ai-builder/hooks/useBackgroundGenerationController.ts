@@ -359,9 +359,24 @@ export function useBackgroundGenerationController({
       });
     }
 
-    // Add assistant message with the summary
-    if (job.summary && activeProjectId) {
-      addMessage('assistant', job.summary, job.code_result || undefined, activeProjectId);
+    // Add assistant message with a rich summary of what changed
+    if (activeProjectId) {
+      const fileCount = job.code_result ? (() => {
+        try {
+          const parsed = JSON.parse(job.code_result);
+          const files = parsed?.files;
+          if (Array.isArray(files)) return files.length;
+          if (files && typeof files === 'object') return Object.keys(files).length;
+          return 0;
+        } catch { return 0; }
+      })() : 0;
+
+      const header = fileCount > 0
+        ? `✅ **Changes applied** — updated ${fileCount} file${fileCount === 1 ? '' : 's'}`
+        : `✅ **Done**`;
+      const body = job.summary?.trim() || 'No detailed summary was provided by the model.';
+      const fullMessage = `${header}\n\n${body}`;
+      addMessage('assistant', fullMessage, job.code_result || undefined, activeProjectId);
     }
 
     // Clear "building" state for the run that created this job
@@ -415,10 +430,26 @@ export function useBackgroundGenerationController({
           addMessage('assistant', `⚠️ ${msg}\nNo changes were applied — your project remains in its last stable state.`, undefined, activeProjectId);
         }
       } else {
-        toast.error(userMessage, { duration: 6000 });
+        // Friendly, specific error explanations
+        let friendlyReason = userMessage;
+        if (combinedCheck.includes('COMPILE_FAILURE') || combinedCheck.includes('Unclosed JSX')) {
+          friendlyReason = 'The AI generated invalid JSX (unclosed tags). The build was rejected to keep your site safe. Retrying usually fixes this.';
+        } else if (combinedCheck.includes('EDGE_TIMEOUT')) {
+          friendlyReason = 'The generation took too long and timed out. Try a smaller change or retry.';
+        } else if (combinedCheck.includes('CORRUPT_JSON_OUTPUT') || combinedCheck.includes('NO_CODE_PRODUCED')) {
+          friendlyReason = 'The AI returned malformed output. Retrying with the same prompt usually works.';
+        } else if (combinedCheck.includes('MODEL_TRUNCATED')) {
+          friendlyReason = 'The response was cut off mid-generation. Try breaking the request into smaller steps.';
+        }
+        toast.error(friendlyReason, { duration: 7000 });
         if (activeProjectId) {
-          const retryHint = isRetryableError ? '\n\nYou can retry this request using the button below.' : '';
-          addMessage('assistant', `❌ Generation failed: ${userMessage}\nNo changes were applied — your project remains in its last stable state.${retryHint}`, undefined, activeProjectId);
+          const retryHint = isRetryableError ? '\n\n👉 Use the **Retry Build** button below to try again.' : '';
+          addMessage(
+            'assistant',
+            `❌ **Generation failed**\n\n${friendlyReason}\n\n*No changes were applied — your project is in its last stable state.*${retryHint}`,
+            undefined,
+            activeProjectId
+          );
         }
       }
       setLiveSteps([]);
