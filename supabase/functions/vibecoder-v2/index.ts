@@ -1124,6 +1124,7 @@ const PRE_CHARGE_AMOUNT = 1; // 1 credit pre-charge for all models
 // Dynamic cost calculation based on output size (chars → approximate tokens)
 // ~4 chars per token, cost per 1K output tokens varies by model tier
 const MODEL_COST_PER_1K_OUTPUT: Record<string, number> = {
+  "vibecoder-auto": 0.5,    // Auto — uses routed model's cost
   "vibecoder-pro": 0.5,    // 0.5 credits per 1K output tokens
   "vibecoder-flash": 0,     // Free
   "vibecoder-claude": 0.8,  // 0.8 credits per 1K output tokens
@@ -1134,6 +1135,7 @@ const MODEL_COST_PER_1K_OUTPUT: Record<string, number> = {
 
 // Min/max bounds per model to keep pricing predictable
 const MODEL_MIN_COST: Record<string, number> = {
+  "vibecoder-auto": 0,
   "vibecoder-pro": 1,
   "vibecoder-flash": 0,
   "vibecoder-claude": 2,
@@ -1142,6 +1144,7 @@ const MODEL_MIN_COST: Record<string, number> = {
   "reasoning-o1": 3,
 };
 const MODEL_MAX_COST: Record<string, number> = {
+  "vibecoder-auto": 15,
   "vibecoder-pro": 10,
   "vibecoder-flash": 0,
   "vibecoder-claude": 15,
