@@ -217,12 +217,30 @@ export function useBackgroundGeneration({
                   const jobAge = Date.now() - new Date(freshJob.created_at).getTime();
 
                   if (heartbeatAge > HEARTBEAT_STALE_MS || jobAge > HARD_TIMEOUT_MS) {
-                    console.error('[BackgroundGen] Worker heartbeat stale (age:', heartbeatAge, 'ms), force-failing:', job.id);
+                    console.warn('[BackgroundGen] Worker heartbeat stale (age:', heartbeatAge, 'ms). Attempting resume:', job.id);
+                    // Try to resume via the resume edge function before giving up.
+                    try {
+                      const { data: resumeData, error: resumeErr } = await supabase.functions.invoke('vibecoder-resume', {
+                        body: { jobId: job.id },
+                      });
+                      if (resumeErr) throw resumeErr;
+                      if (resumeData?.resumed) {
+                        console.log('[BackgroundGen] Resume kicked off (attempt', resumeData.attempt, '/', resumeData.maxAttempts, ')');
+                        // Keep polling — worker will update heartbeat shortly
+                        scheduleHeartbeatPoll();
+                        return;
+                      }
+                      // Resume declined (max retries) — fall through to failure
+                      console.error('[BackgroundGen] Resume declined:', resumeData?.reason);
+                    } catch (e) {
+                      console.error('[BackgroundGen] Resume call failed:', e);
+                    }
+                    // Final force-fail (resume exhausted or failed to invoke)
                     await supabase
                       .from('ai_generation_jobs')
                       .update({ status: 'failed', error_message: 'Generation worker stopped responding', failure_stage: 'generation', completed_at: new Date().toISOString() })
                       .eq('id', job.id)
-                      .eq('status', freshJob.status);
+                      .in('status', ['pending', 'running']);
                     const failedJob = { ...freshJob, status: 'failed' as const, error_message: 'Generation worker stopped responding', failure_stage: 'generation' };
                     setCurrentJob(failedJob);
                     onJobErrorRef.current?.(failedJob);
