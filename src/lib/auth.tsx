@@ -275,19 +275,48 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { error };
   };
 
-  const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    
-    // Check if user wants to be remembered
+  const signIn = async (email: string, password: string): Promise<SignInResult> => {
+    const { data: signInData, error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) return { error };
+
+    // Persist remember-me preference
     const rememberMe = localStorage.getItem('rememberMe') === 'true';
     if (!rememberMe) {
-      // Mark session as temporary - will be cleared on browser close
       sessionStorage.setItem('tempSession', 'true');
     } else {
       sessionStorage.removeItem('tempSession');
     }
-    
-    return { error };
+
+    // ---- Centralized MFA gate ----
+    const authedUser = signInData?.user;
+    if (authedUser) {
+      try {
+        const { data: prof } = await supabase
+          .from('profiles')
+          .select('mfa_enabled')
+          .eq('user_id', authedUser.id)
+          .maybeSingle();
+
+        if (prof?.mfa_enabled) {
+          // Sign the user back out — they must complete OTP first
+          await supabase.auth.signOut();
+          // Trigger global MFA modal via custom event
+          window.dispatchEvent(new CustomEvent('sellspay:mfa-required', {
+            detail: {
+              userId: authedUser.id,
+              email: authedUser.email || email,
+              password, // held in memory only — used to re-sign-in after OTP succeeds
+            },
+          }));
+          return { error: null, mfaRequired: true };
+        }
+      } catch (mfaErr) {
+        console.error('[Auth] MFA gate check failed:', mfaErr);
+        // Fail closed: don't lock the user out if the check itself errors
+      }
+    }
+
+    return { error: null };
   };
 
   const signInWithGoogle = async () => {
