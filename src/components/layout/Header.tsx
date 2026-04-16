@@ -530,7 +530,7 @@ export default function Header() {
                 { to: '/creators', icon: Users, label: 'Creators' },
                 { to: '/studio', icon: Wand2, label: 'AI Studio' },
                 { to: '/community', icon: MessageSquare, label: 'Community' },
-                { to: '/hire-professionals', icon: Mic, label: 'Hire Professionals' },
+                
               ].map((item) => (
                 <Link
                   key={item.to}
