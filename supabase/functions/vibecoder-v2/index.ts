@@ -1213,6 +1213,7 @@ interface ModelConfig {
 }
 
 const MODEL_CONFIG: Record<string, ModelConfig> = {
+  "vibecoder-auto": { modelId: "gemini-2.5-flash", provider: "gemini" }, // Placeholder — auto-routing resolves this
   "vibecoder-pro": { modelId: "gemini-2.5-flash", provider: "gemini" },
   "vibecoder-flash": { modelId: "gemini-2.5-flash", provider: "gemini" },
   "reasoning-o1": { modelId: "gemini-2.5-pro", provider: "gemini" },
