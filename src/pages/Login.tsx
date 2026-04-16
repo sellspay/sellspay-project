@@ -46,7 +46,7 @@ export default function Login() {
   }, [location]);
 
   useEffect(() => {
-    if (user && !showMfaVerification && !checkingMfa) {
+    if (user) {
       const params = new URLSearchParams(location.search);
       const next = params.get('next');
       if (next) {
@@ -63,129 +63,39 @@ export default function Login() {
         fetchAndRedirect();
       }
     }
-  }, [user, navigate, location.search, showMfaVerification, checkingMfa]);
+  }, [user, navigate, location.search]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setLoading(true);
-    setCheckingMfa(true);
     setShowForgotPassword(false);
 
     try {
       let emailToUse = credential.trim();
       if (!emailToUse.includes('@')) {
         const { data: email, error: rpcError } = await supabase.rpc('get_email_by_username', {
-          p_username: emailToUse
+          p_username: emailToUse,
         });
         if (rpcError) throw rpcError;
         if (!email) {
           setError('Username not found');
           setLoading(false);
-          setCheckingMfa(false);
           return;
         }
         emailToUse = email;
       }
 
       localStorage.setItem('rememberMe', rememberMe.toString());
+      // signIn() handles the MFA gate internally — if mfaRequired is true,
+      // the global modal opens and finishes the sign-in.
       const { error } = await signIn(emailToUse, password);
       if (error) throw error;
-
-      const { data: { user: authUser } } = await supabase.auth.getUser();
-      if (authUser) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('mfa_enabled')
-          .eq('user_id', authUser.id)
-          .single();
-
-        if (profile?.mfa_enabled) {
-          const userId = authUser.id;
-          const userEmail = authUser.email || emailToUse;
-          setMfaUserId(userId);
-          setMfaEmail(userEmail);
-          await signOut();
-          setShowMfaVerification(true);
-          setCheckingMfa(false);
-          setLoading(false);
-          await sendMfaCode(userId, userEmail);
-          return;
-        }
-      }
-      setCheckingMfa(false);
     } catch (err: any) {
       setError('Invalid email/username or password');
-      setCheckingMfa(false);
     } finally {
       setLoading(false);
     }
-  };
-
-  const sendMfaCode = async (userId: string, email: string) => {
-    setSendingOtp(true);
-    try {
-      const { data, error } = await supabase.functions.invoke("send-verification-otp", {
-        body: { email, userId }
-      });
-      if (error) throw error;
-      if (data?.verificationToken) {
-        setVerificationToken(data.verificationToken);
-      }
-      setOtpSent(true);
-      toast.success('Verification code sent to your email.');
-    } catch (error) {
-      console.error('Error sending OTP:', error);
-      toast.error('Failed to send verification code.');
-    } finally {
-      setSendingOtp(false);
-    }
-  };
-
-  const handleMfaVerify = async () => {
-    if (!mfaUserId || !otpCode || otpCode.length !== 6 || !verificationToken) {
-      if (!verificationToken) toast.error('Please request a new verification code');
-      return;
-    }
-    setVerifyingOtp(true);
-    setError(null);
-    try {
-      const { data, error } = await supabase.functions.invoke("verify-otp", {
-        body: { userId: mfaUserId, code: otpCode, verificationToken, purpose: 'login' }
-      });
-      if (error) throw new Error(error.message || 'Verification failed');
-      if (!data?.success) throw new Error(data?.error || 'Invalid verification code');
-
-      let emailToUse = credential.trim();
-      if (!emailToUse.includes('@')) {
-        const { data: email } = await supabase.rpc('get_email_by_username', { p_username: emailToUse });
-        if (email) emailToUse = email;
-      }
-      const { error: signInError } = await signIn(emailToUse, password);
-      if (signInError) throw signInError;
-      toast.success('Successfully verified!');
-      setVerificationToken(null);
-      setShowMfaVerification(false);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Failed to verify code.';
-      setError(message);
-    } finally {
-      setVerifyingOtp(false);
-    }
-  };
-
-  const handleResendCode = async () => {
-    if (mfaUserId && mfaEmail) await sendMfaCode(mfaUserId, mfaEmail);
-  };
-
-  const handleBackToLogin = () => {
-    setShowMfaVerification(false);
-    setMfaUserId(null);
-    setMfaEmail(null);
-    setOtpCode('');
-    setOtpSent(false);
-    setVerificationToken(null);
-    setError(null);
   };
 
   const handleResetPassword = async (e: React.FormEvent) => {
