@@ -20,6 +20,10 @@ export interface GenerationJob {
   completed_at: string | null;
   created_at: string;
   updated_at: string;
+  // Reliability tracking (added v2)
+  last_heartbeat_at?: string | null;
+  failure_stage?: string | null;
+  files_changed_count?: number | null;
 }
 
 interface UseBackgroundGenerationOptions {
@@ -60,7 +64,13 @@ export function useBackgroundGeneration({
 
   // Stale job timeout ref
   const staleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const STALE_JOB_TIMEOUT_MS = 200_000; // 3m20s — must exceed backend's max 180s timeout for first builds
+  // Heartbeat-based stale detection: worker writes last_heartbeat_at every ~15s.
+  // If we haven't seen one in 60s, the worker is presumed dead.
+  const HEARTBEAT_STALE_MS = 60_000;
+  // Hard wall-clock ceiling as a backstop (in case heartbeats are also stuck).
+  const HARD_TIMEOUT_MS = 300_000; // 5 minutes — safety net only
+  // How often the client polls for heartbeat freshness while a job is active.
+  const HEARTBEAT_POLL_INTERVAL_MS = 20_000;
 
   // Subscribe to realtime updates for this project's jobs
   useEffect(() => {
@@ -94,16 +104,20 @@ export function useBackgroundGeneration({
           const job = activeJobs[0] as GenerationJob;
           console.log('[BackgroundGen] Found existing active job:', job.id, job.status);
 
-          // Check if this job is already stale on mount
-          const jobAge = Date.now() - new Date(job.updated_at || job.created_at).getTime();
-          if (jobAge > STALE_JOB_TIMEOUT_MS) {
-            console.warn('[BackgroundGen] Found stale job on mount, force-failing:', job.id);
+          // Heartbeat-based staleness check on mount.
+          const heartbeatTs = job.last_heartbeat_at ? new Date(job.last_heartbeat_at).getTime() : null;
+          const heartbeatAge = heartbeatTs ? Date.now() - heartbeatTs : Infinity;
+          const jobAge = Date.now() - new Date(job.created_at).getTime();
+          const isHeartbeatStale = heartbeatAge > HEARTBEAT_STALE_MS;
+          const isHardTimeout = jobAge > HARD_TIMEOUT_MS;
+          if (isHeartbeatStale && (jobAge > HEARTBEAT_STALE_MS || isHardTimeout)) {
+            console.warn('[BackgroundGen] Found stale job on mount (heartbeat age:', heartbeatAge, 'ms), force-failing:', job.id);
             await supabase
               .from('ai_generation_jobs')
-              .update({ status: 'failed', error_message: 'Generation timed out', completed_at: new Date().toISOString() })
+              .update({ status: 'failed', error_message: 'Generation worker stopped responding', failure_stage: 'generation', completed_at: new Date().toISOString() })
               .eq('id', job.id)
-              .eq('status', job.status); // only update if status hasn't changed
-            const failedJob = { ...job, status: 'failed' as const, error_message: 'Generation timed out' };
+              .eq('status', job.status);
+            const failedJob = { ...job, status: 'failed' as const, error_message: 'Generation worker stopped responding', failure_stage: 'generation' };
             setCurrentJob(failedJob);
             onJobErrorRef.current?.(failedJob);
           } else {
@@ -164,22 +178,24 @@ export function useBackgroundGeneration({
             setCurrentJob(job);
             onJobUpdateRef.current?.(job);
 
-            // Reset stale timer on every update
+            // Reset stale poll timer on every update (heartbeat or status change)
             if (staleTimerRef.current) clearTimeout(staleTimerRef.current);
 
-            // Start stale timer for active jobs
+            // For active jobs, schedule a heartbeat-freshness poll.
+            // Instead of one wall-clock timer, we poll every HEARTBEAT_POLL_INTERVAL_MS and
+            // only force-fail if the worker's last_heartbeat_at is older than HEARTBEAT_STALE_MS.
             if (job.status === 'pending' || job.status === 'running') {
-              staleTimerRef.current = setTimeout(async () => {
-                console.warn('[BackgroundGen] Job stale, polling DB for final status:', job.id);
-                // Poll DB one last time - maybe the realtime event was missed
-                const { data } = await supabase
-                  .from('ai_generation_jobs')
-                  .select('*')
-                  .eq('id', job.id)
-                  .single();
-                
-                if (data) {
+              const scheduleHeartbeatPoll = () => {
+                staleTimerRef.current = setTimeout(async () => {
+                  const { data } = await supabase
+                    .from('ai_generation_jobs')
+                    .select('*')
+                    .eq('id', job.id)
+                    .single();
+                  if (!data) return;
                   const freshJob = data as GenerationJob;
+
+                  // Job already terminal — let the realtime/dedup path handle it
                   if (freshJob.status === 'completed') {
                     const jobKey = `${freshJob.id}_${freshJob.status}`;
                     if (!processedJobsRef.current.has(jobKey)) {
@@ -187,23 +203,36 @@ export function useBackgroundGeneration({
                       setCurrentJob(freshJob);
                       onJobCompleteRef.current?.(freshJob);
                     }
-                  } else if (freshJob.status === 'failed' || freshJob.status === 'needs_user_action') {
+                    return;
+                  }
+                  if (freshJob.status === 'failed' || freshJob.status === 'needs_user_action' || freshJob.status === 'needs_continuation') {
                     setCurrentJob(freshJob);
                     onJobErrorRef.current?.(freshJob);
-                  } else {
-                    // Still running/pending after timeout — force fail
-                    console.error('[BackgroundGen] Job timed out, force-failing:', job.id);
+                    return;
+                  }
+
+                  // Still running — check heartbeat freshness
+                  const heartbeatTs = freshJob.last_heartbeat_at ? new Date(freshJob.last_heartbeat_at).getTime() : null;
+                  const heartbeatAge = heartbeatTs ? Date.now() - heartbeatTs : Infinity;
+                  const jobAge = Date.now() - new Date(freshJob.created_at).getTime();
+
+                  if (heartbeatAge > HEARTBEAT_STALE_MS || jobAge > HARD_TIMEOUT_MS) {
+                    console.error('[BackgroundGen] Worker heartbeat stale (age:', heartbeatAge, 'ms), force-failing:', job.id);
                     await supabase
                       .from('ai_generation_jobs')
-                      .update({ status: 'failed', error_message: 'Generation timed out', completed_at: new Date().toISOString() })
+                      .update({ status: 'failed', error_message: 'Generation worker stopped responding', failure_stage: 'generation', completed_at: new Date().toISOString() })
                       .eq('id', job.id)
                       .eq('status', freshJob.status);
-                    const failedJob = { ...freshJob, status: 'failed' as const, error_message: 'Generation timed out' };
+                    const failedJob = { ...freshJob, status: 'failed' as const, error_message: 'Generation worker stopped responding', failure_stage: 'generation' };
                     setCurrentJob(failedJob);
                     onJobErrorRef.current?.(failedJob);
+                  } else {
+                    // Worker still alive — keep polling
+                    scheduleHeartbeatPoll();
                   }
-                }
-              }, STALE_JOB_TIMEOUT_MS);
+                }, HEARTBEAT_POLL_INTERVAL_MS);
+              };
+              scheduleHeartbeatPoll();
             }
 
             // Only fire completion/error callbacks ONCE per job
@@ -213,9 +242,16 @@ export function useBackgroundGeneration({
                 processedJobsRef.current.add(jobKey);
                 onJobCompleteRef.current?.(job);
               } else if (job.status === 'needs_continuation') {
-                // Treat needs_continuation as a failure — no silent patching
+                // Truncated output — treat as failure, do NOT commit partial code
                 processedJobsRef.current.add(jobKey);
-                onJobCompleteRef.current?.(job);
+                onJobErrorRef.current?.({
+                  ...job,
+                  error_message: job.error_message || JSON.stringify({
+                    type: 'MODEL_TRUNCATED',
+                    message: 'Generation was cut off mid-response. Try a smaller request or click Retry.',
+                  }),
+                  failure_stage: job.failure_stage || 'generation',
+                });
               } else if (job.status === 'needs_user_action') {
                 // Intent check failed — user needs to simplify/clarify
                 processedJobsRef.current.add(jobKey);
@@ -255,7 +291,10 @@ export function useBackgroundGeneration({
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
-        toast.error('Please sign in to continue');
+        // Guest hitting generate — redirect to login instead of silent toast-fail
+        toast.info('Sign in to start building');
+        const redirectTarget = encodeURIComponent(window.location.pathname + window.location.search);
+        window.location.href = `/login?redirect=${redirectTarget}`;
         return null;
       }
 

@@ -3696,10 +3696,24 @@ serve(async (req) => {
         .update({
           status: "running",
           started_at: new Date().toISOString(),
+          last_heartbeat_at: new Date().toISOString(),
           progress_logs: ["Starting AI generation..."],
         })
         .eq("id", jobId);
     }
+
+    // 💓 DB HEARTBEAT: every 15s, write last_heartbeat_at so the client knows the worker is alive.
+    // Lets the client distinguish "model is taking a while" (heartbeat fresh) from "worker crashed" (heartbeat stale).
+    const dbHeartbeatInterval = jobId ? setInterval(async () => {
+      try {
+        await supabase
+          .from("ai_generation_jobs")
+          .update({ last_heartbeat_at: new Date().toISOString() })
+          .eq("id", jobId);
+      } catch (e) {
+        console.warn(`[Job ${jobId}] DB heartbeat failed:`, e);
+      }
+    }, 15_000) : null;
 
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
@@ -4485,6 +4499,8 @@ serve(async (req) => {
                     await supabase.from("ai_generation_jobs").update({
                       status: "needs_user_action",
                       completed_at: new Date().toISOString(),
+                      last_heartbeat_at: new Date().toISOString(),
+                      failure_stage: "intent",
                       plan_result: planResult,
                       summary: "This request is too complex for a single generation. Please break it into 2-3 smaller requests.",
                       terminal_reason: "complexity_guard",
@@ -5127,15 +5143,28 @@ serve(async (req) => {
               }
             }
 
+            // Compute files_changed_count for the UI's zero-change warning
+            let filesChangedCount: number | null = null;
+            if (jobStatus === "completed" && !validationError && codeResult) {
+              try {
+                const parsed = JSON.parse(codeResult);
+                if (parsed?.files && typeof parsed.files === "object") {
+                  filesChangedCount = Object.keys(parsed.files).length;
+                }
+              } catch { /* code_result not JSON — leave null */ }
+            }
+
             // Finalize Job Status
             const updatePayload: Record<string, unknown> = {
               status: jobStatus,
               completed_at: new Date().toISOString(),
+              last_heartbeat_at: new Date().toISOString(),
               code_result: (validationError || jobStatus !== "completed") ? null : codeResult,
               summary: summary?.slice(0, 8000),
               plan_result: planResult,
               validation_report: validationReport,
               terminal_reason: terminalReason,
+              files_changed_count: filesChangedCount,
               progress_logs: validationError
                 ? ["Starting AI generation...", "Processing response...", `⚠️ ${validationError.errorType}`]
                 : jobStatus === "needs_user_action"
@@ -5148,6 +5177,17 @@ serve(async (req) => {
                 type: validationError.errorType,
                 message: validationError.errorMessage,
               });
+              // failure_stage breadcrumb: where in the pipeline we broke
+              const et = (validationError.errorType || "").toLowerCase();
+              updatePayload.failure_stage = et.includes("compile")
+                ? "validation"
+                : et.includes("repair")
+                ? "repair"
+                : (et.includes("no_code") || et.includes("corrupt") || et.includes("truncated") || et.includes("empty"))
+                ? "generation"
+                : "commit";
+            } else if (jobStatus === "needs_user_action") {
+              updatePayload.failure_stage = "intent";
             }
 
             if (jobStatus !== "completed") {
@@ -5175,6 +5215,8 @@ serve(async (req) => {
               .update({
                 status: "failed",
                 completed_at: new Date().toISOString(),
+                last_heartbeat_at: new Date().toISOString(),
+                failure_stage: errorType === "EDGE_TIMEOUT" ? "generation" : "generation",
                 error_message: JSON.stringify({ type: errorType, message: errorMessage }),
                 progress_logs: ["Starting AI generation...", "Error occurred", `${errorType}: ${errorMessage}`],
               })
@@ -5182,6 +5224,7 @@ serve(async (req) => {
           }
         } finally {
           clearInterval(heartbeatInterval);
+          if (dbHeartbeatInterval) clearInterval(dbHeartbeatInterval);
           clearTimeout(streamTimeout);
           try {
             if (!streamClosed) controller.close();
@@ -5212,6 +5255,8 @@ serve(async (req) => {
         .update({
           status: "failed",
           completed_at: new Date().toISOString(),
+          last_heartbeat_at: new Date().toISOString(),
+          failure_stage: isTimeout ? "generation" : "commit",
           error_message: JSON.stringify({
             type: isTimeout ? "EDGE_TIMEOUT" : "EDGE_CRASH",
             message: error instanceof Error ? error.message : "Unknown error",

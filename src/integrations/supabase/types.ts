@@ -94,9 +94,12 @@ export type Database = {
           completed_at: string | null
           created_at: string
           error_message: string | null
+          failure_stage: string | null
+          files_changed_count: number | null
           id: string
           intent_check_attempts: number
           is_plan_mode: boolean | null
+          last_heartbeat_at: string | null
           model_id: string | null
           plan_result: Json | null
           progress_logs: string[] | null
@@ -117,9 +120,12 @@ export type Database = {
           completed_at?: string | null
           created_at?: string
           error_message?: string | null
+          failure_stage?: string | null
+          files_changed_count?: number | null
           id?: string
           intent_check_attempts?: number
           is_plan_mode?: boolean | null
+          last_heartbeat_at?: string | null
           model_id?: string | null
           plan_result?: Json | null
           progress_logs?: string[] | null
@@ -140,9 +146,12 @@ export type Database = {
           completed_at?: string | null
           created_at?: string
           error_message?: string | null
+          failure_stage?: string | null
+          files_changed_count?: number | null
           id?: string
           intent_check_attempts?: number
           is_plan_mode?: boolean | null
+          last_heartbeat_at?: string | null
           model_id?: string | null
           plan_result?: Json | null
           progress_logs?: string[] | null
