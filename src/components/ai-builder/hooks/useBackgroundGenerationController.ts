@@ -469,6 +469,23 @@ export function useBackgroundGenerationController({
     acknowledgeJob(currentJob.id);
   }, [hasCompletedJob, currentJob, isLoadingJob, acknowledgeJob, handleJobComplete]);
 
+  // RESUME: If a job FAILED while the user was away — reset stuck "Building..." UI
+  const processedFailedJobRef = useRef<string | null>(null);
+  
+  useEffect(() => {
+    if (!hasFailedJob || !currentJob || isLoadingJob) return;
+    if (processedFailedJobRef.current === currentJob.id) return;
+    if (processedJobIdsRef.current.has(currentJob.id)) {
+      processedFailedJobRef.current = currentJob.id;
+      acknowledgeJob(currentJob.id);
+      return;
+    }
+    console.log('[BackgroundGen] Found failed job on mount, routing through error handler...');
+    processedFailedJobRef.current = currentJob.id;
+    handleJobError(currentJob);
+    acknowledgeJob(currentJob.id);
+  }, [hasFailedJob, currentJob, isLoadingJob, acknowledgeJob, handleJobError]);
+
   // Clear retry state when a new generation starts successfully
   const clearLastFailedPrompt = useCallback(() => {
     setLastFailedPrompt(null);
