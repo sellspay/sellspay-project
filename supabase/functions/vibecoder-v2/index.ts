@@ -3696,10 +3696,24 @@ serve(async (req) => {
         .update({
           status: "running",
           started_at: new Date().toISOString(),
+          last_heartbeat_at: new Date().toISOString(),
           progress_logs: ["Starting AI generation..."],
         })
         .eq("id", jobId);
     }
+
+    // 💓 DB HEARTBEAT: every 15s, write last_heartbeat_at so the client knows the worker is alive.
+    // Lets the client distinguish "model is taking a while" (heartbeat fresh) from "worker crashed" (heartbeat stale).
+    const dbHeartbeatInterval = jobId ? setInterval(async () => {
+      try {
+        await supabase
+          .from("ai_generation_jobs")
+          .update({ last_heartbeat_at: new Date().toISOString() })
+          .eq("id", jobId);
+      } catch (e) {
+        console.warn(`[Job ${jobId}] DB heartbeat failed:`, e);
+      }
+    }, 15_000) : null;
 
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
