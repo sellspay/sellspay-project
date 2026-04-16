@@ -64,7 +64,13 @@ export function useBackgroundGeneration({
 
   // Stale job timeout ref
   const staleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const STALE_JOB_TIMEOUT_MS = 200_000; // 3m20s — must exceed backend's max 180s timeout for first builds
+  // Heartbeat-based stale detection: worker writes last_heartbeat_at every ~15s.
+  // If we haven't seen one in 60s, the worker is presumed dead.
+  const HEARTBEAT_STALE_MS = 60_000;
+  // Hard wall-clock ceiling as a backstop (in case heartbeats are also stuck).
+  const HARD_TIMEOUT_MS = 300_000; // 5 minutes — safety net only
+  // How often the client polls for heartbeat freshness while a job is active.
+  const HEARTBEAT_POLL_INTERVAL_MS = 20_000;
 
   // Subscribe to realtime updates for this project's jobs
   useEffect(() => {
@@ -98,16 +104,20 @@ export function useBackgroundGeneration({
           const job = activeJobs[0] as GenerationJob;
           console.log('[BackgroundGen] Found existing active job:', job.id, job.status);
 
-          // Check if this job is already stale on mount
-          const jobAge = Date.now() - new Date(job.updated_at || job.created_at).getTime();
-          if (jobAge > STALE_JOB_TIMEOUT_MS) {
-            console.warn('[BackgroundGen] Found stale job on mount, force-failing:', job.id);
+          // Heartbeat-based staleness check on mount.
+          const heartbeatTs = job.last_heartbeat_at ? new Date(job.last_heartbeat_at).getTime() : null;
+          const heartbeatAge = heartbeatTs ? Date.now() - heartbeatTs : Infinity;
+          const jobAge = Date.now() - new Date(job.created_at).getTime();
+          const isHeartbeatStale = heartbeatAge > HEARTBEAT_STALE_MS;
+          const isHardTimeout = jobAge > HARD_TIMEOUT_MS;
+          if (isHeartbeatStale && (jobAge > HEARTBEAT_STALE_MS || isHardTimeout)) {
+            console.warn('[BackgroundGen] Found stale job on mount (heartbeat age:', heartbeatAge, 'ms), force-failing:', job.id);
             await supabase
               .from('ai_generation_jobs')
-              .update({ status: 'failed', error_message: 'Generation timed out', completed_at: new Date().toISOString() })
+              .update({ status: 'failed', error_message: 'Generation worker stopped responding', failure_stage: 'generation', completed_at: new Date().toISOString() })
               .eq('id', job.id)
-              .eq('status', job.status); // only update if status hasn't changed
-            const failedJob = { ...job, status: 'failed' as const, error_message: 'Generation timed out' };
+              .eq('status', job.status);
+            const failedJob = { ...job, status: 'failed' as const, error_message: 'Generation worker stopped responding', failure_stage: 'generation' };
             setCurrentJob(failedJob);
             onJobErrorRef.current?.(failedJob);
           } else {
