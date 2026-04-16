@@ -20,6 +20,10 @@ export interface GenerationJob {
   completed_at: string | null;
   created_at: string;
   updated_at: string;
+  // Reliability tracking (added v2)
+  last_heartbeat_at?: string | null;
+  failure_stage?: string | null;
+  files_changed_count?: number | null;
 }
 
 interface UseBackgroundGenerationOptions {
