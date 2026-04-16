@@ -180,59 +180,7 @@ export default function Login() {
         <div className="flex-1 flex items-center justify-center px-8 sm:px-12 lg:px-16 py-8">
           <div className="w-full max-w-[400px]">
 
-            {/* MFA Verification View */}
-            {showMfaVerification ? (
-              <>
-                <div className="text-center mb-8">
-                  <h1 className="text-2xl font-bold text-foreground mb-1.5 tracking-tight">Two-Factor Authentication</h1>
-                  <p className="text-muted-foreground text-sm">Enter the code sent to your email</p>
-                </div>
-                <div className="space-y-6">
-                  <div className="flex flex-col items-center gap-4">
-                    <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center">
-                      <Shield className="w-7 h-7 text-primary" />
-                    </div>
-                    <p className="text-sm text-muted-foreground text-center">
-                      A verification code has been sent to:<br />
-                      <span className="font-medium text-foreground">{mfaEmail}</span>
-                    </p>
-                  </div>
-
-                  <div className="flex justify-center">
-                    <InputOTP maxLength={6} value={otpCode} onChange={(value) => setOtpCode(value)}>
-                      <InputOTPGroup>
-                        <InputOTPSlot index={0} />
-                        <InputOTPSlot index={1} />
-                        <InputOTPSlot index={2} />
-                        <InputOTPSlot index={3} />
-                        <InputOTPSlot index={4} />
-                        <InputOTPSlot index={5} />
-                      </InputOTPGroup>
-                    </InputOTP>
-                  </div>
-
-                  {error && <p className="text-destructive text-sm text-center">{error}</p>}
-
-                  <button
-                    onClick={handleMfaVerify}
-                    disabled={verifyingOtp || otpCode.length !== 6}
-                    className="w-full h-11 rounded-lg bg-primary text-primary-foreground font-semibold text-sm transition-all duration-200 hover:bg-primary/90 disabled:opacity-50 flex items-center justify-center gap-2"
-                  >
-                    {verifyingOtp && <Loader2 className="w-4 h-4 animate-spin" />}
-                    {verifyingOtp ? 'Verifying...' : 'Verify & Sign In'}
-                  </button>
-
-                  <div className="flex items-center justify-between">
-                    <button onClick={handleBackToLogin} className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-                      ← Back to login
-                    </button>
-                    <button onClick={handleResendCode} disabled={sendingOtp} className="text-sm text-muted-foreground hover:text-primary transition-colors disabled:opacity-50">
-                      {sendingOtp ? 'Sending...' : 'Resend code'}
-                    </button>
-                  </div>
-                </div>
-              </>
-            ) : showForgotPassword ? (
+            {showForgotPassword ? (
               <>
                 <div className="text-center mb-8">
                   <h1 className="text-2xl font-bold text-foreground mb-1.5 tracking-tight">Reset Password</h1>
