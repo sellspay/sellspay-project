@@ -4,9 +4,12 @@ import { ArrowRight, Plus, ArrowLeft, Mic, Zap, CreditCard } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useSubscription } from "@/hooks/useSubscription";
+import { useAuth } from "@/lib/auth";
 import heroBg from "@/assets/hero-aurora-bg.jpg";
 import { DoorwaySidebar } from "./DoorwaySidebar";
 import { ProjectShelf } from "./ProjectShelf";
+import { AuthGateDialog } from "./AuthGateDialog";
+import { PricingModal } from "@/components/pricing/PricingModal";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 interface RecentProject {
