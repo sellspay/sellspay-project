@@ -442,6 +442,7 @@ export function useBackgroundGenerationController({
     currentJob,
     hasActiveJob,
     hasCompletedJob,
+    hasFailedJob,
     isLoading: isLoadingJob,
     createJob,
     cancelJob,
