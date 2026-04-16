@@ -26,15 +26,9 @@ export default function Login() {
     return localStorage.getItem('rememberMe') === 'true';
   });
 
-  const [showMfaVerification, setShowMfaVerification] = useState(false);
-  const [mfaUserId, setMfaUserId] = useState<string | null>(null);
-  const [mfaEmail, setMfaEmail] = useState<string | null>(null);
-  const [otpCode, setOtpCode] = useState('');
-  const [sendingOtp, setSendingOtp] = useState(false);
-  const [verifyingOtp, setVerifyingOtp] = useState(false);
-  const [otpSent, setOtpSent] = useState(false);
-  const [checkingMfa, setCheckingMfa] = useState(false);
-  const [verificationToken, setVerificationToken] = useState<string | null>(null);
+  // MFA is now handled globally by <GlobalMfaModal />. The auth context's
+  // signIn() returns mfaRequired:true and dispatches a window event the modal
+  // listens to. No per-page MFA state needed here.
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
