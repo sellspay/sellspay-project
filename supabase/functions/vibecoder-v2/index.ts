@@ -1109,6 +1109,7 @@ async function validateIntent(
 // Dynamic Pricing Economy — cost scales with output complexity
 // Base costs are minimums; actual cost computed post-generation from token output
 const CREDIT_COSTS: Record<string, number> = {
+  "vibecoder-auto": 1, // Auto — base minimum (actual cost depends on routed model)
   "vibecoder-pro": 3, // Gemini Pro — base minimum
   "vibecoder-flash": 0, // Free tier for small edits
   "vibecoder-claude": 5, // Claude Sonnet (premium) — base minimum
