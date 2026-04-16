@@ -72,10 +72,11 @@ export function useBackgroundGeneration({
     // Clear processed jobs when project changes
     processedJobsRef.current.clear();
 
-    // Check for existing pending/running job on mount
+    // Check for existing job on mount — include recent terminal states so we can clear stuck UI
     const checkExistingJob = async () => {
       try {
-        const { data: jobs, error } = await supabase
+        // First: any active (running/pending) job
+        const { data: activeJobs, error } = await supabase
           .from('ai_generation_jobs')
           .select('*')
           .eq('project_id', projectId)
@@ -89,10 +90,10 @@ export function useBackgroundGeneration({
           return;
         }
 
-        if (jobs && jobs.length > 0) {
-          const job = jobs[0] as GenerationJob;
-          console.log('[BackgroundGen] Found existing job:', job.id, job.status);
-          
+        if (activeJobs && activeJobs.length > 0) {
+          const job = activeJobs[0] as GenerationJob;
+          console.log('[BackgroundGen] Found existing active job:', job.id, job.status);
+
           // Check if this job is already stale on mount
           const jobAge = Date.now() - new Date(job.updated_at || job.created_at).getTime();
           if (jobAge > STALE_JOB_TIMEOUT_MS) {
@@ -108,6 +109,31 @@ export function useBackgroundGeneration({
           } else {
             setCurrentJob(job);
             onJobUpdateRef.current?.(job);
+          }
+          setIsLoading(false);
+          return;
+        }
+
+        // Second: any RECENT terminal job (last 5 minutes) so the UI can clear stuck "Building..." state
+        const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+        const { data: recentJobs } = await supabase
+          .from('ai_generation_jobs')
+          .select('*')
+          .eq('project_id', projectId)
+          .in('status', ['completed', 'failed', 'needs_user_action'])
+          .gte('completed_at', fiveMinAgo)
+          .order('completed_at', { ascending: false })
+          .limit(1);
+
+        if (recentJobs && recentJobs.length > 0) {
+          const job = recentJobs[0] as GenerationJob;
+          console.log('[BackgroundGen] Found recent terminal job on mount:', job.id, job.status);
+          setCurrentJob(job);
+          // Fire the appropriate callback so the UI gets unstuck
+          if (job.status === 'completed') {
+            onJobUpdateRef.current?.(job);
+          } else {
+            onJobErrorRef.current?.(job);
           }
         }
       } catch (e) {
