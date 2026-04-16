@@ -291,7 +291,10 @@ export function useBackgroundGeneration({
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
-        toast.error('Please sign in to continue');
+        // Guest hitting generate — redirect to login instead of silent toast-fail
+        toast.info('Sign in to start building');
+        const redirectTarget = encodeURIComponent(window.location.pathname + window.location.search);
+        window.location.href = `/login?redirect=${redirectTarget}`;
         return null;
       }
 
