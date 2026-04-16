@@ -3715,10 +3715,21 @@ serve(async (req) => {
         let summaryValidated = false;
         let lastMergedFiles: Record<string, string> | null = null;
         
-        // Helper to emit structured SSE events
+        // Track stream state — once the client disconnects, controller.enqueue throws.
+        // We must keep doing background work (DB writes, validation) so the job completes.
+        let streamClosed = false;
+        
+        // Helper to emit structured SSE events — safe against client disconnects
         const emitEvent = (eventType: string, data: any) => {
-          const payload = `event: ${eventType}\ndata: ${JSON.stringify(data)}\n\n`;
-          controller.enqueue(encoder.encode(payload));
+          if (streamClosed) return;
+          try {
+            const payload = `event: ${eventType}\ndata: ${JSON.stringify(data)}\n\n`;
+            controller.enqueue(encoder.encode(payload));
+          } catch (e) {
+            // Client disconnected — stop trying to send to this stream but keep processing
+            streamClosed = true;
+            console.warn('[Stream] Client disconnected, continuing background work:', e instanceof Error ? e.message : String(e));
+          }
         };
         
         // Emit initial analyzing phase
@@ -5129,7 +5140,11 @@ serve(async (req) => {
         } finally {
           clearInterval(heartbeatInterval);
           clearTimeout(streamTimeout);
-          controller.close();
+          try {
+            if (!streamClosed) controller.close();
+          } catch {
+            // controller may already be closed by client disconnect
+          }
         }
       },
     });
