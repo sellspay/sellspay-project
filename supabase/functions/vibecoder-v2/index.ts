@@ -4499,6 +4499,8 @@ serve(async (req) => {
                     await supabase.from("ai_generation_jobs").update({
                       status: "needs_user_action",
                       completed_at: new Date().toISOString(),
+                      last_heartbeat_at: new Date().toISOString(),
+                      failure_stage: "intent",
                       plan_result: planResult,
                       summary: "This request is too complex for a single generation. Please break it into 2-3 smaller requests.",
                       terminal_reason: "complexity_guard",
@@ -5213,6 +5215,8 @@ serve(async (req) => {
               .update({
                 status: "failed",
                 completed_at: new Date().toISOString(),
+                last_heartbeat_at: new Date().toISOString(),
+                failure_stage: errorType === "EDGE_TIMEOUT" ? "generation" : "generation",
                 error_message: JSON.stringify({ type: errorType, message: errorMessage }),
                 progress_logs: ["Starting AI generation...", "Error occurred", `${errorType}: ${errorMessage}`],
               })
@@ -5220,6 +5224,7 @@ serve(async (req) => {
           }
         } finally {
           clearInterval(heartbeatInterval);
+          if (dbHeartbeatInterval) clearInterval(dbHeartbeatInterval);
           clearTimeout(streamTimeout);
           try {
             if (!streamClosed) controller.close();
@@ -5250,6 +5255,8 @@ serve(async (req) => {
         .update({
           status: "failed",
           completed_at: new Date().toISOString(),
+          last_heartbeat_at: new Date().toISOString(),
+          failure_stage: isTimeout ? "generation" : "commit",
           error_message: JSON.stringify({
             type: isTimeout ? "EDGE_TIMEOUT" : "EDGE_CRASH",
             message: error instanceof Error ? error.message : "Unknown error",
