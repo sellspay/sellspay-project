@@ -302,7 +302,7 @@ export function LovableHero({
                   
                   <button 
                     type="submit"
-                    disabled={!prompt.trim() || subLoading}
+                    disabled={!prompt.trim()}
                     className="p-2 bg-gradient-to-r from-orange-500 to-rose-500 text-white rounded-lg hover:from-orange-400 hover:to-rose-400 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-orange-500/20"
                   >
                     <ArrowRight size={20} />
