@@ -4,9 +4,12 @@ import { ArrowRight, Plus, ArrowLeft, Mic, Zap, CreditCard } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useSubscription } from "@/hooks/useSubscription";
+import { useAuth } from "@/lib/auth";
 import heroBg from "@/assets/hero-aurora-bg.jpg";
 import { DoorwaySidebar } from "./DoorwaySidebar";
 import { ProjectShelf } from "./ProjectShelf";
+import { AuthGateDialog } from "./AuthGateDialog";
+import { PricingModal } from "@/components/pricing/PricingModal";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 interface RecentProject {
@@ -49,7 +52,8 @@ export function LovableHero({
   const [isListening, setIsListening] = useState(false);
   const [showGateModal, setShowGateModal] = useState(false);
   const [gateType, setGateType] = useState<'subscription' | 'credits'>('subscription');
-  
+  const [showAuthDialog, setShowAuthDialog] = useState(false);
+  const [showPricingModal, setShowPricingModal] = useState(false);
   const recognitionRef = useRef<any>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const isMobile = useIsMobile();
@@ -66,6 +70,18 @@ export function LovableHero({
 
   const navigate = useNavigate();
   const { isPremium, credits, hasCredits, goToPricing, loading: subLoading } = useSubscription();
+  const { user } = useAuth();
+
+  // After OAuth redirect, restore any pending prompt
+  useEffect(() => {
+    try {
+      const saved = sessionStorage.getItem("ai_builder_pending_prompt");
+      if (saved && user) {
+        setPrompt(saved);
+        sessionStorage.removeItem("ai_builder_pending_prompt");
+      }
+    } catch {}
+  }, [user]);
 
   // Initialize speech recognition
   useEffect(() => {
@@ -123,13 +139,19 @@ export function LovableHero({
   const handleSubmit = (e?: React.FormEvent) => {
     e?.preventDefault();
     if (!prompt.trim()) return;
-    
+
+    // Not logged in → open the proper auth dialog
+    if (!user) {
+      setShowAuthDialog(true);
+      return;
+    }
+
     if (!isPremium) {
       setGateType('subscription');
       setShowGateModal(true);
       return;
     }
-    
+
     if (!hasCredits(25)) {
       setGateType('credits');
       setShowGateModal(true);
@@ -371,17 +393,17 @@ export function LovableHero({
           </DialogHeader>
           
           <div className="flex flex-col gap-3 mt-4">
-            <Button 
+            <Button
               onClick={() => {
                 setShowGateModal(false);
-                goToPricing();
+                setShowPricingModal(true);
               }}
               className="w-full bg-gradient-to-r from-orange-500 to-rose-500 hover:from-orange-400 hover:to-rose-400 text-white"
             >
               {gateType === 'subscription' ? "View Plans" : "Top Up Credits"}
             </Button>
-            <Button 
-              variant="ghost" 
+            <Button
+              variant="ghost"
               onClick={() => setShowGateModal(false)}
               className="w-full text-zinc-400 hover:text-white hover:bg-zinc-800"
             >
@@ -390,6 +412,16 @@ export function LovableHero({
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Auth gate dialog (Google + Discord + email/password) */}
+      <AuthGateDialog
+        open={showAuthDialog}
+        onOpenChange={setShowAuthDialog}
+        pendingPrompt={prompt}
+      />
+
+      {/* New pricing modal */}
+      <PricingModal open={showPricingModal} onOpenChange={setShowPricingModal} />
     </div>
   );
 }
