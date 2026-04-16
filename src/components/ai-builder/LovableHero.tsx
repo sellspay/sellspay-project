@@ -52,7 +52,8 @@ export function LovableHero({
   const [isListening, setIsListening] = useState(false);
   const [showGateModal, setShowGateModal] = useState(false);
   const [gateType, setGateType] = useState<'subscription' | 'credits'>('subscription');
-  
+  const [showAuthDialog, setShowAuthDialog] = useState(false);
+  const [showPricingModal, setShowPricingModal] = useState(false);
   const recognitionRef = useRef<any>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const isMobile = useIsMobile();
@@ -69,6 +70,18 @@ export function LovableHero({
 
   const navigate = useNavigate();
   const { isPremium, credits, hasCredits, goToPricing, loading: subLoading } = useSubscription();
+  const { user } = useAuth();
+
+  // After OAuth redirect, restore any pending prompt
+  useEffect(() => {
+    try {
+      const saved = sessionStorage.getItem("ai_builder_pending_prompt");
+      if (saved && user) {
+        setPrompt(saved);
+        sessionStorage.removeItem("ai_builder_pending_prompt");
+      }
+    } catch {}
+  }, [user]);
 
   // Initialize speech recognition
   useEffect(() => {
