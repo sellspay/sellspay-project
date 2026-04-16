@@ -192,9 +192,10 @@ export function AuthGateDialog({ open, onOpenChange, pendingPrompt }: AuthGateDi
           {/* Email form */}
           <form onSubmit={handleEmailSubmit} className="space-y-3">
             <input
-              type="email"
+              type={mode === "signup" ? "email" : "text"}
               required
-              placeholder="you@example.com"
+              autoComplete={mode === "signup" ? "email" : "username"}
+              placeholder={mode === "signup" ? "you@example.com" : "Email or username"}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="w-full h-11 px-4 rounded-lg bg-white/[0.04] border border-white/10 text-white placeholder:text-zinc-500 focus:outline-none focus:border-primary/60 focus:ring-1 focus:ring-primary/30 transition-all text-sm"
