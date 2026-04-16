@@ -427,6 +427,71 @@ function getUnclosedJsxTags(code: string): string[] | null {
 }
 
 /**
+ * Deterministic fixer for "Unterminated string literal" errors.
+ * Common AI mistakes: apostrophe inside single-quoted string, or literal
+ * newline inside "..." / '...'. If a line ends with the parser still inside
+ * a single/double quote (not template), append the matching closer.
+ */
+function autoCloseUnterminatedStrings(content: string, filePath: string): string | null {
+  if (!filePath.endsWith('.tsx') && !filePath.endsWith('.ts') &&
+      !filePath.endsWith('.jsx') && !filePath.endsWith('.js')) return null;
+
+  const lines = content.split('\n');
+  let inTemplate = false;
+  let inBlockComment = false;
+  let changed = false;
+
+  for (let li = 0; li < lines.length; li++) {
+    const line = lines[li];
+    let inSingle = false, inDouble = false;
+    let inLineComment = false;
+    let escaped = false;
+
+    for (let i = 0; i < line.length; i++) {
+      const c = line[i];
+      const n = line[i + 1];
+      if (inLineComment) break;
+      if (inBlockComment) {
+        if (c === '*' && n === '/') { inBlockComment = false; i++; }
+        continue;
+      }
+      if (inTemplate) {
+        if (escaped) { escaped = false; continue; }
+        if (c === '\\') { escaped = true; continue; }
+        if (c === '`') inTemplate = false;
+        continue;
+      }
+      if (inSingle) {
+        if (escaped) { escaped = false; continue; }
+        if (c === '\\') { escaped = true; continue; }
+        if (c === "'") inSingle = false;
+        continue;
+      }
+      if (inDouble) {
+        if (escaped) { escaped = false; continue; }
+        if (c === '\\') { escaped = true; continue; }
+        if (c === '"') inDouble = false;
+        continue;
+      }
+      if (c === '/' && n === '/') { inLineComment = true; continue; }
+      if (c === '/' && n === '*') { inBlockComment = true; i++; continue; }
+      if (c === "'") { inSingle = true; continue; }
+      if (c === '"') { inDouble = true; continue; }
+      if (c === '`') { inTemplate = true; continue; }
+    }
+
+    if (inSingle) { lines[li] = line + "'"; changed = true; }
+    else if (inDouble) { lines[li] = line + '"'; changed = true; }
+  }
+
+  if (!changed) return null;
+  const fixed = lines.join('\n');
+  const recheck = validateFileSyntaxServer(fixed, filePath);
+  if (recheck) return null;
+  return fixed;
+}
+
+/**
  * Deterministic auto-closer for truncated JSX files.
  * Appends missing closing tags and balances braces/parens/brackets.
  * No AI call needed — 100% reliable for truncation errors.
