@@ -71,6 +71,8 @@ export function AuthGateDialog({ open, onOpenChange, pendingPrompt }: AuthGateDi
           if (!resolvedEmail) throw new Error("No account found for that username");
           loginEmail = resolvedEmail as string;
         }
+        // signIn() handles the MFA gate centrally — the global MFA modal
+        // will pop if 2FA is enabled. We close this dialog either way.
         const { error } = await signIn(loginEmail, password);
         if (error) throw error;
       }

@@ -2,8 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '@/lib/auth';
 import { supabase } from '@/integrations/supabase/client';
-import { Eye, EyeOff, Shield, Loader2 } from 'lucide-react';
-import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
+import { Eye, EyeOff, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import AuthMediaCarousel from '@/components/auth/AuthMediaCarousel';
 import sellspayLogo from '@/assets/sellspay-s-logo-new.png';
@@ -11,7 +10,7 @@ import sellspayLogo from '@/assets/sellspay-s-logo-new.png';
 export default function Login() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, signIn, signOut, resetPassword, signInWithGoogle } = useAuth();
+  const { user, signIn, resetPassword, signInWithGoogle } = useAuth();
   const [credential, setCredential] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -26,15 +25,9 @@ export default function Login() {
     return localStorage.getItem('rememberMe') === 'true';
   });
 
-  const [showMfaVerification, setShowMfaVerification] = useState(false);
-  const [mfaUserId, setMfaUserId] = useState<string | null>(null);
-  const [mfaEmail, setMfaEmail] = useState<string | null>(null);
-  const [otpCode, setOtpCode] = useState('');
-  const [sendingOtp, setSendingOtp] = useState(false);
-  const [verifyingOtp, setVerifyingOtp] = useState(false);
-  const [otpSent, setOtpSent] = useState(false);
-  const [checkingMfa, setCheckingMfa] = useState(false);
-  const [verificationToken, setVerificationToken] = useState<string | null>(null);
+  // MFA is now handled globally by <GlobalMfaModal />. The auth context's
+  // signIn() returns mfaRequired:true and dispatches a window event the modal
+  // listens to. No per-page MFA state needed here.
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -52,7 +45,7 @@ export default function Login() {
   }, [location]);
 
   useEffect(() => {
-    if (user && !showMfaVerification && !checkingMfa) {
+    if (user) {
       const params = new URLSearchParams(location.search);
       const next = params.get('next');
       if (next) {
@@ -69,129 +62,39 @@ export default function Login() {
         fetchAndRedirect();
       }
     }
-  }, [user, navigate, location.search, showMfaVerification, checkingMfa]);
+  }, [user, navigate, location.search]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setLoading(true);
-    setCheckingMfa(true);
     setShowForgotPassword(false);
 
     try {
       let emailToUse = credential.trim();
       if (!emailToUse.includes('@')) {
         const { data: email, error: rpcError } = await supabase.rpc('get_email_by_username', {
-          p_username: emailToUse
+          p_username: emailToUse,
         });
         if (rpcError) throw rpcError;
         if (!email) {
           setError('Username not found');
           setLoading(false);
-          setCheckingMfa(false);
           return;
         }
         emailToUse = email;
       }
 
       localStorage.setItem('rememberMe', rememberMe.toString());
+      // signIn() handles the MFA gate internally — if mfaRequired is true,
+      // the global modal opens and finishes the sign-in.
       const { error } = await signIn(emailToUse, password);
       if (error) throw error;
-
-      const { data: { user: authUser } } = await supabase.auth.getUser();
-      if (authUser) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('mfa_enabled')
-          .eq('user_id', authUser.id)
-          .single();
-
-        if (profile?.mfa_enabled) {
-          const userId = authUser.id;
-          const userEmail = authUser.email || emailToUse;
-          setMfaUserId(userId);
-          setMfaEmail(userEmail);
-          await signOut();
-          setShowMfaVerification(true);
-          setCheckingMfa(false);
-          setLoading(false);
-          await sendMfaCode(userId, userEmail);
-          return;
-        }
-      }
-      setCheckingMfa(false);
     } catch (err: any) {
       setError('Invalid email/username or password');
-      setCheckingMfa(false);
     } finally {
       setLoading(false);
     }
-  };
-
-  const sendMfaCode = async (userId: string, email: string) => {
-    setSendingOtp(true);
-    try {
-      const { data, error } = await supabase.functions.invoke("send-verification-otp", {
-        body: { email, userId }
-      });
-      if (error) throw error;
-      if (data?.verificationToken) {
-        setVerificationToken(data.verificationToken);
-      }
-      setOtpSent(true);
-      toast.success('Verification code sent to your email.');
-    } catch (error) {
-      console.error('Error sending OTP:', error);
-      toast.error('Failed to send verification code.');
-    } finally {
-      setSendingOtp(false);
-    }
-  };
-
-  const handleMfaVerify = async () => {
-    if (!mfaUserId || !otpCode || otpCode.length !== 6 || !verificationToken) {
-      if (!verificationToken) toast.error('Please request a new verification code');
-      return;
-    }
-    setVerifyingOtp(true);
-    setError(null);
-    try {
-      const { data, error } = await supabase.functions.invoke("verify-otp", {
-        body: { userId: mfaUserId, code: otpCode, verificationToken, purpose: 'login' }
-      });
-      if (error) throw new Error(error.message || 'Verification failed');
-      if (!data?.success) throw new Error(data?.error || 'Invalid verification code');
-
-      let emailToUse = credential.trim();
-      if (!emailToUse.includes('@')) {
-        const { data: email } = await supabase.rpc('get_email_by_username', { p_username: emailToUse });
-        if (email) emailToUse = email;
-      }
-      const { error: signInError } = await signIn(emailToUse, password);
-      if (signInError) throw signInError;
-      toast.success('Successfully verified!');
-      setVerificationToken(null);
-      setShowMfaVerification(false);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Failed to verify code.';
-      setError(message);
-    } finally {
-      setVerifyingOtp(false);
-    }
-  };
-
-  const handleResendCode = async () => {
-    if (mfaUserId && mfaEmail) await sendMfaCode(mfaUserId, mfaEmail);
-  };
-
-  const handleBackToLogin = () => {
-    setShowMfaVerification(false);
-    setMfaUserId(null);
-    setMfaEmail(null);
-    setOtpCode('');
-    setOtpSent(false);
-    setVerificationToken(null);
-    setError(null);
   };
 
   const handleResetPassword = async (e: React.FormEvent) => {
@@ -276,59 +179,7 @@ export default function Login() {
         <div className="flex-1 flex items-center justify-center px-8 sm:px-12 lg:px-16 py-8">
           <div className="w-full max-w-[400px]">
 
-            {/* MFA Verification View */}
-            {showMfaVerification ? (
-              <>
-                <div className="text-center mb-8">
-                  <h1 className="text-2xl font-bold text-foreground mb-1.5 tracking-tight">Two-Factor Authentication</h1>
-                  <p className="text-muted-foreground text-sm">Enter the code sent to your email</p>
-                </div>
-                <div className="space-y-6">
-                  <div className="flex flex-col items-center gap-4">
-                    <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center">
-                      <Shield className="w-7 h-7 text-primary" />
-                    </div>
-                    <p className="text-sm text-muted-foreground text-center">
-                      A verification code has been sent to:<br />
-                      <span className="font-medium text-foreground">{mfaEmail}</span>
-                    </p>
-                  </div>
-
-                  <div className="flex justify-center">
-                    <InputOTP maxLength={6} value={otpCode} onChange={(value) => setOtpCode(value)}>
-                      <InputOTPGroup>
-                        <InputOTPSlot index={0} />
-                        <InputOTPSlot index={1} />
-                        <InputOTPSlot index={2} />
-                        <InputOTPSlot index={3} />
-                        <InputOTPSlot index={4} />
-                        <InputOTPSlot index={5} />
-                      </InputOTPGroup>
-                    </InputOTP>
-                  </div>
-
-                  {error && <p className="text-destructive text-sm text-center">{error}</p>}
-
-                  <button
-                    onClick={handleMfaVerify}
-                    disabled={verifyingOtp || otpCode.length !== 6}
-                    className="w-full h-11 rounded-lg bg-primary text-primary-foreground font-semibold text-sm transition-all duration-200 hover:bg-primary/90 disabled:opacity-50 flex items-center justify-center gap-2"
-                  >
-                    {verifyingOtp && <Loader2 className="w-4 h-4 animate-spin" />}
-                    {verifyingOtp ? 'Verifying...' : 'Verify & Sign In'}
-                  </button>
-
-                  <div className="flex items-center justify-between">
-                    <button onClick={handleBackToLogin} className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-                      ← Back to login
-                    </button>
-                    <button onClick={handleResendCode} disabled={sendingOtp} className="text-sm text-muted-foreground hover:text-primary transition-colors disabled:opacity-50">
-                      {sendingOtp ? 'Sending...' : 'Resend code'}
-                    </button>
-                  </div>
-                </div>
-              </>
-            ) : showForgotPassword ? (
+            {showForgotPassword ? (
               <>
                 <div className="text-center mb-8">
                   <h1 className="text-2xl font-bold text-foreground mb-1.5 tracking-tight">Reset Password</h1>
