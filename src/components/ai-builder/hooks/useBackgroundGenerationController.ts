@@ -426,7 +426,15 @@ export function useBackgroundGenerationController({
       activeJobIdRef.current = null;
       onStreamingError(job.error_message || 'Generation failed');
     } else {
-      console.warn('[BackgroundGen] Stale job error suppressed:', userMessage);
+      // Stale or out-of-band failure (e.g. user tabbed back after job already failed).
+      // We MUST still reset the streaming UI so it doesn't hang on "Building..." forever.
+      console.warn('[BackgroundGen] Out-of-band job failure — resetting UI state:', userMessage);
+      setLiveSteps([]);
+      generationLockRef.current = null;
+      activeJobIdRef.current = null;
+      onStreamingError(job.error_message || 'Generation failed');
+      // Surface a toast so the user knows what happened
+      toast.error(`Previous generation failed: ${userMessage.slice(0, 120)}`, { duration: 6000 });
     }
   }, [onStreamingError, activeProjectId, addMessage, setLiveSteps, generationLockRef, activeJobIdRef]);
 
@@ -434,6 +442,7 @@ export function useBackgroundGenerationController({
     currentJob,
     hasActiveJob,
     hasCompletedJob,
+    hasFailedJob,
     isLoading: isLoadingJob,
     createJob,
     cancelJob,
@@ -460,6 +469,23 @@ export function useBackgroundGenerationController({
     handleJobComplete(currentJob);
     acknowledgeJob(currentJob.id);
   }, [hasCompletedJob, currentJob, isLoadingJob, acknowledgeJob, handleJobComplete]);
+
+  // RESUME: If a job FAILED while the user was away — reset stuck "Building..." UI
+  const processedFailedJobRef = useRef<string | null>(null);
+  
+  useEffect(() => {
+    if (!hasFailedJob || !currentJob || isLoadingJob) return;
+    if (processedFailedJobRef.current === currentJob.id) return;
+    if (processedJobIdsRef.current.has(currentJob.id)) {
+      processedFailedJobRef.current = currentJob.id;
+      acknowledgeJob(currentJob.id);
+      return;
+    }
+    console.log('[BackgroundGen] Found failed job on mount, routing through error handler...');
+    processedFailedJobRef.current = currentJob.id;
+    handleJobError(currentJob);
+    acknowledgeJob(currentJob.id);
+  }, [hasFailedJob, currentJob, isLoadingJob, acknowledgeJob, handleJobError]);
 
   // Clear retry state when a new generation starts successfully
   const clearLastFailedPrompt = useCallback(() => {
