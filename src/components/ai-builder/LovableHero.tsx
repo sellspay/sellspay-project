@@ -139,13 +139,19 @@ export function LovableHero({
   const handleSubmit = (e?: React.FormEvent) => {
     e?.preventDefault();
     if (!prompt.trim()) return;
-    
+
+    // Not logged in → open the proper auth dialog
+    if (!user) {
+      setShowAuthDialog(true);
+      return;
+    }
+
     if (!isPremium) {
       setGateType('subscription');
       setShowGateModal(true);
       return;
     }
-    
+
     if (!hasCredits(25)) {
       setGateType('credits');
       setShowGateModal(true);
