@@ -393,17 +393,17 @@ export function LovableHero({
           </DialogHeader>
           
           <div className="flex flex-col gap-3 mt-4">
-            <Button 
+            <Button
               onClick={() => {
                 setShowGateModal(false);
-                goToPricing();
+                setShowPricingModal(true);
               }}
               className="w-full bg-gradient-to-r from-orange-500 to-rose-500 hover:from-orange-400 hover:to-rose-400 text-white"
             >
               {gateType === 'subscription' ? "View Plans" : "Top Up Credits"}
             </Button>
-            <Button 
-              variant="ghost" 
+            <Button
+              variant="ghost"
               onClick={() => setShowGateModal(false)}
               className="w-full text-zinc-400 hover:text-white hover:bg-zinc-800"
             >
@@ -412,6 +412,16 @@ export function LovableHero({
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Auth gate dialog (Google + Discord + email/password) */}
+      <AuthGateDialog
+        open={showAuthDialog}
+        onOpenChange={setShowAuthDialog}
+        pendingPrompt={prompt}
+      />
+
+      {/* New pricing modal */}
+      <PricingModal open={showPricingModal} onOpenChange={setShowPricingModal} />
     </div>
   );
 }
