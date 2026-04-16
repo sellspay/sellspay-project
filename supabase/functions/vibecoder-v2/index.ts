@@ -1109,6 +1109,7 @@ async function validateIntent(
 // Dynamic Pricing Economy — cost scales with output complexity
 // Base costs are minimums; actual cost computed post-generation from token output
 const CREDIT_COSTS: Record<string, number> = {
+  "vibecoder-auto": 1, // Auto — base minimum (actual cost depends on routed model)
   "vibecoder-pro": 3, // Gemini Pro — base minimum
   "vibecoder-flash": 0, // Free tier for small edits
   "vibecoder-claude": 5, // Claude Sonnet (premium) — base minimum
@@ -1123,6 +1124,7 @@ const PRE_CHARGE_AMOUNT = 1; // 1 credit pre-charge for all models
 // Dynamic cost calculation based on output size (chars → approximate tokens)
 // ~4 chars per token, cost per 1K output tokens varies by model tier
 const MODEL_COST_PER_1K_OUTPUT: Record<string, number> = {
+  "vibecoder-auto": 0.5,    // Auto — uses routed model's cost
   "vibecoder-pro": 0.5,    // 0.5 credits per 1K output tokens
   "vibecoder-flash": 0,     // Free
   "vibecoder-claude": 0.8,  // 0.8 credits per 1K output tokens
@@ -1133,6 +1135,7 @@ const MODEL_COST_PER_1K_OUTPUT: Record<string, number> = {
 
 // Min/max bounds per model to keep pricing predictable
 const MODEL_MIN_COST: Record<string, number> = {
+  "vibecoder-auto": 0,
   "vibecoder-pro": 1,
   "vibecoder-flash": 0,
   "vibecoder-claude": 2,
@@ -1141,6 +1144,7 @@ const MODEL_MIN_COST: Record<string, number> = {
   "reasoning-o1": 3,
 };
 const MODEL_MAX_COST: Record<string, number> = {
+  "vibecoder-auto": 15,
   "vibecoder-pro": 10,
   "vibecoder-flash": 0,
   "vibecoder-claude": 15,
@@ -1213,6 +1217,7 @@ interface ModelConfig {
 }
 
 const MODEL_CONFIG: Record<string, ModelConfig> = {
+  "vibecoder-auto": { modelId: "gemini-2.5-flash", provider: "gemini" }, // Placeholder — auto-routing resolves this
   "vibecoder-pro": { modelId: "gemini-2.5-flash", provider: "gemini" },
   "vibecoder-flash": { modelId: "gemini-2.5-flash", provider: "gemini" },
   "reasoning-o1": { modelId: "gemini-2.5-pro", provider: "gemini" },
@@ -3086,16 +3091,54 @@ If the request says "change X", change ONLY X and nothing else.
   // QUESTION/REFUSE → Gemini Flash (fast, cheap for chat responses)
   // User can override with explicit model selection
   // ═══════════════════════════════════════════════════════════════
-  const isExplicitModelSelection = model !== "vibecoder-pro" && model !== "vibecoder-flash";
+  // ═══════════════════════════════════════════════════════════════
+  // AUTO-ROUTING: When model is "vibecoder-auto", "vibecoder-pro",
+  // or "vibecoder-flash", intelligently pick the best model based
+  // on intent, prompt complexity, and existing code size.
+  // Explicit selections (claude, gpt4, reasoning) bypass auto-routing.
+  // ═══════════════════════════════════════════════════════════════
+  const isAutoRouted = model === "vibecoder-auto" || model === "vibecoder-pro" || model === "vibecoder-flash";
   let resolvedModel = model;
 
-  if (!isExplicitModelSelection) {
+  if (isAutoRouted) {
     if (intent.intent === "QUESTION" || intent.intent === "REFUSE") {
-      resolvedModel = "vibecoder-flash"; // Gemini Flash for non-code responses
+      resolvedModel = "vibecoder-flash"; // Gemini Flash for non-code responses (fast + free)
       console.log(`[ModelRouter] ${intent.intent} intent → using Gemini Flash (chat response)`);
     } else {
-      resolvedModel = "vibecoder-gpt4"; // GPT-4o for all code generation (Claude account disabled)
-      console.log(`[ModelRouter] ${intent.intent} intent → using GPT-4o (code engine)`);
+      // Determine complexity from prompt length, existing code size, and intent
+      const promptLen = prompt.length;
+      const existingCodeLen = existingCode?.length || 0;
+      const fileCount = projectFiles ? Object.keys(projectFiles).length : 0;
+      const isFirstBuild = intent.intent === "BUILD" || intent.intent === "REPLACE";
+      const isMicroEdit = isMicroEditPrompt(prompt);
+
+      // Complexity score: higher = needs stronger model
+      let complexity = 0;
+      if (promptLen > 500) complexity += 2;
+      else if (promptLen > 200) complexity += 1;
+      if (existingCodeLen > 20000) complexity += 2;
+      else if (existingCodeLen > 5000) complexity += 1;
+      if (fileCount > 8) complexity += 1;
+      if (isFirstBuild) complexity += 2;
+      if (intent.intent === "MODIFY" && !isMicroEdit) complexity += 1;
+
+      if (complexity >= 5) {
+        // High complexity: use GPT-4o for strong planning + code gen
+        resolvedModel = "vibecoder-gpt4";
+        console.log(`[ModelRouter] AUTO: High complexity (${complexity}) → GPT-4o`);
+      } else if (complexity >= 3 || isFirstBuild) {
+        // Medium complexity or first build: use GPT-4o
+        resolvedModel = "vibecoder-gpt4";
+        console.log(`[ModelRouter] AUTO: Medium complexity (${complexity}) → GPT-4o`);
+      } else if (isMicroEdit) {
+        // Micro edits: use Flash for speed
+        resolvedModel = "vibecoder-flash";
+        console.log(`[ModelRouter] AUTO: Micro-edit → Gemini Flash (fast)`);
+      } else {
+        // Default moderate: use Gemini Pro
+        resolvedModel = "vibecoder-pro";
+        console.log(`[ModelRouter] AUTO: Standard complexity (${complexity}) → Gemini Pro`);
+      }
     }
   }
 

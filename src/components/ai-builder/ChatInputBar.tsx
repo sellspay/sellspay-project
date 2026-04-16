@@ -64,6 +64,7 @@ declare global {
 // Updated Fair Pricing: 8x reduction to match actual API costs
 export const AI_MODELS = {
   code: [
+    { id: "vibecoder-auto", name: "Auto", desc: "Picks the best model for you", cost: 1, costLabel: "1-15c", icon: Bot, category: "code" },
     { id: "vibecoder-pro", name: "Gemini 3 Pro", desc: "Best for complex layouts", cost: 1, costLabel: "1-10c", icon: Sparkles, category: "code" },
     { id: "vibecoder-flash", name: "Gemini Flash", desc: "Fast, for small edits", cost: 0, costLabel: "Free", icon: Zap, category: "code" },
     { id: "vibecoder-claude", name: "Claude Sonnet", desc: "Premium JSX quality", cost: 2, costLabel: "2-15c", icon: BrainCircuit, category: "code" },
@@ -604,10 +605,22 @@ export function ChatInputBar({
             }}
           >
             <div className="p-1.5 max-h-[300px] overflow-y-auto">
+              {/* Auto model - highlighted at top */}
               <div className="px-2 py-1">
+                <span className="text-[10px] uppercase tracking-wider text-emerald-400/70 font-medium">Recommended</span>
+              </div>
+              <ModelOption 
+                key={AI_MODELS.code[0].id}
+                model={AI_MODELS.code[0]}
+                active={selectedModel.id === AI_MODELS.code[0].id}
+                onClick={() => handleModelSelect(AI_MODELS.code[0])}
+                canAfford={canAfford(AI_MODELS.code[0])}
+              />
+              
+              <div className="px-2 py-1 mt-2">
                 <span className="text-[10px] uppercase tracking-wider text-zinc-500 font-medium">Coding</span>
               </div>
-              {AI_MODELS.code.map(model => (
+              {AI_MODELS.code.slice(1).map(model => (
                 <ModelOption 
                   key={model.id}
                   model={model}

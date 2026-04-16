@@ -919,6 +919,7 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false, isGuest =
     // 💰 CREDIT CHECK: Verify minimum credits before generation (dynamic billing — final cost computed post-generation)
     const modelId = activeModel?.id || 'vibecoder-pro';
     const CREDIT_MINIMUMS: Record<string, number> = {
+      'vibecoder-auto': 0,
       'vibecoder-pro': 1,
       'vibecoder-flash': 0,
       'vibecoder-turbo': 1,
