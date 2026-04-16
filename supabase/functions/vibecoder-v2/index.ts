@@ -3107,7 +3107,7 @@ If the request says "change X", change ONLY X and nothing else.
     } else {
       // Determine complexity from prompt length, existing code size, and intent
       const promptLen = prompt.length;
-      const existingCodeLen = existingCode?.length || 0;
+      const existingCodeLen = currentCode?.length || 0;
       const fileCount = projectFiles ? Object.keys(projectFiles).length : 0;
       const isFirstBuild = intent.intent === "BUILD" || intent.intent === "REPLACE";
       const isMicroEdit = isMicroEditPrompt(prompt);
