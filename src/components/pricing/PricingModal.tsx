@@ -203,7 +203,7 @@ export function PricingModal({ open, onOpenChange }: PricingModalProps) {
 
             {/* ─── Plan Cards ─── */}
             <div className="px-4 sm:px-6 lg:px-8 pb-12 pt-6">
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 max-w-[1200px] mx-auto items-start">
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 max-w-[1200px] mx-auto items-stretch">
                 {PLAN_CARDS.map((plan) => {
                   const selectedIdx = creditSelections[plan.id] || 0;
                   const selectedCredit = plan.creditOptions?.[selectedIdx];
