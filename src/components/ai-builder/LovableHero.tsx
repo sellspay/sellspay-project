@@ -146,6 +146,12 @@ export function LovableHero({
       return;
     }
 
+    // Subscription still resolving — let the user know instead of silently doing nothing
+    if (subLoading) {
+      console.log('[LovableHero] Subscription still loading, please wait...');
+      return;
+    }
+
     if (!isPremium) {
       setGateType('subscription');
       setShowGateModal(true);
