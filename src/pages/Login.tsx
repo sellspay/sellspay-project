@@ -2,8 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '@/lib/auth';
 import { supabase } from '@/integrations/supabase/client';
-import { Eye, EyeOff, Shield, Loader2 } from 'lucide-react';
-import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
+import { Eye, EyeOff, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import AuthMediaCarousel from '@/components/auth/AuthMediaCarousel';
 import sellspayLogo from '@/assets/sellspay-s-logo-new.png';
@@ -11,7 +10,7 @@ import sellspayLogo from '@/assets/sellspay-s-logo-new.png';
 export default function Login() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, signIn, signOut, resetPassword, signInWithGoogle } = useAuth();
+  const { user, signIn, resetPassword, signInWithGoogle } = useAuth();
   const [credential, setCredential] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
