@@ -3110,7 +3110,9 @@ If the request says "change X", change ONLY X and nothing else.
       const existingCodeLen = currentCode?.length || 0;
       const fileCount = projectFiles ? Object.keys(projectFiles).length : 0;
       const isFirstBuild = intent.intent === "BUILD" || intent.intent === "REPLACE";
-      const isMicroEdit = isMicroEditPrompt(prompt);
+      // Micro-edit detection: short prompts about color/text/spacing/visibility tweaks
+      const microEditPatterns = /\b(color|colour|text|font|size|padding|margin|spacing|hide|show|remove|delete|add|change|update|swap|rename|bigger|smaller|larger|wider|taller|shorter|bold|italic)\b/i;
+      const isMicroEdit = prompt.length < 120 && microEditPatterns.test(prompt) && intent.intent === "MODIFY";
 
       // Complexity score: higher = needs stronger model
       let complexity = 0;
