@@ -270,37 +270,6 @@ export default function Header() {
                 AI Builder
               </Link>
 
-              {/* Hire Professionals */}
-              {user && (
-                <Link 
-                  to="/hire-professionals" 
-                  className={cn(
-                    "relative inline-flex h-9 items-center justify-center px-5 text-xs font-semibold tracking-wide",
-                    "text-primary-foreground rounded-full transition-all duration-300 overflow-hidden",
-                    "bg-primary hover:bg-primary/90",
-                    "border border-primary/20",
-                    "shadow-md shadow-primary/15",
-                    "hover:shadow-lg hover:shadow-primary/25",
-                    "active:scale-[0.97]"
-                  )}
-                >
-                  Hire Professionals
-                </Link>
-              )}
-
-              {/* AI Builder */}
-              {user && (
-                <Link 
-                  to="/ai-builder" 
-                  className={cn(
-                    "inline-flex h-10 items-center justify-center gap-1.5",
-                    isActive('/ai-builder') ? activeNavLinkStyles : navLinkStyles
-                  )}
-                >
-                  <Zap className="h-3.5 w-3.5" />
-                  AI Builder
-                </Link>
-              )}
             </div>
 
             {/* Mobile: Centered Logo */}
@@ -561,7 +530,7 @@ export default function Header() {
                 { to: '/creators', icon: Users, label: 'Creators' },
                 { to: '/studio', icon: Wand2, label: 'AI Studio' },
                 { to: '/community', icon: MessageSquare, label: 'Community' },
-                { to: '/hire-professionals', icon: Mic, label: 'Hire Professionals' },
+                
               ].map((item) => (
                 <Link
                   key={item.to}
