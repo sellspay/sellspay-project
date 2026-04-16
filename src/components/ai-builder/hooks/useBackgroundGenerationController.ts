@@ -361,21 +361,26 @@ export function useBackgroundGenerationController({
 
     // Add assistant message with a rich summary of what changed
     if (activeProjectId) {
-      const fileCount = job.code_result ? (() => {
-        try {
-          const parsed = JSON.parse(job.code_result);
-          const files = parsed?.files;
-          if (Array.isArray(files)) return files.length;
-          if (files && typeof files === 'object') return Object.keys(files).length;
-          return 0;
-        } catch { return 0; }
-      })() : 0;
+      const fileCount = (typeof job.files_changed_count === 'number')
+        ? job.files_changed_count
+        : (job.code_result ? (() => {
+            try {
+              const parsed = JSON.parse(job.code_result);
+              const files = parsed?.files;
+              if (Array.isArray(files)) return files.length;
+              if (files && typeof files === 'object') return Object.keys(files).length;
+              return 0;
+            } catch { return 0; }
+          })() : 0);
 
       const header = fileCount > 0
         ? `✅ **Changes applied** — updated ${fileCount} file${fileCount === 1 ? '' : 's'}`
-        : `✅ **Done**`;
+        : `⚠️ **Build completed but no files were modified**`;
       const body = job.summary?.trim() || 'No detailed summary was provided by the model.';
-      const fullMessage = `${header}\n\n${body}`;
+      const zeroChangeNote = fileCount === 0
+        ? '\n\n*Your request may have been understood as a no-op. Try rephrasing more specifically.*'
+        : '';
+      const fullMessage = `${header}\n\n${body}${zeroChangeNote}`;
       addMessage('assistant', fullMessage, job.code_result || undefined, activeProjectId);
     }
 
@@ -440,13 +445,21 @@ export function useBackgroundGenerationController({
           friendlyReason = 'The AI returned malformed output. Retrying with the same prompt usually works.';
         } else if (combinedCheck.includes('MODEL_TRUNCATED')) {
           friendlyReason = 'The response was cut off mid-generation. Try breaking the request into smaller steps.';
+        } else if (combinedCheck.includes('worker stopped responding')) {
+          friendlyReason = 'The generation worker stopped responding. This usually means the request was too complex or the server was overloaded. Click retry.';
         }
+
+        // Surface failure_stage breadcrumb so the user knows WHERE it broke
+        const stageLabel = job.failure_stage
+          ? ` *(stage: ${job.failure_stage})*`
+          : '';
+
         toast.error(friendlyReason, { duration: 7000 });
         if (activeProjectId) {
           const retryHint = isRetryableError ? '\n\n👉 Use the **Retry Build** button below to try again.' : '';
           addMessage(
             'assistant',
-            `❌ **Generation failed**\n\n${friendlyReason}\n\n*No changes were applied — your project is in its last stable state.*${retryHint}`,
+            `❌ **Generation failed**${stageLabel}\n\n${friendlyReason}\n\n*No changes were applied — your project is in its last stable state.*${retryHint}`,
             undefined,
             activeProjectId
           );
