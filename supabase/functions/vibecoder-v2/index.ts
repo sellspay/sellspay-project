@@ -5140,7 +5140,11 @@ serve(async (req) => {
         } finally {
           clearInterval(heartbeatInterval);
           clearTimeout(streamTimeout);
-          controller.close();
+          try {
+            if (!streamClosed) controller.close();
+          } catch {
+            // controller may already be closed by client disconnect
+          }
         }
       },
     });
