@@ -54,12 +54,27 @@ export function AuthGateDialog({ open, onOpenChange, pendingPrompt }: AuthGateDi
     setError(null);
     setLoading(true);
     try {
-      const { error } = mode === "signin"
-        ? await signIn(email, password)
-        : await signUp(email, password);
-      if (error) throw error;
+      if (mode === "signup") {
+        // Signup requires a real email
+        if (!email.includes("@")) throw new Error("Please enter a valid email address");
+        const { error } = await signUp(email, password);
+        if (error) throw error;
+      } else {
+        // Signin: accept either email or username
+        let loginEmail = email.trim();
+        const looksLikeEmail = loginEmail.includes("@");
+        if (!looksLikeEmail) {
+          // Resolve username → email via RPC
+          const { data: resolvedEmail, error: rpcErr } = await supabase
+            .rpc("get_email_by_username", { p_username: loginEmail });
+          if (rpcErr) throw new Error("Could not look up that username");
+          if (!resolvedEmail) throw new Error("No account found for that username");
+          loginEmail = resolvedEmail as string;
+        }
+        const { error } = await signIn(loginEmail, password);
+        if (error) throw error;
+      }
       onOpenChange(false);
-      // After signup the auth state listener will reload; prompt stays in component state
     } catch (err: any) {
       setError(err.message || "Authentication failed");
     } finally {
@@ -177,9 +192,10 @@ export function AuthGateDialog({ open, onOpenChange, pendingPrompt }: AuthGateDi
           {/* Email form */}
           <form onSubmit={handleEmailSubmit} className="space-y-3">
             <input
-              type="email"
+              type={mode === "signup" ? "email" : "text"}
               required
-              placeholder="you@example.com"
+              autoComplete={mode === "signup" ? "email" : "username"}
+              placeholder={mode === "signup" ? "you@example.com" : "Email or username"}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="w-full h-11 px-4 rounded-lg bg-white/[0.04] border border-white/10 text-white placeholder:text-zinc-500 focus:outline-none focus:border-primary/60 focus:ring-1 focus:ring-primary/30 transition-all text-sm"
