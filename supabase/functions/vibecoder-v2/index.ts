@@ -5141,15 +5141,28 @@ serve(async (req) => {
               }
             }
 
+            // Compute files_changed_count for the UI's zero-change warning
+            let filesChangedCount: number | null = null;
+            if (jobStatus === "completed" && !validationError && codeResult) {
+              try {
+                const parsed = JSON.parse(codeResult);
+                if (parsed?.files && typeof parsed.files === "object") {
+                  filesChangedCount = Object.keys(parsed.files).length;
+                }
+              } catch { /* code_result not JSON — leave null */ }
+            }
+
             // Finalize Job Status
             const updatePayload: Record<string, unknown> = {
               status: jobStatus,
               completed_at: new Date().toISOString(),
+              last_heartbeat_at: new Date().toISOString(),
               code_result: (validationError || jobStatus !== "completed") ? null : codeResult,
               summary: summary?.slice(0, 8000),
               plan_result: planResult,
               validation_report: validationReport,
               terminal_reason: terminalReason,
+              files_changed_count: filesChangedCount,
               progress_logs: validationError
                 ? ["Starting AI generation...", "Processing response...", `⚠️ ${validationError.errorType}`]
                 : jobStatus === "needs_user_action"
@@ -5162,6 +5175,17 @@ serve(async (req) => {
                 type: validationError.errorType,
                 message: validationError.errorMessage,
               });
+              // failure_stage breadcrumb: where in the pipeline we broke
+              const et = (validationError.errorType || "").toLowerCase();
+              updatePayload.failure_stage = et.includes("compile")
+                ? "validation"
+                : et.includes("repair")
+                ? "repair"
+                : (et.includes("no_code") || et.includes("corrupt") || et.includes("truncated") || et.includes("empty"))
+                ? "generation"
+                : "commit";
+            } else if (jobStatus === "needs_user_action") {
+              updatePayload.failure_stage = "intent";
             }
 
             if (jobStatus !== "completed") {
