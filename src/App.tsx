@@ -9,6 +9,7 @@ import MainLayout from "@/components/layout/MainLayout";
 import { UsernameSetupDialog } from "@/components/auth/UsernameSetupDialog";
 import ScrollToTop from "@/components/ScrollToTop";
 import { GlobalErrorBoundary } from "@/components/GlobalErrorBoundary";
+import { GlobalMfaModal } from "@/components/auth/GlobalMfaModal";
 import { Loader2 } from "lucide-react";
 
 const Home = lazy(() => import("./pages/Home"));
@@ -107,6 +108,7 @@ function App() {
               <Toaster />
               <Sonner />
               <UsernameSetupDialog />
+              <GlobalMfaModal />
               <BrowserRouter>
                 <ScrollToTop />
                 <Suspense fallback={<PageLoader />}>
