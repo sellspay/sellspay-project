@@ -5065,9 +5065,19 @@ serve(async (req) => {
                   if (!syntaxCheck.valid) {
                     console.warn(`[Job ${jobId}] GATE 4: ${syntaxCheck.errors.length} syntax error(s) in delta: ${syntaxCheck.errors.map(e => `${e.file}: ${e.error}`).join(' | ')}`);
                     
-                    // Phase 0: DETERMINISTIC auto-close (instant, no AI call needed)
-                    // Handles the most common failure: truncation leaving unclosed JSX tags
+                    // Phase 0: DETERMINISTIC auto-fix (instant, no AI call needed)
+                    // Handles the most common failures: unterminated strings + truncated JSX
                     for (const err of syntaxCheck.errors) {
+                      // 0a: Unterminated string literals (apostrophe in '...', newline in "...")
+                      if (err.error.includes('Unterminated string')) {
+                        const stringFixed = autoCloseUnterminatedStrings(deltaForSyntax[err.file] || "", err.file);
+                        if (stringFixed) {
+                          deltaForSyntax[err.file] = stringFixed;
+                          console.log(`[Job ${jobId}] GATE 4 STRING-FIX: ✅ Closed unterminated strings in ${err.file}`);
+                          continue;
+                        }
+                      }
+                      // 0b: Unclosed JSX / truncation
                       if (err.error.includes('Unclosed JSX') || err.error.includes('Unbalanced') || err.error.includes('truncated')) {
                         const autoClosed = autoCloseTruncatedFile(deltaForSyntax[err.file] || "", err.file);
                         if (autoClosed) {
