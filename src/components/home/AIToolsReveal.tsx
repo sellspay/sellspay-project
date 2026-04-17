@@ -384,11 +384,11 @@ export function AIToolsReveal() {
         }}
       />
       <div className="relative min-h-[100svh] w-full overflow-visible">
-        <div className="absolute inset-0 flex flex-col lg:flex-row items-center justify-center gap-4 sm:gap-6 lg:gap-0 px-4 sm:px-6 lg:px-0 py-8 lg:py-0">
+        <div className="absolute inset-0 flex flex-col lg:flex-row items-center justify-start lg:justify-center gap-10 sm:gap-12 lg:gap-0 px-4 sm:px-6 lg:px-0 pt-12 pb-8 lg:py-0">
           <div
             ref={textRef}
-            className="relative lg:absolute lg:left-[3%] xl:left-[4%] lg:top-1/2 lg:-translate-y-1/2 z-[10000] lg:z-10 text-center lg:text-left w-full lg:w-auto lg:max-w-[28%] xl:max-w-[30%] order-1 lg:order-none pb-6 lg:pb-0"
-            style={{ color: TEXT_LIGHT, backgroundColor: 'transparent' }}
+            className="relative lg:absolute lg:left-[3%] xl:left-[4%] lg:top-1/2 lg:-translate-y-1/2 z-[10000] lg:z-10 text-center lg:text-left w-full lg:w-auto lg:max-w-[28%] xl:max-w-[30%] order-1 lg:order-none"
+            style={{ color: TEXT_LIGHT }}
           >
             {/* Step counter */}
             <div className="mb-4 sm:mb-6 flex items-center gap-3 justify-center lg:justify-start">
@@ -449,7 +449,7 @@ export function AIToolsReveal() {
           <div className="lg:absolute lg:right-[2%] xl:right-[3%] lg:top-1/2 lg:-translate-y-1/2 order-2 lg:order-none w-full lg:w-auto flex justify-center lg:justify-end overflow-x-clip overflow-y-visible">
             <div
               ref={deckRef}
-              className="deck relative w-[90vw] sm:w-[85vw] md:w-[80vw] lg:w-[60vw] xl:w-[62vw] max-w-[1050px] aspect-[16/10] overflow-visible"
+              className="deck relative w-[85vw] sm:w-[78vw] md:w-[70vw] lg:w-[60vw] xl:w-[62vw] max-w-[1050px] aspect-[16/10] overflow-visible"
             >
               {steps.map((step, idx) => (
                 <div
