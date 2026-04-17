@@ -74,7 +74,7 @@ export function ValueProps() {
   const info = TOOL_CONTENT[activeTool];
 
   return (
-    <section className="relative py-32 sm:py-40" style={{ background: '#000' }}>
+    <section className="relative py-20 sm:py-32 lg:py-40" style={{ background: '#000' }}>
       <div className="absolute -top-40 left-0 right-0 h-80 pointer-events-none"
         style={{ background: 'linear-gradient(to bottom, transparent, #000000)' }}
       />
