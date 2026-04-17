@@ -111,7 +111,7 @@ export default function HeroSection() {
             loop 
             playsInline
             preload="auto"
-            className="w-full h-full object-contain lg:object-cover"
+            className="w-full h-full object-cover"
             onError={() => {
               console.error('Hero video failed to load:', content.hero_video_url);
               setVideoFailed(true);
