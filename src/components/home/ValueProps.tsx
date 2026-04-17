@@ -223,7 +223,7 @@ export function ValueProps() {
             </div>
 
             {/* Bottom — info + CTA */}
-            <div className="absolute bottom-0 left-0 right-0 z-20 p-8 lg:p-10">
+            <div className="absolute bottom-0 left-0 right-0 z-20 p-5 sm:p-8 lg:p-10">
               <AnimatePresence mode="wait">
                 <motion.div
                   key={activeTool}
