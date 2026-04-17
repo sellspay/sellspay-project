@@ -449,7 +449,7 @@ export function AIToolsReveal() {
           <div className="lg:absolute lg:right-[2%] xl:right-[3%] lg:top-1/2 lg:-translate-y-1/2 order-2 lg:order-none w-full lg:w-auto flex justify-center lg:justify-end overflow-x-clip overflow-y-visible">
             <div
               ref={deckRef}
-              className="deck relative w-[90vw] sm:w-[85vw] md:w-[80vw] lg:w-[60vw] xl:w-[62vw] max-w-[1050px] aspect-[16/10] overflow-visible"
+              className="deck relative w-[85vw] sm:w-[78vw] md:w-[70vw] lg:w-[60vw] xl:w-[62vw] max-w-[1050px] aspect-[16/10] overflow-visible"
             >
               {steps.map((step, idx) => (
                 <div
