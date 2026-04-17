@@ -106,7 +106,7 @@ export function ValueProps() {
             style={{
               border: '1px solid rgba(255,255,255,0.1)',
               boxShadow: '0 0 0 1px rgba(255,255,255,0.04), 0 8px 60px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.08)',
-              height: 'clamp(420px, 42vw, 560px)',
+              height: 'clamp(520px, 42vw, 560px)',
             }}
           >
             {/* Media layer */}
