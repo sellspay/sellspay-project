@@ -187,15 +187,15 @@ export function ValueProps() {
             />
 
             {/* Top — tool selector pills */}
-            <div className="absolute top-0 left-0 right-0 z-20 p-5">
-              <div className="flex flex-wrap gap-2">
+            <div className="absolute top-0 left-0 right-0 z-20 p-3 sm:p-5">
+              <div className="flex gap-2 overflow-x-auto sm:flex-wrap scrollbar-hide -mx-3 px-3 sm:mx-0 sm:px-0">
                 {TOOL_ITEMS.map((tool) => {
                   const isActive = tool.id === activeTool;
                   return (
                     <button
                       key={tool.id}
                       onClick={() => setActiveTool(tool.id)}
-                      className="flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold transition-all cursor-pointer"
+                      className="flex shrink-0 items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full text-[11px] sm:text-xs font-semibold transition-all cursor-pointer whitespace-nowrap"
                       style={{
                         background: isActive
                           ? 'rgba(255,255,255,0.15)'
