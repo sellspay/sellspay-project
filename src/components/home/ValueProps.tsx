@@ -74,7 +74,7 @@ export function ValueProps() {
   const info = TOOL_CONTENT[activeTool];
 
   return (
-    <section className="relative py-32 sm:py-40" style={{ background: '#000' }}>
+    <section className="relative py-20 sm:py-32 lg:py-40" style={{ background: '#000' }}>
       <div className="absolute -top-40 left-0 right-0 h-80 pointer-events-none"
         style={{ background: 'linear-gradient(to bottom, transparent, #000000)' }}
       />
@@ -106,7 +106,7 @@ export function ValueProps() {
             style={{
               border: '1px solid rgba(255,255,255,0.1)',
               boxShadow: '0 0 0 1px rgba(255,255,255,0.04), 0 8px 60px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.08)',
-              height: 'clamp(420px, 42vw, 560px)',
+              height: 'clamp(520px, 42vw, 560px)',
             }}
           >
             {/* Media layer */}
@@ -187,15 +187,15 @@ export function ValueProps() {
             />
 
             {/* Top — tool selector pills */}
-            <div className="absolute top-0 left-0 right-0 z-20 p-5">
-              <div className="flex flex-wrap gap-2">
+            <div className="absolute top-0 left-0 right-0 z-20 p-3 sm:p-5">
+              <div className="flex gap-2 overflow-x-auto sm:flex-wrap scrollbar-hide -mx-3 px-3 sm:mx-0 sm:px-0">
                 {TOOL_ITEMS.map((tool) => {
                   const isActive = tool.id === activeTool;
                   return (
                     <button
                       key={tool.id}
                       onClick={() => setActiveTool(tool.id)}
-                      className="flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold transition-all cursor-pointer"
+                      className="flex shrink-0 items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full text-[11px] sm:text-xs font-semibold transition-all cursor-pointer whitespace-nowrap"
                       style={{
                         background: isActive
                           ? 'rgba(255,255,255,0.15)'
@@ -223,7 +223,7 @@ export function ValueProps() {
             </div>
 
             {/* Bottom — info + CTA */}
-            <div className="absolute bottom-0 left-0 right-0 z-20 p-8 lg:p-10">
+            <div className="absolute bottom-0 left-0 right-0 z-20 p-5 sm:p-8 lg:p-10">
               <AnimatePresence mode="wait">
                 <motion.div
                   key={activeTool}
