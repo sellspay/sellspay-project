@@ -19,7 +19,7 @@ const pillars = [
 
 export function FeatureTabsBar() {
   return (
-    <section className="py-28 sm:py-36 lg:py-44" style={{ background: '#000' }}>
+    <section className="py-16 sm:py-28 lg:py-44" style={{ background: '#000' }}>
       <div className="px-6 sm:px-8 lg:px-16 xl:px-24 max-w-[1600px] mx-auto">
         {/* Heading + CTA */}
         <Reveal>
