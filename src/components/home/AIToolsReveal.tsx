@@ -446,7 +446,7 @@ export function AIToolsReveal() {
               ))}
             </div>
           </div>
-          <div className="mt-6 sm:mt-8 lg:mt-0 lg:absolute lg:right-[2%] xl:right-[3%] lg:top-1/2 lg:-translate-y-1/2 order-2 lg:order-none w-full lg:w-auto flex justify-center lg:justify-end overflow-x-clip overflow-y-visible">
+          <div className="mt-[11vh] sm:mt-[9vh] lg:mt-0 lg:absolute lg:right-[2%] xl:right-[3%] lg:top-1/2 lg:-translate-y-1/2 order-2 lg:order-none w-full lg:w-auto flex justify-center lg:justify-end overflow-x-clip overflow-y-visible">
             <div
               ref={deckRef}
               className="deck relative w-[84vw] sm:w-[76vw] md:w-[70vw] lg:w-[60vw] xl:w-[62vw] max-w-[1050px] aspect-[16/10] overflow-visible"
