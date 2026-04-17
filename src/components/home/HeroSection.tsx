@@ -124,7 +124,7 @@ export default function HeroSection() {
           <img 
             src={backgroundMedia} 
             alt="" 
-            className="w-full h-full object-contain lg:object-cover"
+            className="w-full h-full object-cover"
           />
         ) : (
           <div className="w-full h-full bg-background" />
