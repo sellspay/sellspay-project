@@ -384,7 +384,7 @@ export function AIToolsReveal() {
         }}
       />
       <div className="relative min-h-[100svh] w-full overflow-visible">
-        <div className="absolute inset-0 flex flex-col lg:flex-row items-center justify-start lg:justify-center gap-4 sm:gap-6 lg:gap-0 px-4 sm:px-6 lg:px-0 pt-10 pb-6 lg:py-0">
+        <div className="absolute inset-0 flex flex-col lg:flex-row items-center justify-start lg:justify-center gap-4 sm:gap-6 lg:gap-0 px-4 sm:px-6 lg:px-0 pt-10 pb-0 lg:py-0">
           <div
             ref={textRef}
             className="relative shrink-0 lg:absolute lg:left-[3%] xl:left-[4%] lg:top-1/2 lg:-translate-y-1/2 z-[10000] lg:z-10 text-center lg:text-left w-full lg:w-auto lg:max-w-[28%] xl:max-w-[30%] order-1 lg:order-none"

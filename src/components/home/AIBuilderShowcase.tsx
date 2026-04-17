@@ -123,7 +123,7 @@ export function AIBuilderShowcase() {
   return (
     <section
       ref={sectionRef}
-      className="studio-dark relative overflow-hidden bg-background pt-4 pb-12 sm:py-28 lg:py-44"
+      className="studio-dark relative overflow-hidden bg-background pt-0 pb-12 sm:py-28 lg:py-44"
     >
       {/* Ambient glows */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
