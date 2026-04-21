@@ -500,48 +500,66 @@ function autoCloseTruncatedFile(content: string, filePath: string): string | nul
   if (!filePath.endsWith('.tsx') && !filePath.endsWith('.jsx')) return null;
 
   let fixed = content;
-
-  // Step 1: REMOVE orphan closing tags (closers without matching openers).
-  // These are the #1 cause of "Adjacent JSX elements" errors — the model
-  // truncates, and inserting closers at the wrong nesting level is worse
-  // than the original truncation. So we STRIP them instead.
-  const stripped = stripStringsAndCommentsServer(fixed);
-  const tagStack: string[] = [];
-  const orphanClosers: string[] = [];
   const tagRegex = /<\/?([A-Za-z][A-Za-z0-9.]*)[^>]*?\/?>/g;
-  let tagMatch: RegExpExecArray | null;
-  while ((tagMatch = tagRegex.exec(stripped)) !== null) {
-    const fullMatch = tagMatch[0];
-    const tagName = tagMatch[1];
-    const matchIndex = tagMatch.index;
-    if (!tagName) continue;
-    if (matchIndex > 0 && /\w/.test(stripped[matchIndex - 1])) continue;
-    if (SERVER_TS_TYPE_NAMES.has(tagName)) continue;
-    if (/(?:Props|State|Type|Config|Options|Params|Args|Result|Data|Item|Entry|Key|Value|Ref|Context|Handler|Callback|Fn|Interface)$/.test(tagName)) continue;
-    const isSelfClosing = fullMatch.endsWith('/>');
-    const isClosing = fullMatch.startsWith('</');
-    if (isSelfClosing) continue;
-    if (isClosing) {
-      const idx = tagStack.lastIndexOf(tagName);
-      if (idx >= 0) {
-        tagStack.splice(idx, 1);
-      } else {
-        orphanClosers.push(tagName);
+
+  const repairJsxClosers = (source: string): string => {
+    const stripped = stripStringsAndCommentsServer(source);
+    const stack: string[] = [];
+    const insertions: Array<{ index: number; text: string }> = [];
+    const orphanRanges: Array<{ start: number; end: number }> = [];
+    let match: RegExpExecArray | null;
+
+    while ((match = tagRegex.exec(stripped)) !== null) {
+      const fullMatch = match[0];
+      const tagName = match[1];
+      const matchIndex = match.index;
+      if (!tagName) continue;
+      if (matchIndex > 0 && /\w/.test(stripped[matchIndex - 1])) continue;
+      if (SERVER_TS_TYPE_NAMES.has(tagName)) continue;
+      if (/(?:Props|State|Type|Config|Options|Params|Args|Result|Data|Item|Entry|Key|Value|Ref|Context|Handler|Callback|Fn|Interface)$/.test(tagName)) continue;
+      if (fullMatch.endsWith('/>') || SERVER_VOID_ELEMENTS.has(tagName.toLowerCase())) continue;
+
+      if (!fullMatch.startsWith('</')) {
+        stack.push(tagName);
+        continue;
       }
-    } else {
-      if (SERVER_VOID_ELEMENTS.has(tagName.toLowerCase())) continue;
-      tagStack.push(tagName);
+
+      const top = stack[stack.length - 1];
+      if (top === tagName) {
+        stack.pop();
+        continue;
+      }
+
+      const idx = stack.lastIndexOf(tagName);
+      if (idx >= 0) {
+        const missing = stack.slice(idx + 1).reverse().map((tag) => `</${tag}>`).join('');
+        if (missing) insertions.push({ index: matchIndex, text: missing });
+        stack.splice(idx);
+      } else {
+        let rangeStart = matchIndex;
+        let rangeEnd = matchIndex + fullMatch.length;
+        while (rangeStart > 0 && source[rangeStart - 1] !== '\n') rangeStart--;
+        while (rangeEnd < source.length && source[rangeEnd] !== '\n') rangeEnd++;
+        if (rangeEnd < source.length) rangeEnd++;
+        orphanRanges.push({ start: rangeStart, end: rangeEnd });
+      }
     }
-  }
 
-  // Remove each orphan closing tag occurrence from the source
-  for (const orphan of orphanClosers) {
-    // Remove the line containing the orphan closer (greedy: first match only)
-    const orphanLineRegex = new RegExp(`^\\s*</${orphan}>\\s*$`, 'm');
-    fixed = fixed.replace(orphanLineRegex, '');
-  }
+    let repaired = source;
+    for (const range of orphanRanges.sort((a, b) => b.start - a.start)) {
+      repaired = repaired.slice(0, range.start) + repaired.slice(range.end);
+    }
+    for (const insertion of insertions.sort((a, b) => b.index - a.index)) {
+      repaired = repaired.slice(0, insertion.index) + insertion.text + repaired.slice(insertion.index);
+    }
+    if (stack.length > 0) {
+      repaired += stack.reverse().map((tag) => `</${tag}>`).join('');
+    }
+    return repaired;
+  };
 
-  // Step 2: Balance braces, parens, brackets
+  fixed = repairJsxClosers(fixed);
+
   let braces = 0, parens = 0, brackets = 0;
   let inStr = false, inDbl = false, inTpl = false, inLC = false, inBC = false, esc = false;
   for (let i = 0; i < fixed.length; i++) {
@@ -565,21 +583,16 @@ function autoCloseTruncatedFile(content: string, filePath: string): string | nul
     if (c === '(') parens++; else if (c === ')') parens--;
     if (c === '[') brackets++; else if (c === ']') brackets--;
   }
-  
-  // Close any unclosed delimiters
+
   while (brackets > 0) { fixed += ']'; brackets--; }
   while (parens > 0) { fixed += ')'; parens--; }
   while (braces > 0) { fixed += '}'; braces--; }
 
-  // Only return if we actually made changes and the result validates
   if (fixed === content) return null;
-  
+
   const recheck = validateFileSyntaxServer(fixed, filePath);
-  if (!recheck) {
-    return fixed;
-  }
-  
-  return null; // Auto-close didn't fully fix it
+  if (!recheck) return fixed;
+  return null;
 }
 
 function validateFileSyntaxServer(content: string, filePath: string): string | null {
@@ -4391,8 +4404,8 @@ serve(async (req) => {
               emitEvent('confidence', { score: Math.min(100, Math.max(0, score)), reason });
               confidenceEmitted = true;
               
-              // Now emit complete phase (after confidence)
-              emitEvent('phase', { phase: 'complete' });
+              // Model output is complete, but validation/commit is still pending.
+              emitEvent('phase', { phase: 'validating' });
             }
           }
         };
@@ -4463,12 +4476,12 @@ serve(async (req) => {
             throw new Error("EDGE_TIMEOUT");
           }
 
-          // Final: emit complete if no confidence section detected
+          // Final: model output ended; validation/commit still decides success.
           if (!confidenceEmitted) {
             // Default confidence when model didn't output the section
             emitEvent('confidence', { score: 75, reason: 'Confidence section not provided by model.' });
-            emitEvent('phase', { phase: 'complete' });
           }
+          emitEvent('phase', { phase: 'validating' });
           
           // ════════════════════════════════════════════════════════
           // TELEMETRY: Log generation metrics
@@ -5272,6 +5285,9 @@ serve(async (req) => {
             }
 
             await supabase.from("ai_generation_jobs").update(updatePayload).eq("id", jobId);
+            if (!validationError && jobStatus === "completed") {
+              emitEvent('phase', { phase: 'complete' });
+            }
             console.log(`[Job ${jobId}] Job ${jobStatus} | Reason: ${terminalReason}`);
           }
         } catch (e) {

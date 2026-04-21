@@ -973,6 +973,10 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
               
               switch (currentEventType) {
                 case 'phase':
+                  if (isJobBackedRun && data.phase === 'complete') {
+                    options.onPhaseChange?.('validating');
+                    break;
+                  }
                   options.onPhaseChange?.(data.phase);
                   break;
                 case 'text':
