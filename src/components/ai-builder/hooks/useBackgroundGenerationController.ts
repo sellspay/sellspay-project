@@ -347,8 +347,18 @@ export function useBackgroundGenerationController({
       setFiles(mergedFileMap);
       hasDbSnapshotRef.current = true;
       console.log('[ZERO-TRUST] ✅ Commit + persistence successful');
+    } else if (!job.plan_result) {
+      console.error('[BackgroundGen] Job completed without validated code_result. Treating as failed:', job.id);
+      toast.error('Build finished without validated files. Please retry.');
+      await abortGeneration({
+        showSummary: true,
+        enableRetry: true,
+        errorDetail: 'The backend marked the run complete, but no validated files were produced.',
+        refundReason: 'missing_validated_code_result',
+      });
+      return;
     } else {
-      console.warn('[BackgroundGen] Job completed with no code_result:', job.id);
+      console.warn('[BackgroundGen] Plan job completed with no code_result:', job.id);
     }
 
     // If we have a plan result, show the plan approval card

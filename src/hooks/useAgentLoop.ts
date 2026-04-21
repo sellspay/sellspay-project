@@ -68,6 +68,7 @@ export function useAgentLoop({ onStreamCode, onComplete, getActiveProjectId }: U
   const abortRef = useRef(false);
   const streamStartedRef = useRef(false);
   const hardLockRef = useRef<string | null>(null);
+  const jobBackedRunRef = useRef(false);
 
   const addLog = useCallback((msg: string) => {
     const currentProjectId = getActiveProjectId?.();
@@ -88,6 +89,7 @@ export function useAgentLoop({ onStreamCode, onComplete, getActiveProjectId }: U
   const startAgent = useCallback(async (prompt: string, existingCode?: string, projectId?: string, jobId?: string, projectFiles?: Record<string, string>) => {
     abortRef.current = false;
     streamStartedRef.current = false;
+    jobBackedRunRef.current = Boolean(jobId);
     
     const lockedId = projectId || getActiveProjectId?.() || null;
     
@@ -119,6 +121,7 @@ export function useAgentLoop({ onStreamCode, onComplete, getActiveProjectId }: U
       onStreamCode(prompt, existingCode, jobId, projectFiles);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Agent crashed';
+      jobBackedRunRef.current = false;
       setState(prev => ({
         ...prev,
         step: 'error',
@@ -144,13 +147,20 @@ export function useAgentLoop({ onStreamCode, onComplete, getActiveProjectId }: U
       repairing: 'building',     // show as building during repair
       complete: 'complete',
     };
+    if (phase === 'complete' && jobBackedRunRef.current) {
+      setState(prev => ({ ...prev, streamPhase: 'building', isRunning: true }));
+      addLog('> Model response complete. Validating build...');
+      return;
+    }
+
     const streamPhase = phaseMap[phase] || 'analyzing';
     
     setState(prev => ({ ...prev, streamPhase }));
     
     // Map to legacy agent steps for backward compat
-    if (phase === 'building') setStep('writing');
+    if (phase === 'building' || phase === 'validating') setStep('writing');
     if (phase === 'complete') {
+      jobBackedRunRef.current = false;
       setStep('done');
       setState(prev => ({ ...prev, isRunning: false, lockedProjectId: null }));
       onComplete?.();
@@ -232,6 +242,8 @@ export function useAgentLoop({ onStreamCode, onComplete, getActiveProjectId }: U
       return;
     }
     
+    jobBackedRunRef.current = false;
+
     // Legacy fallback: mark as done
     setStep('done');
     addLog('> Build successful.');
@@ -245,6 +257,7 @@ export function useAgentLoop({ onStreamCode, onComplete, getActiveProjectId }: U
   }, [setStep, addLog, onComplete, getActiveProjectId, state.lockedProjectId, state.streamPhase]);
 
   const onStreamingError = useCallback((error: string) => {
+    jobBackedRunRef.current = false;
     setState(prev => ({
       ...prev,
       step: 'error',
@@ -263,11 +276,13 @@ export function useAgentLoop({ onStreamCode, onComplete, getActiveProjectId }: U
 
   const cancelAgent = useCallback(() => {
     abortRef.current = true;
+    jobBackedRunRef.current = false;
     setState(createFreshState());
   }, []);
 
   const resetAgent = useCallback(() => {
     abortRef.current = true;
+    jobBackedRunRef.current = false;
     setState(createFreshState());
   }, []);
 
@@ -275,6 +290,7 @@ export function useAgentLoop({ onStreamCode, onComplete, getActiveProjectId }: U
     console.log("🧹 [AgentLoop] Unmounting Project. Wiping hook memory.");
     abortRef.current = true;
     streamStartedRef.current = false;
+    jobBackedRunRef.current = false;
     setState({ ...createFreshState(), isRunning: false });
   }, []);
 
