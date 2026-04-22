@@ -5370,6 +5370,39 @@ serve(async (req) => {
     });
 
     endedAsSuccess = true;
+
+    // ════════════════════════════════════════════════════════════
+    // ASYNC JOB MODE: When a jobId is present, drain the stream in the
+    // background and return immediately. This is the critical fix for
+    // EDGE_TIMEOUT failures: the 140s gateway limit kills the HTTP
+    // response, but the work needs to keep running until the model is
+    // done. EdgeRuntime.waitUntil() lets the worker finish even after
+    // the HTTP response closes. The client polls ai_generation_jobs via
+    // Realtime — it does NOT need the SSE in job mode.
+    // ════════════════════════════════════════════════════════════
+    if (jobId) {
+      const drain = (async () => {
+        const reader = stream.getReader();
+        try {
+          // eslint-disable-next-line no-constant-condition
+          while (true) {
+            const { done } = await reader.read();
+            if (done) break;
+          }
+        } catch (e) {
+          console.warn(`[Job ${jobId}] Background drain error:`, e);
+        }
+      })();
+
+      // @ts-ignore — EdgeRuntime is provided by Supabase's Deno runtime
+      try { (globalThis as any).EdgeRuntime?.waitUntil?.(drain); } catch {}
+
+      return new Response(
+        JSON.stringify({ accepted: true, jobId, mode: "async" }),
+        { status: 202, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     return new Response(stream, {
       headers: {
         ...corsHeaders,
