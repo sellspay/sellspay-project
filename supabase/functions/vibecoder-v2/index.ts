@@ -278,6 +278,26 @@ const SERVER_VOID_ELEMENTS = new Set([
   'link', 'meta', 'param', 'source', 'track', 'wbr',
 ]);
 
+function shouldTreatQuoteAsStringDelimiterServer(
+  code: string,
+  index: number,
+  filePath: string,
+  quote: "'" | '"',
+): boolean {
+  if (!filePath.endsWith('.tsx') && !filePath.endsWith('.jsx')) return true;
+
+  const prev = code[index - 1] ?? '';
+  const next = code[index + 1] ?? '';
+
+  // JSX text commonly contains apostrophes like What's / creator's.
+  // Those are text nodes, not JavaScript string delimiters.
+  if (quote === "'" && /[A-Za-z0-9]/.test(prev) && /[A-Za-z0-9]/.test(next)) {
+    return false;
+  }
+
+  return true;
+}
+
 function stripStringsAndCommentsServer(code: string): string {
   let result = '';
   let inSingle = false;
@@ -324,8 +344,8 @@ function stripStringsAndCommentsServer(code: string): string {
 
     if (c === '/' && n === '/') { inLineComment = true; result += ' '; i++; continue; }
     if (c === '/' && n === '*') { inBlockComment = true; result += ' '; i++; continue; }
-    if (c === "'") { inSingle = true; result += ' '; continue; }
-    if (c === '"') { inDouble = true; result += ' '; continue; }
+    if (c === "'" && shouldTreatQuoteAsStringDelimiterServer(code, i, '.tsx', "'")) { inSingle = true; result += ' '; continue; }
+    if (c === '"' && shouldTreatQuoteAsStringDelimiterServer(code, i, '.tsx', '"')) { inDouble = true; result += ' '; continue; }
     if (c === '`') { inTemplate = true; result += ' '; continue; }
     if (c === '}' && templateDepth > 0) { templateDepth--; inTemplate = true; result += ' '; continue; }
 
@@ -635,8 +655,8 @@ function validateFileSyntaxServer(content: string, filePath: string): string | n
     }
     if (c === '/' && n === '/') { inLineComment = true; i++; continue; }
     if (c === '/' && n === '*') { inBlockComment = true; i++; continue; }
-    if (c === "'") { inSingle = true; continue; }
-    if (c === '"') { inDouble = true; continue; }
+    if (c === "'" && shouldTreatQuoteAsStringDelimiterServer(content, i, filePath, "'")) { inSingle = true; continue; }
+    if (c === '"' && shouldTreatQuoteAsStringDelimiterServer(content, i, filePath, '"')) { inDouble = true; continue; }
     if (c === '`') { inTemplate = true; continue; }
     if (c === '{') braces++; else if (c === '}') braces--;
     if (c === '(') parens++; else if (c === ')') parens--;
