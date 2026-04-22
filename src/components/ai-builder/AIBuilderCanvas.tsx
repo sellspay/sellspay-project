@@ -677,23 +677,14 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false, isGuest =
       // Mark this project as having started its initial prompt
       startedInitialForProjectRef.current = activeProjectId;
 
-      // 🔒 LOCK: Set generation lock to this project
-      generationLockRef.current = activeProjectId;
-
-      // Any new generation should cover Sandpack until bundling finishes
-      setIsAwaitingPreviewReady(true);
-
-      // ⚡ OPTIMISTIC UI: Show user's prompt immediately (don't wait for DB)
-      // This fixes "ghost state" where the AI starts working but the chat looks empty
-      addMessage('user', initialPrompt, undefined, activeProjectId);
-
-      // Trigger the agent immediately (with project ID lock)
-      startAgent(initialPrompt, undefined, activeProjectId);
+      // Route navigation-triggered generations through the same deferred, job-backed
+      // pipeline as hero-started runs. This avoids bypassing job creation/validation.
+      deferredHeroPromptRef.current = { prompt: initialPrompt };
 
       // Clear the state so it doesn't re-fire on refresh
       window.history.replaceState({}, document.title);
     }
-  }, [activeProjectId, location.state, projectsLoading, startAgent, addMessage]);
+  }, [activeProjectId, location.state, projectsLoading]);
 
   // Load basic data needed for the AI Builder shell (header, credits, publish state)
   // IMPORTANT: We intentionally do NOT load '/App.tsx' from the global project_files slot here.
@@ -1186,10 +1177,25 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false, isGuest =
     
     // Add a message to indicate we're executing the plan
     await addMessage('user', `Execute the approved plan`, undefined, activeProjectId);
-    
-    // Start the agent with the original prompt (without ARCHITECT_MODE)
-    startAgent(originalPrompt, code !== DEFAULT_CODE ? code : undefined, activeProjectId);
-  }, [activeProjectId, addMessage, startAgent, code, DEFAULT_CODE]);
+
+    // Execute approved plans through the same job-backed pipeline as normal prompts.
+    const existingCodeForAgent = code !== DEFAULT_CODE ? code : undefined;
+    const hasMultipleFiles = Object.keys(files).length > 1;
+    const projectFilesForAgent = hasMultipleFiles ? files : undefined;
+    const job = await createJob('Execute the approved plan', originalPrompt, activeModel?.id, false, activeProjectId);
+
+    activeJobIdRef.current = job?.id ?? null;
+
+    if (job) {
+      startAgent(originalPrompt, existingCodeForAgent, activeProjectId, job.id, projectFilesForAgent);
+    } else {
+      generationLockRef.current = null;
+      activeJobIdRef.current = null;
+      setIsAwaitingPreviewReady(false);
+      toast.error('Failed to start plan execution. Please try again.');
+      await addMessage('assistant', '❌ Approved plan could not start — the backend job failed to create. Please try again.', undefined, activeProjectId);
+    }
+  }, [activeProjectId, addMessage, startAgent, code, DEFAULT_CODE, files, createJob, activeModel]);
   
   // 📋 PLAN REJECTION: Cancel the plan and allow user to refine
   const handleRejectPlan = useCallback(() => {
