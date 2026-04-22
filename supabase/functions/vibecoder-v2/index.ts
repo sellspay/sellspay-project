@@ -2158,6 +2158,7 @@ STRICT RULES (VIOLATIONS CAUSE JOB FAILURE)
 11. For MODIFY/FIX: Return ONLY the files you changed. Do NOT re-output unchanged files.
 12. If output would exceed safe length, reduce code verbosity (shorter class names, fewer comments) but NEVER truncate mid-syntax. Every bracket, quote, and tag MUST be closed.
 13. PRIORITY: Valid complete JSON > comprehensive changes. If you cannot fit all changes, do fewer files but ensure each is syntactically complete.
+14. For BUILD requests, NEVER answer with refusal text about scope, complexity, or "minimal changes". Return executable code JSON for the best complete build you can fit.
 
 ════════════════════════════════════════════════════════════════
 🏗️ MANDATORY LAYOUT HIERARCHY (ABSOLUTE - ZERO EXCEPTIONS)
@@ -4092,25 +4093,20 @@ serve(async (req) => {
                 
                 // ═══════════════════════════════════════════════════════
                 // LAYER 6: BATCH COMPILE-FIX LOOP (Server-Side)
-                // SKIPPED for first BUILD to reduce runtime pressure.
-                // On first BUILD, syntax validation is still logged but
-                // repair loop is disabled to stay under Edge timeout.
+                // First BUILDs are the most failure-prone, so they need
+                // the same repair loop instead of being allowed through
+                // with broken JSX/TSX.
                 // ═══════════════════════════════════════════════════════
                 const isFirstBuildForValidation = !currentCode?.trim() && intentResult.intent === "BUILD";
                 console.log(`[EDGE] Validation starting — ${Object.keys(fileMap).length} files (firstBuild=${isFirstBuildForValidation})`);
                 const initialSyntaxCheck = validateAllFilesServer(fileMap);
                 if (!initialSyntaxCheck.valid) {
                   console.warn(`[EDGE] Validation FAILED — ${initialSyntaxCheck.errors.length} errors: ${initialSyntaxCheck.errors.map(e => `${e.file}: ${e.error}`).join(' | ')}`);
-                  if (isFirstBuildForValidation) {
-                    console.log(`[COMPILE_FIX] SKIPPED for first BUILD — transpile validation + repair loop disabled to reduce runtime`);
-                    // Still emit files — let client-side sandbox handle minor issues
-                  } else {
-                    console.warn(`[COMPILE_FIX] ${initialSyntaxCheck.errors.length} file(s) have syntax errors — starting batch repair`);
-                  }
+                  console.warn(`[COMPILE_FIX] ${initialSyntaxCheck.errors.length} file(s) have syntax errors — starting batch repair${isFirstBuildForValidation ? ' (including first BUILD)' : ''}`);
                 } else {
                   console.log(`[EDGE] Syntax validation passed — all ${Object.keys(fileMap).length} files clean`);
                 }
-                if (!initialSyntaxCheck.valid && !isFirstBuildForValidation) {
+                if (!initialSyntaxCheck.valid) {
                   const batchGeneratorConfig = MODEL_CONFIG[model] || MODEL_CONFIG["vibecoder-pro"];
                   const batchResult = await batchCompileFix(fileMap, batchGeneratorConfig, emitEvent);
                   
