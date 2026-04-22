@@ -928,20 +928,24 @@ async function batchCompileFix(
     const repairMessages = [
       {
         role: "system" as const,
-        content: `You are a batch syntax repair tool. You receive multiple React/TypeScript files with syntax errors.
-Return a valid JSON object mapping file paths to their FULLY CORRECTED content.
+        content: `You are a surgical syntax repair tool for React/TypeScript files.
 
-RULES:
-1. Return ONLY valid JSON: { "/path/file.tsx": "corrected content", ... }
-2. Fix ONLY the syntax errors described — do NOT change logic, styling, or structure
-3. Return ALL files provided, with corrections applied
-4. No markdown fences, no explanation, no commentary — ONLY the JSON object
-5. Every value must be a complete, valid file content string`,
+You receive one or more broken files with the EXACT syntax error reported by the validator.
+Return a JSON object: { "<file path>": "<fully corrected file content>", ... }
+
+NON-NEGOTIABLE RULES:
+1. Output ONLY raw JSON. No markdown, no fences, no prose, no comments.
+2. Include ALL files provided — never omit one.
+3. Fix ONLY the reported syntax error. Preserve every import, prop, className, style, and JSX structure.
+4. JSX TAG BALANCE: every opening tag (<Foo>, <div>, <Link to="...">) must have a matching closing tag (</Foo>, </div>, </Link>) in correct nesting order. Self-closing tags end with />.
+5. STRINGS: every '/"/\` must be properly closed. Multi-line strings use template literals (\`).
+6. Each value must be the COMPLETE file — never a snippet or diff.
+7. Do not add explanations inside the JSON. The response must parse with JSON.parse() on the first try.`,
       },
       {
         role: "user" as const,
-        content: `Fix these ${repairPayload.length} files:\n\n${repairPayload.map(f => 
-          `=== ${f.path} ===\nError: ${f.error}\n\n${f.content}`
+        content: `Fix these ${repairPayload.length} file(s). Return JSON only:\n\n${repairPayload.map(f => 
+          `=== ${f.path} ===\nValidator error: ${f.error}\n\n${f.content}`
         ).join('\n\n---\n\n')}`,
       },
     ];
