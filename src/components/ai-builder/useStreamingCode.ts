@@ -1228,15 +1228,21 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
       // event was received, treat as failure
       // ═══════════════════════════════════════════════════════════
       if (isStructuredSSE && !rawStream.includes('/// TYPE:')) {
-        // We were in structured SSE mode - check if we got a terminal event
-        // The phase callbacks would have fired 'complete' or 'error'
-        // If neither fired and stream ended, it's an unexpected close
-        const gotCompletePhase = rawStream.length === 0; // raw is empty when structured SSE handled everything
-        if (!gotCompletePhase && rawStream.trim().length < 50) {
-          const err = new Error('Stream ended unexpectedly. Please retry.');
-          setState(prev => ({ ...prev, isStreaming: false, error: err.message }));
-          options.onError?.(err);
-          return lastGoodCodeRef.current;
+        // Job-backed runs intentionally hand terminal authority to the DB job state.
+        // The SSE stream may close before a terminal phase arrives, which is NOT a client error.
+        if (isJobBackedRun) {
+          console.log('[useStreamingCode] Job-backed run: suppressing terminal-event check on stream close');
+        } else {
+          // We were in structured SSE mode - check if we got a terminal event
+          // The phase callbacks would have fired 'complete' or 'error'
+          // If neither fired and stream ended, it's an unexpected close
+          const gotCompletePhase = rawStream.length === 0; // raw is empty when structured SSE handled everything
+          if (!gotCompletePhase && rawStream.trim().length < 50) {
+            const err = new Error('Stream ended unexpectedly. Please retry.');
+            setState(prev => ({ ...prev, isStreaming: false, error: err.message }));
+            options.onError?.(err);
+            return lastGoodCodeRef.current;
+          }
         }
       }
 

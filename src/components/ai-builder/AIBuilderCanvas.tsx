@@ -488,8 +488,17 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false, isGuest =
       resetAgent();
     },
     onError: (err) => {
+      // Job-backed generations use the database job as the sole source of truth.
+      // If the preview stream closes early, suppress generic canvas errors here and
+      // let the background job controller surface the real outcome + retry state.
+      if (activeJobIdRef.current && !err.message.includes('INSUFFICIENT_CREDITS')) {
+        console.warn('[AIBuilderCanvas] Suppressing streaming error for job-backed run:', err.message);
+        setLiveSteps([]);
+        return;
+      }
+
       setLiveSteps([]);
-      generationLockRef.current = null; // Release lock on error
+      generationLockRef.current = null; // Release lock on non-job-backed error
       
       // Handle credit-specific errors with actionable UI
       if (err.message.includes('INSUFFICIENT_CREDITS')) {
