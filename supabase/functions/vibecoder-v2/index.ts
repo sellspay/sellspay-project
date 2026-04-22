@@ -500,26 +500,31 @@ function autoCloseTruncatedFile(content: string, filePath: string): string | nul
   if (!filePath.endsWith('.tsx') && !filePath.endsWith('.jsx')) return null;
 
   let fixed = content;
-  const tagRegex = /<\/?([A-Za-z][A-Za-z0-9.]*)[^>]*?\/?>/g;
+  const JSX_FRAGMENT = '__jsx_fragment__';
+  const tagRegex = /<\/?([A-Za-z][A-Za-z0-9.]*)[^>]*?\/?>|<>|<\/>/g;
 
   const repairJsxClosers = (source: string): string => {
     const stripped = stripStringsAndCommentsServer(source);
     const stack: string[] = [];
     const insertions: Array<{ index: number; text: string }> = [];
     const orphanRanges: Array<{ start: number; end: number }> = [];
+    const renderClosingTag = (tagName: string) => tagName === JSX_FRAGMENT ? '</>' : `</${tagName}>`;
     let match: RegExpExecArray | null;
 
     while ((match = tagRegex.exec(stripped)) !== null) {
       const fullMatch = match[0];
-      const tagName = match[1];
+      const tagName = fullMatch === '<>' || fullMatch === '</>' ? JSX_FRAGMENT : match[1];
       const matchIndex = match.index;
       if (!tagName) continue;
       if (matchIndex > 0 && /\w/.test(stripped[matchIndex - 1])) continue;
-      if (SERVER_TS_TYPE_NAMES.has(tagName)) continue;
+      if (tagName !== JSX_FRAGMENT && SERVER_TS_TYPE_NAMES.has(tagName)) continue;
       if (/(?:Props|State|Type|Config|Options|Params|Args|Result|Data|Item|Entry|Key|Value|Ref|Context|Handler|Callback|Fn|Interface)$/.test(tagName)) continue;
-      if (fullMatch.endsWith('/>') || SERVER_VOID_ELEMENTS.has(tagName.toLowerCase())) continue;
+      const isFragment = tagName === JSX_FRAGMENT;
+      const isClosing = fullMatch.startsWith('</') || fullMatch === '</>';
+      const isSelfClosing = !isFragment && fullMatch.endsWith('/>');
+      if (isSelfClosing || (!isFragment && SERVER_VOID_ELEMENTS.has(tagName.toLowerCase()))) continue;
 
-      if (!fullMatch.startsWith('</')) {
+      if (!isClosing) {
         stack.push(tagName);
         continue;
       }
@@ -532,7 +537,7 @@ function autoCloseTruncatedFile(content: string, filePath: string): string | nul
 
       const idx = stack.lastIndexOf(tagName);
       if (idx >= 0) {
-        const missing = stack.slice(idx + 1).reverse().map((tag) => `</${tag}>`).join('');
+        const missing = stack.slice(idx + 1).reverse().map(renderClosingTag).join('');
         if (missing) insertions.push({ index: matchIndex, text: missing });
         stack.splice(idx);
       } else {
@@ -553,12 +558,21 @@ function autoCloseTruncatedFile(content: string, filePath: string): string | nul
       repaired = repaired.slice(0, insertion.index) + insertion.text + repaired.slice(insertion.index);
     }
     if (stack.length > 0) {
-      repaired += stack.reverse().map((tag) => `</${tag}>`).join('');
+      repaired += stack.reverse().map(renderClosingTag).join('');
     }
     return repaired;
   };
 
-  fixed = repairJsxClosers(fixed);
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const repaired = repairJsxClosers(fixed);
+    if (repaired === fixed) break;
+    fixed = repaired;
+
+    const jsxRecheck = validateFileSyntaxServer(fixed, filePath);
+    if (!jsxRecheck || !jsxRecheck.includes('JSX')) {
+      break;
+    }
+  }
 
   let braces = 0, parens = 0, brackets = 0;
   let inStr = false, inDbl = false, inTpl = false, inLC = false, inBC = false, esc = false;
