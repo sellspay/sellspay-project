@@ -3070,6 +3070,18 @@ If the request says "change X", change ONLY X and nothing else.
 ═══════════════════════════════════════════════════════════════
 `;
 
+    const buildExecutionReminder = `
+═══════════════════════════════════════════════════════════════
+🏗️ CRITICAL REMINDER: FULL BUILD REQUEST
+═══════════════════════════════════════════════════════════════
+This is a BUILD request, not a tiny edit.
+You MUST create or overhaul the storefront to satisfy the full request below.
+You MAY redesign existing storefront files and add missing storefront components when needed.
+Do NOT refuse just because the request is large.
+If the full scope is too large, implement the highest-value core storefront first, but ALWAYS return valid code JSON.
+═══════════════════════════════════════════════════════════════
+`;
+
     if (currentCode?.trim()) {
       // Build code context: prefer multi-file map when available
       let codeContext: string;
@@ -3164,9 +3176,14 @@ If the request says "change X", change ONLY X and nothing else.
         injectionPrefix = `${modeInjection}${brandMemoryInjection}${brandLayerInjection}${intentInjection}${microInjection}${creatorInjection}${productsInjection}`;
       }
 
+      const executionReminder = intent.intent === "BUILD" ? buildExecutionReminder : minimalDiffReminder;
+      const executionInstruction = intent.intent === "BUILD"
+        ? `Now, build the requested storefront experience for this prompt: ${prompt}`
+        : `Now, apply this SPECIFIC change and NOTHING ELSE: ${prompt}`;
+
       messages.push({
         role: "user",
-        content: `${injectionPrefix}${resolvedTargetContext}${minimalDiffReminder}${codeContext}\n\nNow, apply this SPECIFIC change and NOTHING ELSE: ${prompt}`,
+        content: `${injectionPrefix}${resolvedTargetContext}${executionReminder}${codeContext}\n\n${executionInstruction}`,
       });
     } else {
       // First build (REPLACE mode) — skip ANALYSIS/PLAN to reduce token burden and avoid timeouts
