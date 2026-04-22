@@ -947,8 +947,15 @@ RULES:
     ];
 
     try {
+      // CRITICAL: Repair must have enough tokens to rewrite full files.
+      // Gemini supports up to 65k; using 8192 caused the truncation that broke generation in the first place.
+      const repairMaxTokens =
+        generatorConfig.provider === 'openai' ? 16000 :
+        generatorConfig.provider === 'anthropic' ? 60000 :
+        generatorConfig.provider === 'gemini' ? 32000 :
+        16000;
       const response = await callModelAPI(generatorConfig, repairMessages, {
-        maxTokens: Math.min(60000, (generatorConfig.provider === 'openai' ? 16000 : generatorConfig.provider === 'anthropic' ? 60000 : 8192)),
+        maxTokens: repairMaxTokens,
         temperature: 0.0,
         stream: false,
       });
