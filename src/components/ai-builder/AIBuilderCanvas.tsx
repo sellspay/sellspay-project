@@ -1012,8 +1012,10 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false, isGuest =
     clearLastFailedPrompt();
 
     // 🔄 CREATE BACKGROUND JOB: This ensures generation persists even if user leaves
-    // The job will be picked up by the edge function and results saved to database
-    const job = await createJob(cleanPrompt, promptForAI, activeModel?.id, isPlanMode);
+    // CRITICAL: bind the job to the freshly resolved projectId, not the possibly stale
+    // activeProjectId state from the previous render. This prevents "ghost" runs where
+    // the UI starts streaming for one project but no job exists for the route project.
+    const job = await createJob(cleanPrompt, promptForAI, activeModel?.id, isPlanMode, projectId);
 
     // Track whether this run is job-backed (used to prevent duplicate message appends)
     activeJobIdRef.current = job?.id ?? null;
