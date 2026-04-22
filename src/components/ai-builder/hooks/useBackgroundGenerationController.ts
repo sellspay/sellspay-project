@@ -241,6 +241,20 @@ export function useBackgroundGenerationController({
       const validatedFileMap = normalizedFileMap;
       console.log(`[ZERO-TRUST] Path normalization: ${Object.keys(fileMap).length} → ${Object.keys(validatedFileMap).length} files`);
 
+      // LAYER 4.6: Empty file maps are never a successful build.
+      // Treat them as failures so users get a retry path instead of a false success state.
+      if (Object.keys(validatedFileMap).length === 0 && !job.plan_result) {
+        console.error('[ZERO-TRUST] Empty file map. Refusing to commit:', job.id);
+        toast.error('Generation finished without producing any files. Please retry.');
+        await abortGeneration({
+          showSummary: true,
+          enableRetry: true,
+          errorDetail: 'The AI finished without returning any files to apply.',
+          refundReason: 'empty_file_map',
+        });
+        return;
+      }
+
       // LAYER 5: No conversational text in code files
       const forbiddenStarts = ['Alright', 'Got it!', 'Sure!', "Here's", "Let's", '=== ANALYSIS', '=== PLAN', '=== SUMMARY'];
       let hasConversational = false;
@@ -506,6 +520,11 @@ export function useBackgroundGenerationController({
     onJobComplete: handleJobComplete,
     onJobError: handleJobError,
   });
+
+  useEffect(() => {
+    if (!hasFailedJob || !currentJob?.prompt || lastFailedPrompt) return;
+    setLastFailedPrompt(currentJob.prompt);
+  }, [currentJob, hasFailedJob, lastFailedPrompt]);
 
   // RESUME: If a job completes while the user is away
   const processedCompletedJobRef = useRef<string | null>(null);
