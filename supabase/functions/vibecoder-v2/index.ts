@@ -5350,8 +5350,10 @@ serve(async (req) => {
                 status: "failed",
                 completed_at: new Date().toISOString(),
                 last_heartbeat_at: new Date().toISOString(),
-                failure_stage: errorType === "EDGE_TIMEOUT" ? "generation" : "generation",
+                terminal_reason: errorType.toLowerCase(),
+                failure_stage: "generation",
                 error_message: JSON.stringify({ type: errorType, message: errorMessage }),
+                files_changed_count: null,
                 progress_logs: ["Starting AI generation...", "Error occurred", `${errorType}: ${errorMessage}`],
               })
               .eq("id", jobId);

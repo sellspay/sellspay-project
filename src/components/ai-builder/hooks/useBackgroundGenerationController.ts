@@ -421,7 +421,7 @@ export function useBackgroundGenerationController({
 
   const handleJobError = useCallback((job: GenerationJob) => {
     console.error('[BackgroundGen] Job failed:', job.error_message);
-    
+
     let userMessage = job.error_message || 'Unknown error';
     let errorType = '';
     try {
@@ -432,10 +432,18 @@ export function useBackgroundGenerationController({
 
     const isActiveRun = activeJobIdRef.current === job.id;
 
+    const extractFailureDetail = (message: string) => {
+      const compileMatch = message.match(/Code has syntax errors:\s*(.+)$/i);
+      if (compileMatch?.[1]) return compileMatch[1].trim();
+      return message.trim();
+    };
+
+    const failureDetail = extractFailureDetail(userMessage);
+
     // 🔄 RETRY: Capture the failed prompt so users can retry
     // Check both the extracted errorType and the userMessage for retryable patterns
     const combinedCheck = `${errorType} ${userMessage}`;
-    const isRetryableError = combinedCheck.includes('NO_CODE_PRODUCED') || 
+    const isRetryableError = combinedCheck.includes('NO_CODE_PRODUCED') ||
       combinedCheck.includes('CORRUPT_JSON_OUTPUT') ||
       combinedCheck.includes('did not generate any code') ||
       combinedCheck.includes('responded conversationally') ||
@@ -449,45 +457,47 @@ export function useBackgroundGenerationController({
       setLastFailedPrompt(job.prompt);
     }
 
+    const buildFailureMessage = () => {
+      if (job.status === 'needs_user_action') {
+        return job.summary || 'This request may be too complex. Please simplify or break it into smaller parts.';
+      }
+
+      let friendlyReason = userMessage;
+      let detailLine = '';
+
+      if (combinedCheck.includes('COMPILE_FAILURE') || combinedCheck.includes('Unclosed JSX') || combinedCheck.includes('Unexpected closing JSX tag')) {
+        friendlyReason = 'The AI generated invalid JSX and the safety validator rejected the build.';
+        detailLine = failureDetail ? `\n\n**Validator details:** ${failureDetail}` : '';
+      } else if (combinedCheck.includes('EDGE_TIMEOUT')) {
+        friendlyReason = 'The generation took too long and timed out. Try a smaller change or retry.';
+      } else if (combinedCheck.includes('CORRUPT_JSON_OUTPUT') || combinedCheck.includes('NO_CODE_PRODUCED')) {
+        friendlyReason = 'The AI returned malformed output. Retrying with the same prompt usually works.';
+      } else if (combinedCheck.includes('MODEL_TRUNCATED')) {
+        friendlyReason = 'The response was cut off mid-generation. Try breaking the request into smaller steps.';
+      } else if (combinedCheck.includes('worker stopped responding')) {
+        friendlyReason = 'The generation worker stopped responding. This usually means the request was too complex or the server was overloaded. Click retry.';
+      }
+
+      const stageLabel = job.failure_stage
+        ? ` *(stage: ${job.failure_stage})*`
+        : '';
+      const retryHint = isRetryableError ? '\n\n👉 Use the **Retry Build** button below to try again.' : '';
+
+      return `❌ **Generation failed**${stageLabel}\n\n${friendlyReason}${detailLine}\n\n*No changes were applied — your project is in its last stable state.*${retryHint}`;
+    };
+
+    const chatMessage = buildFailureMessage();
+    const toastMessage = job.status === 'needs_user_action'
+      ? (job.summary || 'This request may be too complex. Please simplify or break it into smaller parts.')
+      : combinedCheck.includes('COMPILE_FAILURE') || combinedCheck.includes('Unclosed JSX') || combinedCheck.includes('Unexpected closing JSX tag')
+      ? `Build rejected during ${job.failure_stage || 'validation'}: ${failureDetail}`
+      : userMessage;
+
     if (isActiveRun) {
       // No sandbox mutation on error — last committed state is still intact
-
-      if (job.status === 'needs_user_action') {
-        const msg = job.summary || 'This request may be too complex. Please simplify or break it into smaller parts.';
-        toast.error(msg, { duration: 8000 });
-        if (activeProjectId) {
-          addMessage('assistant', `⚠️ ${msg}\nNo changes were applied — your project remains in its last stable state.`, undefined, activeProjectId);
-        }
-      } else {
-        // Friendly, specific error explanations
-        let friendlyReason = userMessage;
-        if (combinedCheck.includes('COMPILE_FAILURE') || combinedCheck.includes('Unclosed JSX')) {
-          friendlyReason = 'The AI generated invalid JSX (unclosed tags). The build was rejected to keep your site safe. Retrying usually fixes this.';
-        } else if (combinedCheck.includes('EDGE_TIMEOUT')) {
-          friendlyReason = 'The generation took too long and timed out. Try a smaller change or retry.';
-        } else if (combinedCheck.includes('CORRUPT_JSON_OUTPUT') || combinedCheck.includes('NO_CODE_PRODUCED')) {
-          friendlyReason = 'The AI returned malformed output. Retrying with the same prompt usually works.';
-        } else if (combinedCheck.includes('MODEL_TRUNCATED')) {
-          friendlyReason = 'The response was cut off mid-generation. Try breaking the request into smaller steps.';
-        } else if (combinedCheck.includes('worker stopped responding')) {
-          friendlyReason = 'The generation worker stopped responding. This usually means the request was too complex or the server was overloaded. Click retry.';
-        }
-
-        // Surface failure_stage breadcrumb so the user knows WHERE it broke
-        const stageLabel = job.failure_stage
-          ? ` *(stage: ${job.failure_stage})*`
-          : '';
-
-        toast.error(friendlyReason, { duration: 7000 });
-        if (activeProjectId) {
-          const retryHint = isRetryableError ? '\n\n👉 Use the **Retry Build** button below to try again.' : '';
-          addMessage(
-            'assistant',
-            `❌ **Generation failed**${stageLabel}\n\n${friendlyReason}\n\n*No changes were applied — your project is in its last stable state.*${retryHint}`,
-            undefined,
-            activeProjectId
-          );
-        }
+      toast.error(toastMessage, { duration: 8000 });
+      if (activeProjectId) {
+        addMessage('assistant', chatMessage, undefined, activeProjectId);
       }
       setLiveSteps([]);
       generationLockRef.current = null;
@@ -501,8 +511,7 @@ export function useBackgroundGenerationController({
       generationLockRef.current = null;
       activeJobIdRef.current = null;
       onStreamingError(job.error_message || 'Generation failed');
-      // Surface a toast so the user knows what happened
-      toast.error(`Previous generation failed: ${userMessage.slice(0, 120)}`, { duration: 6000 });
+      toast.error(`Previous generation failed: ${toastMessage.slice(0, 180)}`, { duration: 7000 });
     }
   }, [onStreamingError, activeProjectId, addMessage, setLiveSteps, generationLockRef, activeJobIdRef]);
 
