@@ -3241,12 +3241,19 @@ If the full scope is too large, implement the highest-value core storefront firs
       if (isFirstBuild) complexity += 2;
       if (intent.intent === "MODIFY" && !isMicroEdit) complexity += 1;
 
-      if (complexity >= 5) {
-        // High complexity: use GPT-4o for strong planning + code gen
+      // CRITICAL: First-time BUILDs need high output token budget (full multi-file site).
+      // GPT-4o caps at 16k output → truncates large sites mid-file. Route to Gemini (65k) instead.
+      const isLargeBuild = isFirstBuild && (promptLen > 800 || complexity >= 4);
+
+      if (isLargeBuild) {
+        resolvedModel = "vibecoder-pro"; // Gemini 2.5 Pro: 65k output, strong reasoning
+        console.log(`[ModelRouter] AUTO: Large BUILD (complexity=${complexity}, promptLen=${promptLen}) → Gemini Pro (65k output)`);
+      } else if (complexity >= 5) {
+        // High complexity edits: use GPT-4o for strong planning + code gen
         resolvedModel = "vibecoder-gpt4";
         console.log(`[ModelRouter] AUTO: High complexity (${complexity}) → GPT-4o`);
       } else if (complexity >= 3 || isFirstBuild) {
-        // Medium complexity or first build: use GPT-4o
+        // Medium complexity or small first build: use GPT-4o
         resolvedModel = "vibecoder-gpt4";
         console.log(`[ModelRouter] AUTO: Medium complexity (${complexity}) → GPT-4o`);
       } else if (isMicroEdit) {
