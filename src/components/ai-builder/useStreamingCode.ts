@@ -992,6 +992,14 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
                   rawStream += data.content;
                   break;
                 case 'files': {
+                  // Job-backed runs must NOT commit streamed files here.
+                  // The background job completion handler is the sole authority,
+                  // otherwise we can apply pre-validation files and show a false failure.
+                  if (isJobBackedRun) {
+                    console.log('[useStreamingCode] Job-backed run: deferring streamed files commit until final job completion');
+                    break;
+                  }
+
                   // Multi-file atomic payload from backend (validated server-side for syntax)
                   const incomingFiles = data.projectFiles || data.files || {};
                   if (Object.keys(incomingFiles).length > 0) {
