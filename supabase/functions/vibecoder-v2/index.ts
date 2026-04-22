@@ -905,7 +905,7 @@ async function batchCompileFix(
   generatorConfig: ModelConfig,
   emitEvent: (eventType: string, data: any) => void,
 ): Promise<BatchRepairResult> {
-  const MAX_ATTEMPTS = 1;
+  const MAX_ATTEMPTS = 3;
   let currentMap = { ...fileMap };
 
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
