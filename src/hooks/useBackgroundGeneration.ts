@@ -85,12 +85,12 @@ export function useBackgroundGeneration({
     // Check for existing job on mount — include recent terminal states so we can clear stuck UI
     const checkExistingJob = async () => {
       try {
-        // First: any active (running/pending) job
+        // First: any active job still in the pipeline
         const { data: activeJobs, error } = await supabase
           .from('ai_generation_jobs')
           .select('*')
           .eq('project_id', projectId)
-          .in('status', ['pending', 'running'])
+          .in('status', ['pending', 'running', 'validating', 'repairing'])
           .order('created_at', { ascending: false })
           .limit(1);
 
@@ -184,7 +184,7 @@ export function useBackgroundGeneration({
             // For active jobs, schedule a heartbeat-freshness poll.
             // Instead of one wall-clock timer, we poll every HEARTBEAT_POLL_INTERVAL_MS and
             // only force-fail if the worker's last_heartbeat_at is older than HEARTBEAT_STALE_MS.
-            if (job.status === 'pending' || job.status === 'running') {
+            if (job.status === 'pending' || job.status === 'running' || job.status === 'validating' || job.status === 'repairing') {
               const scheduleHeartbeatPoll = () => {
                 staleTimerRef.current = setTimeout(async () => {
                   const { data } = await supabase
@@ -240,7 +240,7 @@ export function useBackgroundGeneration({
                       .from('ai_generation_jobs')
                       .update({ status: 'failed', error_message: 'Generation worker stopped responding', failure_stage: 'generation', completed_at: new Date().toISOString() })
                       .eq('id', job.id)
-                      .in('status', ['pending', 'running']);
+                      .in('status', ['pending', 'running', 'validating', 'repairing']);
                     const failedJob = { ...freshJob, status: 'failed' as const, error_message: 'Generation worker stopped responding', failure_stage: 'generation' };
                     setCurrentJob(failedJob);
                     onJobErrorRef.current?.(failedJob);
@@ -379,8 +379,8 @@ export function useBackgroundGeneration({
     setCurrentJob(null);
   }, [currentJob]);
 
-  // Check if there's an active (pending/running) job
-  const hasActiveJob = currentJob?.status === 'pending' || currentJob?.status === 'running';
+  // Check if there's an active job anywhere in the generation pipeline
+  const hasActiveJob = currentJob?.status === 'pending' || currentJob?.status === 'running' || currentJob?.status === 'validating' || currentJob?.status === 'repairing';
 
   // Check if there's a completed job waiting to be acknowledged
   const hasCompletedJob = currentJob?.status === 'completed';
