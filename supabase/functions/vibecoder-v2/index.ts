@@ -788,6 +788,16 @@ function validateAllFilesServer(files: Record<string, string>): { valid: boolean
   return { valid: errors.length === 0, errors };
 }
 
+function normalizeFileMapServer(files: Record<string, string>): Record<string, string> {
+  const normalized: Record<string, string> = {};
+  for (const [path, content] of Object.entries(files)) {
+    if (typeof content !== 'string') continue;
+    const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+    normalized[normalizedPath] = content;
+  }
+  return normalized;
+}
+
 // ═══════════════════════════════════════════════════════════════
 // SERVER-SIDE PATH ISOLATION GUARD (Layer 7)
 // Prevents AI from writing to restricted folders
