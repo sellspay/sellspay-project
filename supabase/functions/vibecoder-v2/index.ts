@@ -5273,7 +5273,7 @@ serve(async (req) => {
                 let filesWrapper: Record<string, string> | null = null;
                 
                 if (summaryValidated && lastMergedFiles) {
-                  filesWrapper = lastMergedFiles;
+                  filesWrapper = normalizeFileMapServer(lastMergedFiles);
                   console.log(`[Job ${jobId}] Recovery save: using SUMMARY-validated files (${Object.keys(filesWrapper).length} files)`);
                 } else {
                   // Try to parse codeResult as JSON file map — NO raw text fallback
@@ -5286,7 +5286,7 @@ serve(async (req) => {
                         const existingFiles: Record<string, string> = projectFiles && typeof projectFiles === 'object'
                           ? projectFiles as Record<string, string>
                           : {};
-                        filesWrapper = { ...existingFiles, ...parsed.files };
+                        filesWrapper = normalizeFileMapServer({ ...existingFiles, ...parsed.files });
                       }
                     }
                   } catch {
@@ -5295,6 +5295,20 @@ serve(async (req) => {
                   }
                 }
                 
+                if (filesWrapper && Object.keys(filesWrapper).length > 0) {
+                  const finalSyntaxCheck = validateAllFilesServer(filesWrapper);
+                  if (!finalSyntaxCheck.valid) {
+                    const errSummary = finalSyntaxCheck.errors.map(e => `${e.file}: ${e.error}`).join(' | ');
+                    console.error(`[Job ${jobId}] ZERO-TRUST FINAL FAIL: Persisted file map still invalid: ${errSummary}`);
+                    validationError = { errorType: 'COMPILE_FAILURE', errorMessage: `Code has syntax errors: ${errSummary}` };
+                    jobStatus = "failed";
+                    terminalReason = "compile_failure";
+                    codeResult = null;
+                    filesWrapper = null;
+                    emitEvent('error', { code: 'COMPILE_FAILURE', message: `Syntax errors in final file map: ${errSummary}` });
+                  }
+                }
+
                 if (filesWrapper && Object.keys(filesWrapper).length > 0) {
                   await supabase.from("vibecoder_projects").update({ files: filesWrapper }).eq("id", jobData.project_id);
                   await supabase.from("project_versions").insert({
