@@ -247,11 +247,6 @@ function checkJsxTagBalance(code: string): string | null {
     // Skip fragment shorthand <> </>
     if (!tagName) continue;
 
-    // ── SKIP TypeScript generics (the #1 source of false positives) ──
-    if (matchIndex > 0 && /\w/.test(stripped[matchIndex - 1])) continue;
-    if (TS_TYPE_NAMES.has(tagName)) continue;
-    if (/(?:Props|State|Type|Config|Options|Params|Args|Result|Data|Item|Entry|Key|Value|Ref|Context|Handler|Callback|Fn|Interface)$/.test(tagName)) continue;
-    
     const voidElements = new Set([
       'area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input',
       'link', 'meta', 'param', 'source', 'track', 'wbr'
@@ -259,6 +254,13 @@ function checkJsxTagBalance(code: string): string | null {
     
     const isSelfClosing = fullMatch.endsWith('/>');
     const isClosing = fullMatch.startsWith('</');
+
+    // ── SKIP TypeScript generics (the #1 source of false positives) ──
+    // Only apply this to opening tags. Real closing tags commonly appear
+    // immediately after text content, e.g. "Home</a>", and must still count.
+    if (!isClosing && matchIndex > 0 && /\w/.test(stripped[matchIndex - 1])) continue;
+    if (TS_TYPE_NAMES.has(tagName)) continue;
+    if (/(?:Props|State|Type|Config|Options|Params|Args|Result|Data|Item|Entry|Key|Value|Ref|Context|Handler|Callback|Fn|Interface)$/.test(tagName)) continue;
     
     if (isSelfClosing) continue;
     

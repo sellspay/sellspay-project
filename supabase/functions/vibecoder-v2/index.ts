@@ -367,12 +367,12 @@ function checkJsxTagBalanceServer(code: string): string | null {
     const matchIndex = match.index;
 
     if (!tagName) continue;
-    if (matchIndex > 0 && /\w/.test(stripped[matchIndex - 1])) continue;
-    if (SERVER_TS_TYPE_NAMES.has(tagName)) continue;
-    if (/(?:Props|State|Type|Config|Options|Params|Args|Result|Data|Item|Entry|Key|Value|Ref|Context|Handler|Callback|Fn|Interface)$/.test(tagName)) continue;
-
     const isSelfClosing = fullMatch.endsWith('/>');
     const isClosing = fullMatch.startsWith('</');
+
+    if (!isClosing && matchIndex > 0 && /\w/.test(stripped[matchIndex - 1])) continue;
+    if (SERVER_TS_TYPE_NAMES.has(tagName)) continue;
+    if (/(?:Props|State|Type|Config|Options|Params|Args|Result|Data|Item|Entry|Key|Value|Ref|Context|Handler|Callback|Fn|Interface)$/.test(tagName)) continue;
 
     if (isSelfClosing) continue;
 
@@ -425,11 +425,11 @@ function getUnclosedJsxTags(code: string): string[] | null {
     const tagName = match[1];
     const matchIndex = match.index;
     if (!tagName) continue;
-    if (matchIndex > 0 && /\w/.test(stripped[matchIndex - 1])) continue;
-    if (SERVER_TS_TYPE_NAMES.has(tagName)) continue;
-    if (/(?:Props|State|Type|Config|Options|Params|Args|Result|Data|Item|Entry|Key|Value|Ref|Context|Handler|Callback|Fn|Interface)$/.test(tagName)) continue;
     const isSelfClosing = fullMatch.endsWith('/>');
     const isClosing = fullMatch.startsWith('</');
+    if (!isClosing && matchIndex > 0 && /\w/.test(stripped[matchIndex - 1])) continue;
+    if (SERVER_TS_TYPE_NAMES.has(tagName)) continue;
+    if (/(?:Props|State|Type|Config|Options|Params|Args|Result|Data|Item|Entry|Key|Value|Ref|Context|Handler|Callback|Fn|Interface)$/.test(tagName)) continue;
     if (isSelfClosing) continue;
     if (isClosing) {
       // Strict stack pop: must match top of stack
@@ -786,6 +786,16 @@ function validateAllFilesServer(files: Record<string, string>): { valid: boolean
     if (error) errors.push({ file: path, error });
   }
   return { valid: errors.length === 0, errors };
+}
+
+function normalizeFileMapServer(files: Record<string, string>): Record<string, string> {
+  const normalized: Record<string, string> = {};
+  for (const [path, content] of Object.entries(files)) {
+    if (typeof content !== 'string') continue;
+    const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+    normalized[normalizedPath] = content;
+  }
+  return normalized;
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -5263,7 +5273,7 @@ serve(async (req) => {
                 let filesWrapper: Record<string, string> | null = null;
                 
                 if (summaryValidated && lastMergedFiles) {
-                  filesWrapper = lastMergedFiles;
+                  filesWrapper = normalizeFileMapServer(lastMergedFiles);
                   console.log(`[Job ${jobId}] Recovery save: using SUMMARY-validated files (${Object.keys(filesWrapper).length} files)`);
                 } else {
                   // Try to parse codeResult as JSON file map — NO raw text fallback
@@ -5276,7 +5286,7 @@ serve(async (req) => {
                         const existingFiles: Record<string, string> = projectFiles && typeof projectFiles === 'object'
                           ? projectFiles as Record<string, string>
                           : {};
-                        filesWrapper = { ...existingFiles, ...parsed.files };
+                        filesWrapper = normalizeFileMapServer({ ...existingFiles, ...parsed.files });
                       }
                     }
                   } catch {
@@ -5285,6 +5295,20 @@ serve(async (req) => {
                   }
                 }
                 
+                if (filesWrapper && Object.keys(filesWrapper).length > 0) {
+                  const finalSyntaxCheck = validateAllFilesServer(filesWrapper);
+                  if (!finalSyntaxCheck.valid) {
+                    const errSummary = finalSyntaxCheck.errors.map(e => `${e.file}: ${e.error}`).join(' | ');
+                    console.error(`[Job ${jobId}] ZERO-TRUST FINAL FAIL: Persisted file map still invalid: ${errSummary}`);
+                    validationError = { errorType: 'COMPILE_FAILURE', errorMessage: `Code has syntax errors: ${errSummary}` };
+                    jobStatus = "failed";
+                    terminalReason = "compile_failure";
+                    codeResult = null;
+                    filesWrapper = null;
+                    emitEvent('error', { code: 'COMPILE_FAILURE', message: `Syntax errors in final file map: ${errSummary}` });
+                  }
+                }
+
                 if (filesWrapper && Object.keys(filesWrapper).length > 0) {
                   await supabase.from("vibecoder_projects").update({ files: filesWrapper }).eq("id", jobData.project_id);
                   await supabase.from("project_versions").insert({
