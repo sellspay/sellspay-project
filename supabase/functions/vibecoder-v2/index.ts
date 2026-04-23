@@ -367,12 +367,12 @@ function checkJsxTagBalanceServer(code: string): string | null {
     const matchIndex = match.index;
 
     if (!tagName) continue;
-    if (matchIndex > 0 && /\w/.test(stripped[matchIndex - 1])) continue;
-    if (SERVER_TS_TYPE_NAMES.has(tagName)) continue;
-    if (/(?:Props|State|Type|Config|Options|Params|Args|Result|Data|Item|Entry|Key|Value|Ref|Context|Handler|Callback|Fn|Interface)$/.test(tagName)) continue;
-
     const isSelfClosing = fullMatch.endsWith('/>');
     const isClosing = fullMatch.startsWith('</');
+
+    if (!isClosing && matchIndex > 0 && /\w/.test(stripped[matchIndex - 1])) continue;
+    if (SERVER_TS_TYPE_NAMES.has(tagName)) continue;
+    if (/(?:Props|State|Type|Config|Options|Params|Args|Result|Data|Item|Entry|Key|Value|Ref|Context|Handler|Callback|Fn|Interface)$/.test(tagName)) continue;
 
     if (isSelfClosing) continue;
 
@@ -425,11 +425,11 @@ function getUnclosedJsxTags(code: string): string[] | null {
     const tagName = match[1];
     const matchIndex = match.index;
     if (!tagName) continue;
-    if (matchIndex > 0 && /\w/.test(stripped[matchIndex - 1])) continue;
-    if (SERVER_TS_TYPE_NAMES.has(tagName)) continue;
-    if (/(?:Props|State|Type|Config|Options|Params|Args|Result|Data|Item|Entry|Key|Value|Ref|Context|Handler|Callback|Fn|Interface)$/.test(tagName)) continue;
     const isSelfClosing = fullMatch.endsWith('/>');
     const isClosing = fullMatch.startsWith('</');
+    if (!isClosing && matchIndex > 0 && /\w/.test(stripped[matchIndex - 1])) continue;
+    if (SERVER_TS_TYPE_NAMES.has(tagName)) continue;
+    if (/(?:Props|State|Type|Config|Options|Params|Args|Result|Data|Item|Entry|Key|Value|Ref|Context|Handler|Callback|Fn|Interface)$/.test(tagName)) continue;
     if (isSelfClosing) continue;
     if (isClosing) {
       // Strict stack pop: must match top of stack
