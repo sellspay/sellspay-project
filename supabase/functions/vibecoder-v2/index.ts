@@ -5305,10 +5305,54 @@ serve(async (req) => {
                 console.error(`[Job ${jobId}] GATE -1 FAIL: Intent is ${intentResult.intent} but model produced NO code. Full content length: ${fullContent.length}`);
                 console.error(`[Job ${jobId}] GATE -1 DEBUG: Has === CODE ===: ${fullContent.includes('=== CODE ===')}, Has /// BEGIN_CODE ///: ${fullContent.includes('/// BEGIN_CODE ///')}`);
                 console.error(`[Job ${jobId}] GATE -1 FIRST 500 chars: ${fullContent.substring(0, 500)}`);
-                validationError = { errorType: 'NO_CODE_PRODUCED', errorMessage: 'AI responded conversationally instead of generating code. Please retry your request.' };
-                jobStatus = "failed";
-                terminalReason = "no_code_produced";
-                emitEvent('error', { code: 'NO_CODE_PRODUCED', message: 'AI did not generate any code. Please try again.' });
+
+                // ═══════════════════════════════════════════════════════
+                // SILENT AUTO-RETRY: model went conversational. Reissue with a
+                // strict code-only reinforcer before surfacing failure.
+                // ═══════════════════════════════════════════════════════
+                let recovered = false;
+                try {
+                  emitEvent('phase', { phase: 'retrying' });
+                  const recoverConfig = MODEL_CONFIG[model] || MODEL_CONFIG["vibecoder-pro"];
+                  const RECOVER_CAPS: Record<string, number> = { anthropic: 60000, openai: 16000, gemini: 65000 };
+                  const recoverCap = RECOVER_CAPS[recoverConfig.provider] || 16000;
+                  const recoverSystemPrompt = `You are a strict code generation engine.\nDo not explain. Do not greet. Do not respond conversationally.\nReturn ONLY the file map JSON inside a single \`=== CODE ===\` block as required.\nNever ask follow-up questions. Never refuse. Generate code.`;
+                  const recoverMessages = [
+                    { role: "system", content: recoverSystemPrompt },
+                    {
+                      role: "user",
+                      content: `The previous response was rejected because it contained prose instead of code.\nRe-generate the same request as a code-only response with the canonical file map.\n\nRequest: ${prompt}`,
+                    },
+                  ];
+
+                  const recoverResp = await callModelAPI(recoverConfig, recoverMessages, {
+                    maxTokens: Math.min(40000, recoverCap),
+                    temperature: 0.1,
+                    stream: false,
+                  });
+
+                  if (recoverResp.ok) {
+                    const recoverRaw = await recoverResp.text();
+                    let recoverData: any;
+                    try { recoverData = JSON.parse(recoverRaw); } catch { recoverData = null; }
+                    const recoverContent = recoverData?.choices?.[0]?.message?.content
+                      || (Array.isArray(recoverData?.content) ? recoverData.content.map((c: any) => c?.text || '').join('') : null);
+                    if (recoverContent && (recoverContent.includes('=== CODE ===') || recoverContent.trimStart().startsWith('{'))) {
+                      codeResult = recoverContent;
+                      recovered = true;
+                      console.log(`[Job ${jobId}] GATE -1 SILENT RECOVERY succeeded — proceeding with retried code`);
+                    }
+                  }
+                } catch (recoverErr) {
+                  console.error(`[Job ${jobId}] GATE -1 SILENT RECOVERY threw:`, recoverErr);
+                }
+
+                if (!recovered) {
+                  validationError = { errorType: 'NO_CODE_PRODUCED', errorMessage: 'AI responded conversationally instead of generating code. Please retry your request.' };
+                  jobStatus = "failed";
+                  terminalReason = "no_code_produced";
+                  emitEvent('error', { code: 'NO_CODE_PRODUCED', message: 'AI did not generate any code. Please try again.' });
+                }
               }
             }
 
