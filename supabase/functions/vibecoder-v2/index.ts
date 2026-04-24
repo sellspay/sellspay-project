@@ -5265,36 +5265,57 @@ serve(async (req) => {
             if (codeResult && !validationError && jobStatus === "completed") {
               const { data: jobData } = await supabase
                 .from("ai_generation_jobs")
-                .select("project_id")
+                .select("project_id, user_id")
                 .eq("id", jobId)
                 .single();
               if (jobData?.project_id) {
                 // ONLY use SUMMARY-validated files or parsed JSON file maps
                 let filesWrapper: Record<string, string> | null = null;
-                
+
+                // Helper: accept either { files: {...} } OR a root-level path map { "/App.tsx": "..." }
+                const extractFileMap = (raw: string): Record<string, string> | null => {
+                  try {
+                    const parsed = JSON.parse(raw);
+                    if (!parsed || typeof parsed !== "object") return null;
+
+                    // Shape A: { files: { "/path": "content" } }
+                    if (parsed.files && typeof parsed.files === "object") {
+                      const entries = Object.entries(parsed.files as Record<string, unknown>);
+                      if (entries.length > 0 && entries.every(([k, v]) => typeof k === "string" && typeof v === "string")) {
+                        return parsed.files as Record<string, string>;
+                      }
+                    }
+
+                    // Shape B: root-level path map. Detect by keys looking like file paths.
+                    const rootEntries = Object.entries(parsed as Record<string, unknown>);
+                    const looksLikeFileMap =
+                      rootEntries.length > 0 &&
+                      rootEntries.every(([k, v]) => typeof k === "string" && typeof v === "string" && /\.(tsx?|jsx?|css|json|md|html)$/i.test(k));
+                    if (looksLikeFileMap) {
+                      return parsed as Record<string, string>;
+                    }
+                  } catch {
+                    /* not JSON */
+                  }
+                  return null;
+                };
+
                 if (summaryValidated && lastMergedFiles) {
                   filesWrapper = normalizeFileMapServer(lastMergedFiles);
                   console.log(`[Job ${jobId}] Recovery save: using SUMMARY-validated files (${Object.keys(filesWrapper).length} files)`);
                 } else {
-                  // Try to parse codeResult as JSON file map — NO raw text fallback
-                  try {
-                    const parsed = JSON.parse(codeResult);
-                    if (parsed && typeof parsed === 'object' && parsed.files && typeof parsed.files === 'object') {
-                      // Validate all values are strings (Layer 3)
-                      const allStrings = Object.values(parsed.files).every((v: unknown) => typeof v === 'string');
-                      if (allStrings && Object.keys(parsed.files).length > 0) {
-                        const existingFiles: Record<string, string> = projectFiles && typeof projectFiles === 'object'
-                          ? projectFiles as Record<string, string>
-                          : {};
-                        filesWrapper = normalizeFileMapServer({ ...existingFiles, ...parsed.files });
-                      }
-                    }
-                  } catch {
-                    // Not valid JSON — DO NOT wrap raw text as App.tsx
-                    console.error(`[Job ${jobId}] ZERO-TRUST: codeResult is not valid JSON file map. Skipping DB persist.`);
+                  const extracted = extractFileMap(codeResult);
+                  if (extracted && Object.keys(extracted).length > 0) {
+                    const existingFiles: Record<string, string> = projectFiles && typeof projectFiles === "object"
+                      ? (projectFiles as Record<string, string>)
+                      : {};
+                    filesWrapper = normalizeFileMapServer({ ...existingFiles, ...extracted });
+                    console.log(`[Job ${jobId}] Recovery save: extracted ${Object.keys(extracted).length} files from codeResult`);
+                  } else {
+                    console.error(`[Job ${jobId}] ZERO-TRUST: codeResult is not a recognized file map. Skipping DB persist.`);
                   }
                 }
-                
+
                 if (filesWrapper && Object.keys(filesWrapper).length > 0) {
                   const finalSyntaxCheck = validateAllFilesServer(filesWrapper);
                   if (!finalSyntaxCheck.valid) {
@@ -5310,12 +5331,46 @@ serve(async (req) => {
                 }
 
                 if (filesWrapper && Object.keys(filesWrapper).length > 0) {
+                  // 1. Project-level snapshot (legacy JSON blob)
                   await supabase.from("vibecoder_projects").update({ files: filesWrapper }).eq("id", jobData.project_id);
                   await supabase.from("project_versions").insert({
                     project_id: jobData.project_id,
                     files_snapshot: filesWrapper,
                     version_label: "Manual Recovery Save",
                   });
+
+                  // 2. Per-file rows in project_files (what AIStorefrontRenderer reads)
+                  try {
+                    // Resolve profile_id from auth user_id
+                    const { data: profileRow } = await supabase
+                      .from("profiles")
+                      .select("id")
+                      .eq("user_id", jobData.user_id)
+                      .maybeSingle();
+                    const profileId = profileRow?.id;
+
+                    if (profileId) {
+                      const rows = Object.entries(filesWrapper).map(([file_path, content]) => ({
+                        profile_id: profileId,
+                        project_id: jobData.project_id,
+                        file_path,
+                        content,
+                        updated_at: new Date().toISOString(),
+                      }));
+                      const { error: pfErr } = await supabase
+                        .from("project_files")
+                        .upsert(rows, { onConflict: "project_id,file_path" });
+                      if (pfErr) {
+                        console.error(`[Job ${jobId}] project_files upsert failed:`, pfErr);
+                      } else {
+                        console.log(`[Job ${jobId}] Persisted ${rows.length} rows to project_files for profile ${profileId}`);
+                      }
+                    } else {
+                      console.error(`[Job ${jobId}] No profile found for user_id ${jobData.user_id} — skipping project_files persist`);
+                    }
+                  } catch (e) {
+                    console.error(`[Job ${jobId}] project_files persist threw:`, e);
+                  }
                 } else {
                   console.error(`[Job ${jobId}] ZERO-TRUST: No valid file map to persist. Skipping recovery save.`);
                 }
@@ -5329,6 +5384,13 @@ serve(async (req) => {
                 const parsed = JSON.parse(codeResult);
                 if (parsed?.files && typeof parsed.files === "object") {
                   filesChangedCount = Object.keys(parsed.files).length;
+                } else if (parsed && typeof parsed === "object") {
+                  // Root-level path map shape: { "/App.tsx": "..." }
+                  const rootKeys = Object.keys(parsed);
+                  const looksLikeFileMap =
+                    rootKeys.length > 0 &&
+                    rootKeys.every((k) => typeof k === "string" && /\.(tsx?|jsx?|css|json|md|html)$/i.test(k));
+                  if (looksLikeFileMap) filesChangedCount = rootKeys.length;
                 }
               } catch { /* code_result not JSON — leave null */ }
             }
