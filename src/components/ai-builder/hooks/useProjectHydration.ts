@@ -158,6 +158,16 @@ export function useProjectHydration({
     hasRestoredCodeRef.current = null;
     loadingProjectRef.current = activeProjectId;
 
+    // 🛑 ANTI-BLEED: On a real project switch, wipe stale code/files IMMEDIATELY
+    // so the previous project's content can never render under the new project's id.
+    // (Without this, a fresh project with no snapshot would inherit the old project's files.)
+    if (previousProjectIdRef.current !== activeProjectId) {
+      try { setFiles({}); } catch {}
+      try { resetCode(); } catch {}
+      onIncrementResetKey();
+      onIncrementRefreshKey();
+    }
+
     // ✅ STEP 1: Run the unified cleanup gate
     cleanupProjectRuntime();
     unmountAgentProject();
