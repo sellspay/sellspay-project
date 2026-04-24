@@ -511,6 +511,55 @@ function autoCloseUnterminatedStrings(content: string, filePath: string): string
   return fixed;
 }
 
+function autoRepairTruncatedCodeFile(content: string, filePath: string): string | null {
+  if (!filePath.endsWith('.tsx') && !filePath.endsWith('.ts') &&
+      !filePath.endsWith('.jsx') && !filePath.endsWith('.js')) return null;
+
+  let fixed = content.replace(/\s+$/, '');
+  let changed = false;
+  const danglingTokens = new Set(['.', ',', ':', '=', '+', '-', '*', '/']);
+
+  while (fixed.length > 0 && danglingTokens.has(fixed.slice(-1))) {
+    fixed = fixed.slice(0, -1).replace(/\s+$/, '');
+    changed = true;
+    const recheck = validateFileSyntaxServer(fixed, filePath);
+    if (!recheck) return fixed;
+  }
+
+  let braces = 0, parens = 0, brackets = 0;
+  let inStr = false, inDbl = false, inTpl = false, inLC = false, inBC = false, esc = false;
+  for (let i = 0; i < fixed.length; i++) {
+    const c = fixed[i], n = fixed[i + 1];
+    if (inLC) { if (c === '\n') inLC = false; continue; }
+    if (inBC) { if (c === '*' && n === '/') { inBC = false; i++; } continue; }
+    if (inStr || inDbl || inTpl) {
+      if (esc) { esc = false; continue; }
+      if (c === '\\') { esc = true; continue; }
+      if (inStr && c === "'") inStr = false;
+      else if (inDbl && c === '"') inDbl = false;
+      else if (inTpl && c === '`') inTpl = false;
+      continue;
+    }
+    if (c === '/' && n === '/') { inLC = true; i++; continue; }
+    if (c === '/' && n === '*') { inBC = true; i++; continue; }
+    if (c === "'") { inStr = true; continue; }
+    if (c === '"') { inDbl = true; continue; }
+    if (c === '`') { inTpl = true; continue; }
+    if (c === '{') braces++; else if (c === '}') braces--;
+    if (c === '(') parens++; else if (c === ')') parens--;
+    if (c === '[') brackets++; else if (c === ']') brackets--;
+  }
+
+  while (brackets > 0) { fixed += ']'; changed = true; brackets--; }
+  while (parens > 0) { fixed += ')'; changed = true; parens--; }
+  while (braces > 0) { fixed += '}'; changed = true; braces--; }
+
+  if (!changed) return null;
+  const recheck = validateFileSyntaxServer(fixed, filePath);
+  if (!recheck) return fixed;
+  return null;
+}
+
 /**
  * Deterministic auto-closer for truncated JSX files.
  * Appends missing closing tags and balances braces/parens/brackets.
@@ -561,6 +610,16 @@ function autoCloseTruncatedFile(content: string, filePath: string): string | nul
         if (missing) insertions.push({ index: matchIndex, text: missing });
         stack.splice(idx);
       } else {
+        const lineStart = source.lastIndexOf('\n', matchIndex - 1) + 1;
+        const nextNewline = source.indexOf('\n', matchIndex);
+        const lineEnd = nextNewline === -1 ? source.length : nextNewline;
+        const lineText = source.slice(lineStart, lineEnd).trim();
+        if (top && lineText === fullMatch.trim()) {
+          insertions.push({ index: matchIndex, text: renderClosingTag(top) });
+          orphanRanges.push({ start: matchIndex, end: matchIndex + fullMatch.length });
+          stack.pop();
+          continue;
+        }
         let rangeStart = matchIndex;
         let rangeEnd = matchIndex + fullMatch.length;
         while (rangeStart > 0 && source[rangeStart - 1] !== '\n') rangeStart--;
@@ -5238,7 +5297,7 @@ serve(async (req) => {
                     console.warn(`[Job ${jobId}] GATE 4: ${syntaxCheck.errors.length} syntax error(s) in delta: ${syntaxCheck.errors.map(e => `${e.file}: ${e.error}`).join(' | ')}`);
                     
                     // Phase 0: DETERMINISTIC auto-fix (instant, no AI call needed)
-                    // Handles the most common failures: unterminated strings + truncated/misaligned JSX
+                    // Handles the most common failures: unterminated strings, truncated TS/JS, and misaligned JSX
                     await pushProgress(`Found ${syntaxCheck.errors.length} syntax issue(s) — attempting automatic repair…`, { force: true });
                     for (const err of syntaxCheck.errors) {
                       // 0a: Unterminated string literals (apostrophe in '...', newline in "...")
@@ -5250,7 +5309,18 @@ serve(async (req) => {
                           continue;
                         }
                       }
-                      // 0b: Unclosed / mismatched / truncated JSX
+
+                      // 0b: Truncated TS/JS/TSX/JSX endings like a dangling '.' or missing final closers
+                      if (err.error.includes('truncated') || err.error.includes('Unbalanced')) {
+                        const repairedCode = autoRepairTruncatedCodeFile(deltaForSyntax[err.file] || "", err.file);
+                        if (repairedCode) {
+                          deltaForSyntax[err.file] = repairedCode;
+                          console.log(`[Job ${jobId}] GATE 4 CODE-FIX: ✅ Deterministically repaired ${err.file}`);
+                          continue;
+                        }
+                      }
+
+                      // 0c: Unclosed / mismatched / truncated JSX
                       if (
                         err.error.includes('Unclosed JSX') ||
                         err.error.includes('Unexpected closing JSX tag') ||
