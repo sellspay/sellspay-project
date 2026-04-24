@@ -117,13 +117,13 @@ export function useBackgroundGenerationController({
           const summaryText = job.summary?.trim() || '';
           const shouldUseSummary = summaryText.length > 0 && !/^(a new storefront was built|changes applied|build completed)/i.test(summaryText);
           const errorInfo = opts.errorDetail 
-            ? `\n\n⚠️ **Build blocked:** ${opts.errorDetail}` 
+            ? `\n\n${opts.errorDetail}` 
             : '';
           const retryHint = opts.enableRetry 
             ? '\n\nNo changes were applied — your project is safe. Use the retry button below to try again.' 
             : '\nNo changes were applied — your project remains in its last stable state.';
           const fullMessage = shouldUseSummary
-            ? `${summaryText}${errorInfo}${retryHint}`
+            ? `${summaryText}\n\n⚠️ **Build blocked:**${errorInfo}${retryHint}`
             : `${blockedPrefix}${errorInfo}${retryHint}`;
           await addMessage('assistant', fullMessage, undefined, activeProjectId);
         }
