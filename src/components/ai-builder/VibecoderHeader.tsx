@@ -78,10 +78,10 @@ export function VibecoderHeader({
   const navigate = useNavigate();
 
   return (
-    <header className="min-h-12 bg-transparent flex flex-wrap items-center justify-between gap-2 px-3 py-2 shrink-0 relative">
+    <header className="h-12 bg-transparent flex items-center gap-2 px-3 shrink-0 relative">
 
       {/* LEFT: Exit Button */}
-      <div className="order-1 flex items-center shrink-0">
+      <div className="flex items-center shrink-0">
         <Button 
           variant="ghost" 
           size="sm" 
@@ -93,91 +93,8 @@ export function VibecoderHeader({
         </Button>
       </div>
 
-      {/* RIGHT: Page Navigator & Actions */}
-      <div className="order-2 ml-auto flex items-center gap-2 shrink-0 2xl:ml-0">
-        {/* Page Navigator */}
-        <div className="hidden 2xl:block">
-          <PageNavigator 
-            activePage={currentPath} 
-            pages={pages}
-            onNavigate={onNavigate || (() => {})} 
-            onRefresh={onRefresh} 
-          />
-        </div>
-
-        {/* View Live Button */}
-        {isPublished && username && (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => window.open(`/@${username}`, '_blank')}
-            className="gap-1.5 border-zinc-700 bg-zinc-900 hover:bg-zinc-800 text-zinc-300"
-            title="View Live"
-          >
-            <ExternalLink className="w-3.5 h-3.5" />
-            <span className="hidden 2xl:inline">View Live</span>
-          </Button>
-        )}
-
-        {/* Publish Button */}
-        <Button
-          size="sm"
-          onClick={onPublish}
-          title={isPublished && !hasUnpublishedChanges ? 'Published' : 'Publish'}
-          disabled={isEmpty || isPublishing || (isPublished && !hasUnpublishedChanges)}
-          className={`gap-2 text-white ${
-            isPublished && !hasUnpublishedChanges
-              ? 'bg-emerald-600 hover:bg-emerald-600 cursor-default opacity-90'
-              : 'bg-blue-600 hover:bg-blue-500'
-          }`}
-        >
-          {isPublishing ? (
-            <Loader2 className="w-4 h-4 animate-spin" />
-          ) : isPublished && !hasUnpublishedChanges ? (
-            <>
-              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
-              <span className="hidden 2xl:inline">Published</span>
-            </>
-          ) : (
-            <Eye className="w-4 h-4" />
-          )}
-          {(!isPublished || hasUnpublishedChanges) && !isPublishing && <span className="hidden 2xl:inline">Publish</span>}
-        </Button>
-
-        {/* Visual Divider */}
-        <div className="w-px h-5 bg-white/[0.08]" />
-
-        {/* Profile Menu */}
-        {onSignOut && (
-          <ProfileMenu
-            avatarUrl={avatarUrl}
-            username={username}
-            userCredits={userCredits}
-            creditBreakdown={creditBreakdown}
-            subscriptionTier={subscriptionTier}
-            onSignOut={onSignOut}
-          />
-        )}
-
-        {/* Chat Toggle Arrow — always visible, right after profile */}
-        {onToggleChatCollapse && (
-          <button
-            onClick={onToggleChatCollapse}
-            className="p-1.5 rounded-md text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors"
-            title={chatCollapsed ? 'Open chat' : 'Collapse chat'}
-          >
-            <svg
-              className={`w-4 h-4 transition-transform duration-200 ${chatCollapsed ? 'rotate-180' : ''}`}
-              viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
-            >
-              <polyline points="9 18 15 12 9 6" />
-            </svg>
-          </button>
-        )}
-      </div>
-
-      {/* CENTER: Icon Pill Switcher */}
-      <div className="order-3 flex basis-full items-center justify-center gap-2 min-w-0 overflow-x-auto scrollbar-hide 2xl:order-2 2xl:basis-auto 2xl:flex-1">
+      {/* CENTER: Icon Pill Switcher — flex-1 so it absorbs free space */}
+      <div className="flex-1 flex items-center justify-center gap-2 min-w-0 overflow-x-auto scrollbar-hide">
         <div className="flex w-max items-center gap-2">
           <div className="flex items-center gap-0.5 p-1 rounded-xl bg-white/[0.04] border border-white/[0.06]">
             {TAB_CONFIG.map((tab, idx) => {
@@ -245,6 +162,79 @@ export function VibecoderHeader({
             </div>
           )}
         </div>
+      </div>
+
+      {/* RIGHT: Actions */}
+      <div className="flex items-center gap-1.5 shrink-0">
+        {/* View Live Button — icon only on small/medium widths */}
+        {isPublished && username && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => window.open(`/@${username}`, '_blank')}
+            className="gap-1.5 border-zinc-700 bg-zinc-900 hover:bg-zinc-800 text-zinc-300"
+            title="View Live"
+          >
+            <ExternalLink className="w-3.5 h-3.5" />
+            <span className="hidden xl:inline">View Live</span>
+          </Button>
+        )}
+
+        {/* Publish Button — icon only on small/medium widths */}
+        <Button
+          size="sm"
+          onClick={onPublish}
+          title={isPublished && !hasUnpublishedChanges ? 'Published' : 'Publish'}
+          disabled={isEmpty || isPublishing || (isPublished && !hasUnpublishedChanges)}
+          className={`gap-2 text-white ${
+            isPublished && !hasUnpublishedChanges
+              ? 'bg-emerald-600 hover:bg-emerald-600 cursor-default opacity-90'
+              : 'bg-blue-600 hover:bg-blue-500'
+          }`}
+        >
+          {isPublishing ? (
+            <Loader2 className="w-4 h-4 animate-spin" />
+          ) : isPublished && !hasUnpublishedChanges ? (
+            <>
+              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+              <span className="hidden xl:inline">Published</span>
+            </>
+          ) : (
+            <Eye className="w-4 h-4" />
+          )}
+          {(!isPublished || hasUnpublishedChanges) && !isPublishing && <span className="hidden xl:inline">Publish</span>}
+        </Button>
+
+        {/* Visual Divider */}
+        <div className="w-px h-5 bg-white/[0.08] mx-0.5" />
+
+        {/* Profile Menu */}
+        {onSignOut && (
+          <ProfileMenu
+            avatarUrl={avatarUrl}
+            username={username}
+            userCredits={userCredits}
+            creditBreakdown={creditBreakdown}
+            subscriptionTier={subscriptionTier}
+            onSignOut={onSignOut}
+          />
+        )}
+
+        {/* Chat Toggle Arrow */}
+        {onToggleChatCollapse && (
+          <button
+            onClick={onToggleChatCollapse}
+            className="p-1.5 rounded-md text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors"
+            title={chatCollapsed ? 'Open chat' : 'Collapse chat'}
+          >
+            <svg
+              className={`w-4 h-4 transition-transform duration-200 ${chatCollapsed ? 'rotate-180' : ''}`}
+              viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+            >
+              <polyline points="9 18 15 12 9 6" />
+            </svg>
+          </button>
+        )}
       </div>
     </header>
   );
