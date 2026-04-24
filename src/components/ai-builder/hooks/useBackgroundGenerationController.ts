@@ -383,6 +383,9 @@ export function useBackgroundGenerationController({
       });
     }
 
+    // Clear any stale retry CTA after a successful completion/plan handoff.
+    setLastFailedPrompt(null);
+
     // Add assistant message with a rich summary of what changed
     if (activeProjectId) {
       const fileCount = (typeof job.files_changed_count === 'number')
@@ -457,7 +460,7 @@ export function useBackgroundGenerationController({
       job.status === 'failed' ||
       job.status === 'needs_continuation';
 
-    if (job.prompt && job.status !== 'needs_user_action') {
+    if (job.prompt && job.status !== 'needs_user_action' && (!activeJobIdRef.current || activeJobIdRef.current === job.id)) {
       setLastFailedPrompt(job.prompt);
     }
 
@@ -536,6 +539,7 @@ export function useBackgroundGenerationController({
       // "Generating code…", "Validating…", "Repairing syntax…", etc.) instead
       // of a frozen "Working..." indicator while the edge function runs.
       if (job.status === 'running' || job.status === 'pending' || job.status === 'validating' || job.status === 'repairing') {
+        setLastFailedPrompt(null);
         if (Array.isArray(job.progress_logs) && job.progress_logs.length > 0) {
           setLiveSteps(job.progress_logs);
         }
@@ -544,11 +548,6 @@ export function useBackgroundGenerationController({
     onJobComplete: handleJobComplete,
     onJobError: handleJobError,
   });
-
-  useEffect(() => {
-    if (!hasFailedJob || !currentJob?.prompt || lastFailedPrompt) return;
-    setLastFailedPrompt(currentJob.prompt);
-  }, [currentJob, hasFailedJob, lastFailedPrompt]);
 
   // RESUME: If a job completes while the user is away
   const processedCompletedJobRef = useRef<string | null>(null);
