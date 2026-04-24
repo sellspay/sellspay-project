@@ -4687,6 +4687,7 @@ serve(async (req) => {
           // ════════════════════════════════════════════════════════
           if (jobId) {
             console.log(`[Job ${jobId}] Stream complete, finalizing. Content length: ${fullContent.length}`);
+            await pushProgress("Validating generated code…", { force: true });
 
             let codeResult = null;
             let summary = null;
