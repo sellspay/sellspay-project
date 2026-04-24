@@ -518,6 +518,32 @@ function autoRepairTruncatedCodeFile(content: string, filePath: string): string 
 
   let fixed = content.replace(/\s+$/, '');
   let changed = false;
+
+  // Strip stray ">" after a JSX tag close (e.g. "</Routes>>" or "<div>>").
+  // Common AI typo. Only acts on .tsx/.jsx and only outside strings/comments.
+  if (filePath.endsWith('.tsx') || filePath.endsWith('.jsx')) {
+    const strayPattern = /(<\/?[A-Za-z][A-Za-z0-9.]*[^<>]*>)>+/g;
+    if (strayPattern.test(fixed)) {
+      // Replace via mask of strings/comments to avoid touching string literals
+      const mask = stripStringsAndCommentsServer(fixed);
+      const repaired: string[] = [];
+      let lastIdx = 0;
+      let m: RegExpExecArray | null;
+      strayPattern.lastIndex = 0;
+      while ((m = strayPattern.exec(mask)) !== null) {
+        const tagEnd = m.index + m[1].length;
+        repaired.push(fixed.slice(lastIdx, tagEnd));
+        lastIdx = m.index + m[0].length;
+      }
+      repaired.push(fixed.slice(lastIdx));
+      const candidate = repaired.join('');
+      if (candidate !== fixed) {
+        fixed = candidate;
+        changed = true;
+      }
+    }
+  }
+
   const danglingTokens = new Set(['.', ',', ':', '=', '+', '-', '*', '/']);
 
   while (fixed.length > 0 && danglingTokens.has(fixed.slice(-1))) {
