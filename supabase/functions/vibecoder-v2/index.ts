@@ -4765,17 +4765,20 @@ serve(async (req) => {
                     emitEvent('phase', { phase: 'rebuilding' });
                     
                     try {
+                      const replaceSystemPrompt = `You are a code generation engine. Generate a complete, valid storefront. Output ONLY valid JSON. No commentary, no markdown, no backticks.`;
                       const replaceMessages = [
-                        { role: "system", content: messages[0].content },
+                        { role: "system", content: replaceSystemPrompt },
                         {
                           role: "user",
                           content: `Generate a complete storefront based on this request. Output ONLY valid JSON: {"files": {"/App.tsx": "...", ...}}\n\nNo markdown. No commentary. JSON only.\n\nRequest: ${prompt}`,
                         },
                       ];
                       
-                      const replaceConfig = MODEL_CONFIG["vibecoder-gpt4"];
+                      const replaceConfig = MODEL_CONFIG["vibecoder-gpt4"] || MODEL_CONFIG["vibecoder-pro"];
+                      const REPLACE_PROVIDER_CAPS: Record<string, number> = { anthropic: 60000, openai: 16000, gemini: 65000 };
+                      const replaceProviderCap = REPLACE_PROVIDER_CAPS[replaceConfig.provider] || 16000;
                       const replaceResponse = await callModelAPI(replaceConfig, replaceMessages, {
-                        maxTokens: Math.min(50000, providerCap),
+                        maxTokens: Math.min(50000, replaceProviderCap),
                         temperature: 0.2,
                         stream: false,
                       });
