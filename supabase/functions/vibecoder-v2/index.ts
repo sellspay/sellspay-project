@@ -622,6 +622,15 @@ function autoCloseTruncatedFile(content: string, filePath: string): string | nul
           stack.pop();
           continue;
         }
+        // Orphan close tag adjacent to a VALID close tag for the current top
+        // (e.g. "</ProductCard></motion.div>" where ProductCard was self-closing).
+        // Strip ONLY the orphan tag, keep the valid sibling.
+        const after = stripped.slice(matchIndex + fullMatch.length);
+        const nextTagMatch = /^\s*<\/([A-Za-z][A-Za-z0-9.]*)>/.exec(after);
+        if (top && nextTagMatch && nextTagMatch[1] === top) {
+          orphanRanges.push({ start: matchIndex, end: matchIndex + fullMatch.length });
+          continue;
+        }
         let rangeStart = matchIndex;
         let rangeEnd = matchIndex + fullMatch.length;
         while (rangeStart > 0 && source[rangeStart - 1] !== '\n') rangeStart--;
