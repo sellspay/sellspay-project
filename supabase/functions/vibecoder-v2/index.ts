@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
+import ts from "npm:typescript@5.8.3";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -792,7 +793,38 @@ function validateFileSyntaxServer(content: string, filePath: string): string | n
     if (jsxError) return jsxError;
   }
 
+  const transpile = getTranspileSyntaxErrorServer(content, filePath);
+  if (transpile) return transpile;
+
   return null;
+}
+
+function getTranspileSyntaxErrorServer(content: string, filePath: string): string | null {
+  if (!filePath.endsWith('.tsx') && !filePath.endsWith('.ts') && !filePath.endsWith('.jsx') && !filePath.endsWith('.js')) {
+    return null;
+  }
+
+  try {
+    const result = ts.transpileModule(content, {
+      fileName: filePath.split('/').pop() || filePath,
+      reportDiagnostics: true,
+      compilerOptions: {
+        allowJs: true,
+        checkJs: false,
+        jsx: ts.JsxEmit.ReactJSX,
+        target: ts.ScriptTarget.ES2020,
+        module: ts.ModuleKind.ESNext,
+      },
+    });
+
+    const diagnostics = (result.diagnostics || []).filter((diag) => diag.category === ts.DiagnosticCategory.Error);
+    if (diagnostics.length === 0) return null;
+
+    const message = ts.flattenDiagnosticMessageText(diagnostics[0].messageText, '\n').trim();
+    return message ? `TypeScript parser error: ${message}` : 'TypeScript parser error';
+  } catch (error) {
+    return `TypeScript parser error: ${error instanceof Error ? error.message : String(error)}`;
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -888,6 +920,60 @@ function validateAllFilesServer(files: Record<string, string>): { valid: boolean
     if (error) errors.push({ file: path, error });
   }
   return { valid: errors.length === 0, errors };
+}
+
+function shouldAttemptDeterministicSyntaxRepairServer(error: string): boolean {
+  const lower = error.toLowerCase();
+  return (
+    lower.includes('stray ">" after jsx tag') ||
+    lower.includes('type') && lower.includes('parser error') ||
+    lower.includes('unexpected token') ||
+    lower.includes('expression expected') ||
+    lower.includes('declaration or statement expected') ||
+    lower.includes('expected corresponding jsx closing tag') ||
+    lower.includes('jsx') ||
+    lower.includes('truncated') ||
+    lower.includes('unbalanced')
+  );
+}
+
+function validateAndAutoRepairFileMapServer(files: Record<string, string>): {
+  valid: boolean;
+  fileMap: Record<string, string>;
+  errors: Array<{ file: string; error: string }> ;
+} {
+  const repaired = normalizeFileMapServer({ ...files });
+  const firstPass = validateAllFilesServer(repaired);
+  if (firstPass.valid) return { valid: true, fileMap: repaired, errors: [] };
+
+  for (const err of firstPass.errors) {
+    const current = repaired[err.file] || '';
+    let next = current;
+
+    if (err.error.includes('Unterminated string')) {
+      const stringFixed = autoCloseUnterminatedStrings(next, err.file);
+      if (stringFixed) next = stringFixed;
+    }
+
+    if (shouldAttemptDeterministicSyntaxRepairServer(err.error)) {
+      const repairedCode = autoRepairTruncatedCodeFile(next, err.file);
+      if (repairedCode) next = repairedCode;
+    }
+
+    if (
+      err.error.includes('Unclosed JSX') ||
+      err.error.includes('Unexpected closing JSX tag') ||
+      shouldAttemptDeterministicSyntaxRepairServer(err.error)
+    ) {
+      const autoClosed = autoCloseTruncatedFile(next, err.file);
+      if (autoClosed) next = autoClosed;
+    }
+
+    repaired[err.file] = next;
+  }
+
+  const finalPass = validateAllFilesServer(repaired);
+  return { valid: finalPass.valid, fileMap: repaired, errors: finalPass.errors };
 }
 
 function normalizeFileMapServer(files: Record<string, string>): Record<string, string> {
@@ -4522,11 +4608,16 @@ serve(async (req) => {
                 try {
                   const innerParsed = JSON.parse(sanitizeJsonEscapes(codeBlockMatch[1].trim()));
                   if (innerParsed?.files && typeof innerParsed.files === 'object' && Object.keys(innerParsed.files).length > 0) {
-                    emitEvent('files', { projectFiles: innerParsed.files });
-                    filesEmitted = true;
-                    lastMergedFiles = innerParsed.files;
-                    summaryValidated = true;
-                    console.log(`[Files] FALLBACK 1: Extracted ${Object.keys(innerParsed.files).length} files from code block`);
+                    const preEmit = validateAndAutoRepairFileMapServer(innerParsed.files);
+                    if (preEmit.valid) {
+                      emitEvent('files', { projectFiles: preEmit.fileMap });
+                      filesEmitted = true;
+                      lastMergedFiles = preEmit.fileMap;
+                      summaryValidated = true;
+                      console.log(`[Files] FALLBACK 1: Extracted ${Object.keys(preEmit.fileMap).length} validated files from code block`);
+                    } else {
+                      console.warn(`[Files] FALLBACK 1: Rejected invalid file map: ${preEmit.errors.map(e => `${e.file}: ${e.error}`).join(' | ')}`);
+                    }
                   }
                 } catch {
                   console.warn('[Files] FALLBACK 1: Code block JSON parse also failed');
@@ -4552,11 +4643,16 @@ serve(async (req) => {
                   if (repaired !== cleaned) {
                     const repairedParsed = JSON.parse(repaired);
                     if (repairedParsed?.files && typeof repairedParsed.files === 'object' && Object.keys(repairedParsed.files).length > 0) {
-                      emitEvent('files', { projectFiles: repairedParsed.files });
-                      filesEmitted = true;
-                      lastMergedFiles = repairedParsed.files;
-                      summaryValidated = true;
-                      console.log(`[Files] FALLBACK 2: Repaired truncated JSON, extracted ${Object.keys(repairedParsed.files).length} files`);
+                      const preEmit = validateAndAutoRepairFileMapServer(repairedParsed.files);
+                      if (preEmit.valid) {
+                        emitEvent('files', { projectFiles: preEmit.fileMap });
+                        filesEmitted = true;
+                        lastMergedFiles = preEmit.fileMap;
+                        summaryValidated = true;
+                        console.log(`[Files] FALLBACK 2: Repaired truncated JSON and extracted ${Object.keys(preEmit.fileMap).length} validated files`);
+                      } else {
+                        console.warn(`[Files] FALLBACK 2: Rejected invalid repaired file map: ${preEmit.errors.map(e => `${e.file}: ${e.error}`).join(' | ')}`);
+                      }
                     }
                   }
                 } catch {
@@ -4580,11 +4676,16 @@ serve(async (req) => {
                   if (isPartialDelta) {
                     finalRescued = { ...(projectFiles as Record<string, string>), ...rescued };
                   }
-                  emitEvent('files', { projectFiles: finalRescued });
-                  filesEmitted = true;
-                  lastMergedFiles = finalRescued;
-                  summaryValidated = true;
-                  console.log(`[Files] FALLBACK 3: Rescued ${Object.keys(rescued).length} files from partial JSON`);
+                  const preEmit = validateAndAutoRepairFileMapServer(finalRescued);
+                  if (preEmit.valid) {
+                    emitEvent('files', { projectFiles: preEmit.fileMap });
+                    filesEmitted = true;
+                    lastMergedFiles = preEmit.fileMap;
+                    summaryValidated = true;
+                    console.log(`[Files] FALLBACK 3: Rescued ${Object.keys(preEmit.fileMap).length} validated files from partial JSON`);
+                  } else {
+                    console.warn(`[Files] FALLBACK 3: Rejected rescued file map: ${preEmit.errors.map(e => `${e.file}: ${e.error}`).join(' | ')}`);
+                  }
                 }
               }
               
@@ -5444,7 +5545,7 @@ serve(async (req) => {
                       }
 
                       // 0b: Truncated TS/JS/TSX/JSX endings like a dangling '.' or missing final closers
-                      if (err.error.includes('truncated') || err.error.includes('Unbalanced')) {
+                      if (shouldAttemptDeterministicSyntaxRepairServer(err.error)) {
                         const repairedCode = autoRepairTruncatedCodeFile(deltaForSyntax[err.file] || "", err.file);
                         if (repairedCode) {
                           deltaForSyntax[err.file] = repairedCode;
@@ -5457,8 +5558,7 @@ serve(async (req) => {
                       if (
                         err.error.includes('Unclosed JSX') ||
                         err.error.includes('Unexpected closing JSX tag') ||
-                        err.error.includes('Unbalanced') ||
-                        err.error.includes('truncated')
+                        shouldAttemptDeterministicSyntaxRepairServer(err.error)
                       ) {
                         const autoClosed = autoCloseTruncatedFile(deltaForSyntax[err.file] || "", err.file);
                         if (autoClosed) {
@@ -5631,9 +5731,9 @@ serve(async (req) => {
                 }
 
                 if (filesWrapper && Object.keys(filesWrapper).length > 0) {
-                  const finalSyntaxCheck = validateAllFilesServer(filesWrapper);
-                  if (!finalSyntaxCheck.valid) {
-                    const errSummary = finalSyntaxCheck.errors.map(e => `${e.file}: ${e.error}`).join(' | ');
+                  const finalPrepared = validateAndAutoRepairFileMapServer(filesWrapper);
+                  if (!finalPrepared.valid) {
+                    const errSummary = finalPrepared.errors.map(e => `${e.file}: ${e.error}`).join(' | ');
                     console.error(`[Job ${jobId}] ZERO-TRUST FINAL FAIL: Persisted file map still invalid: ${errSummary}`);
                     validationError = { errorType: 'COMPILE_FAILURE', errorMessage: `Code has syntax errors: ${errSummary}` };
                     jobStatus = "failed";
@@ -5641,6 +5741,8 @@ serve(async (req) => {
                     codeResult = null;
                     filesWrapper = null;
                     emitEvent('error', { code: 'COMPILE_FAILURE', message: `Syntax errors in final file map: ${errSummary}` });
+                  } else {
+                    filesWrapper = finalPrepared.fileMap;
                   }
                 }
 
