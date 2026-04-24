@@ -1441,6 +1441,217 @@ async function validateIntent(
 }
 
 // ═══════════════════════════════════════════════════════════════
+// DESIGN QUALITY CRITIC (Gate 5): score the result against a
+// taste rubric. Reject generic / template-like / flat output and
+// produce concrete, directive feedback that the revise step can act on.
+// ═══════════════════════════════════════════════════════════════
+
+export interface DesignCritique {
+  passed: boolean;
+  overall: number;
+  scores: {
+    visual_impact: number;
+    layout_quality: number;
+    brand_alignment: number;
+    component_polish: number;
+    interaction_quality: number;
+    imagery_use: number;
+  };
+  bad_signals: string[];
+  required_changes: string[];
+  weakest_files: string[];
+}
+
+function buildFilesPreview(files: Record<string, string>, maxCharsPerFile = 2200, maxFiles = 8): string {
+  const entries = Object.entries(files)
+    .sort(([a], [b]) => {
+      const score = (p: string) =>
+        (/\/App\.tsx$/i.test(p) ? 0 : 5) +
+        (/theme/i.test(p) ? 1 : 0) +
+        (/(Hero|Home|ProductCard|ProductGrid|Featured|Nav)/i.test(p) ? 2 : 6);
+      return score(a) - score(b);
+    })
+    .slice(0, maxFiles);
+  return entries
+    .map(([path, content]) => `── ${path} ──\n${(content || "").slice(0, maxCharsPerFile)}`)
+    .join("\n\n");
+}
+
+async function critiqueDesignQuality(
+  userPrompt: string,
+  brandSummary: string,
+  files: Record<string, string>,
+  apiKey: string,
+): Promise<DesignCritique | null> {
+  try {
+    const filePreview = buildFilesPreview(files);
+    const response = await fetchWithTimeout(GEMINI_API_URL, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "gemini-2.5-flash",
+        messages: [
+          {
+            role: "system",
+            content: `You are a senior product designer reviewing AI-generated storefront code.
+Your job: detect generic, template-like, or aesthetically weak UI BEFORE it ships.
+
+Score each category 1-10. Pass = overall >= 8 AND every category >= 7.
+
+BAD SIGNALS to call out:
+- Empty/black hero with only centered text (no imagery, gradient, depth, or eyebrow)
+- Product/media cards as image-on-top + text-below boxes when prompt asks for cinematic / streaming / editorial / poster → those MUST be full-image backgrounds with text OVERLAY
+- Default blue links / focus rings when an accent color was specified
+- Flat solid backgrounds with zero depth (no gradient, no noise, no layered shadows)
+- Broken/missing images (empty <img>, no src, placeholder-only)
+- Three identical icon-cards in a row used as the "Why" section
+- Banned generic copy ("Welcome to", "Transform your business", "Unleash", "Elevate", "Next level")
+- No hover state when prompt asked for "alive" / "cinematic" / "interactive"
+- Accent color declared in theme.ts but never applied to CTAs / borders / focus rings
+- Layout that screams default Shopify when prompt asked for editorial / gallery / streaming / gaming / magazine
+
+For cinematic/streaming/editorial aesthetics specifically:
+- Cards MUST be image-first with overlay text (Netflix-style)
+- Hero MUST have a real visual (gradient mesh, blurred image, layered shapes — not just text)
+- Hover MUST scale + glow
+
+Return ONLY valid JSON, no prose, no markdown:
+{
+  "passed": boolean,
+  "overall": number,
+  "scores": { "visual_impact": number, "layout_quality": number, "brand_alignment": number, "component_polish": number, "interaction_quality": number, "imagery_use": number },
+  "bad_signals": string[],
+  "required_changes": string[],
+  "weakest_files": string[]
+}
+
+"required_changes" must be DIRECTIVE and CONCRETE — instructions the next coder will follow verbatim.
+Example: "Rewrite ProductCard.tsx so the cover image is the card background (object-cover, absolute inset-0) with a dark bottom-to-top gradient overlay; move title + price to absolute bottom-left over the gradient; add hover:scale-[1.04] hover:brightness-110 transition-all duration-300."`,
+          },
+          {
+            role: "user",
+            content: `USER PROMPT:\n"""${userPrompt}"""\n\nBRAND / CONTEXT:\n${brandSummary || "(none)"}\n\nGENERATED FILES (truncated):\n${filePreview}\n\nGrade strictly. If this looks like a generic e-commerce template, fail it.`,
+          },
+        ],
+        max_tokens: 900,
+        temperature: 0.2,
+      }),
+    }, 30_000);
+
+    if (!response.ok) {
+      console.warn(`[DesignCritic] API call failed (${response.status}), defaulting to pass`);
+      return null;
+    }
+    const raw = await response.text();
+    let data: any;
+    try { data = JSON.parse(raw); } catch { console.warn("[DesignCritic] outer parse error"); return null; }
+    const content = data.choices?.[0]?.message?.content || "";
+    const cleaned = content.replace(/```json\n?|\n?```/g, "").trim();
+    const parsed = JSON.parse(cleaned) as DesignCritique;
+
+    parsed.scores = parsed.scores || ({} as DesignCritique["scores"]);
+    parsed.bad_signals = Array.isArray(parsed.bad_signals) ? parsed.bad_signals : [];
+    parsed.required_changes = Array.isArray(parsed.required_changes) ? parsed.required_changes : [];
+    parsed.weakest_files = Array.isArray(parsed.weakest_files) ? parsed.weakest_files : [];
+
+    const cats = parsed.scores;
+    const minCat = Math.min(
+      cats.visual_impact ?? 10,
+      cats.layout_quality ?? 10,
+      cats.brand_alignment ?? 10,
+      cats.component_polish ?? 10,
+      cats.interaction_quality ?? 10,
+      cats.imagery_use ?? 10,
+    );
+    parsed.passed = (parsed.overall ?? 0) >= 8 && minCat >= 7 && parsed.required_changes.length === 0;
+    return parsed;
+  } catch (e) {
+    console.warn("[DesignCritic] Unexpected error, skipping:", e);
+    return null;
+  }
+}
+
+async function reviseForDesignQuality(
+  userPrompt: string,
+  critique: DesignCritique,
+  currentFiles: Record<string, string>,
+  apiKey: string,
+): Promise<Record<string, string> | null> {
+  try {
+    const targets = critique.weakest_files.length > 0
+      ? critique.weakest_files
+      : Object.keys(currentFiles).filter(p => /(App|Hero|Home|ProductCard|ProductGrid|Featured|Nav|theme)/i.test(p));
+    if (targets.length === 0) return null;
+
+    const filesPayload: Record<string, string> = {};
+    for (const t of targets) {
+      const key = currentFiles[t] ? t : (t.startsWith("/") ? t : "/" + t);
+      if (currentFiles[key]) filesPayload[key] = currentFiles[key];
+    }
+    if (Object.keys(filesPayload).length === 0) return null;
+
+    const response = await fetchWithTimeout(GEMINI_API_URL, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "gemini-2.5-pro",
+        messages: [
+          {
+            role: "system",
+            content: `You are a senior frontend engineer + designer doing a TASTE REVISION pass.
+A design critic just rejected the previous output. Your only job: rewrite the listed files so they pass.
+
+ABSOLUTE RULES:
+1. Output ONLY a JSON object: {"files":{"/path":"contents", ...}}. No prose, no markdown, no backticks.
+2. Return EVERY file you were given, fully rewritten — never partials.
+3. Apply EVERY item in "required_changes" verbatim. Do not soften them.
+4. Do not introduce new files unless required.
+5. Keep all existing imports/exports/component names so other files still resolve.
+6. For cinematic/streaming/editorial/poster aesthetics: cards MUST use full-image backgrounds with overlay text, hover scale + glow, gradient overlays. Never image-on-top + text-below.
+7. Never leave broken images: every <img> needs a real src or a Tailwind gradient/pattern fallback wrapper.
+8. Use the requested accent color on CTAs, focus rings, borders, and hover glows — not just declared in theme.
+9. Every interactive element gets a transition (duration-300 ease-out) and a visible hover state.`,
+          },
+          {
+            role: "user",
+            content: `USER PROMPT:\n"""${userPrompt}"""\n\nCRITIC VERDICT (overall ${critique.overall}/10):\nBad signals:\n- ${critique.bad_signals.join("\n- ") || "(none)"}\n\nRequired changes (apply ALL):\n- ${critique.required_changes.join("\n- ")}\n\nFILES TO REWRITE (return all of them in your JSON):\n${Object.entries(filesPayload).map(([p, c]) => `── ${p} ──\n${c}`).join("\n\n")}`,
+          },
+        ],
+        max_tokens: 8000,
+        temperature: 0.4,
+      }),
+    }, 90_000);
+
+    if (!response.ok) {
+      console.warn(`[DesignReviser] API call failed (${response.status})`);
+      return null;
+    }
+    const raw = await response.text();
+    const data = JSON.parse(raw);
+    let content: string = data.choices?.[0]?.message?.content || "";
+    content = content.replace(/```json\n?|\n?```/g, "").trim();
+
+    let parsed: any;
+    try { parsed = JSON.parse(sanitizeJsonEscapes(content)); }
+    catch { console.warn("[DesignReviser] not valid JSON"); return null; }
+
+    const fileMap: Record<string, string> = parsed?.files && typeof parsed.files === "object"
+      ? parsed.files
+      : (typeof parsed === "object" && parsed !== null && Object.keys(parsed).every(k => k.startsWith("/")) ? parsed : {});
+
+    const cleaned: Record<string, string> = {};
+    for (const [k, v] of Object.entries(fileMap)) {
+      if (typeof v !== "string" || v.length < 30) continue;
+      cleaned[k.startsWith("/") ? k : "/" + k] = v;
+    }
+    return Object.keys(cleaned).length > 0 ? cleaned : null;
+  } catch (e) {
+    console.warn("[DesignReviser] Unexpected error:", e);
+    return null;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
 // LEGACY VALIDATION (kept for backward compat but simplified)
 // ═══════════════════════════════════════════════════════════════
 
