@@ -5255,10 +5255,21 @@ serve(async (req) => {
                       emitEvent('files', { projectFiles: lastMergedFiles });
                     } else {
                       // Phase 1: Individual AI file repair (fallback)
+                      // 🛑 REPAIR BUDGET: cap total wall-clock spent in repair so we never
+                      // blow the 140s edge timeout. Generation already burned ~20-40s by here.
+                      const REPAIR_BUDGET_MS = 60_000;
+                      const repairStartedAt = Date.now();
+                      const repairBudgetExceeded = () => (Date.now() - repairStartedAt) > REPAIR_BUDGET_MS;
+
                       await pushProgress(`Automatic repair incomplete — retrying ${afterAutoClose.errors.length} file(s)…`, { force: true });
                       const repairConfig = MODEL_CONFIG[model] || MODEL_CONFIG["vibecoder-flash"] || MODEL_CONFIG["vibecoder-pro"];
                       let allFixed = true;
                       for (const err of afterAutoClose.errors) {
+                        if (repairBudgetExceeded()) {
+                          console.warn(`[Job ${jobId}] GATE 4 REPAIR: budget exhausted, skipping remaining individual repairs`);
+                          allFixed = false;
+                          break;
+                        }
                         try {
                           await pushProgress(`Repairing ${err.file}…`);
                           const fixed = await repairBrokenFile(err.file, deltaForSyntax[err.file] || "", err.error, repairConfig);
@@ -5280,16 +5291,19 @@ serve(async (req) => {
                       }
                       
                       // Phase 2: Batch fallback if individual repair failed
-                      if (!allFixed) {
+                      if (!allFixed && !repairBudgetExceeded()) {
                         const recheckMid = validateAllFilesServer(deltaForSyntax);
                         if (!recheckMid.valid) {
                           await pushProgress(`Still failing validation — running final repair pass on ${recheckMid.errors.length} file(s)…`, { force: true });
                           console.log(`[Job ${jobId}] GATE 4: Individual repair incomplete, trying batch...`);
-                          const batchRepair = await batchCompileFix(deltaForSyntax, repairConfig, emitEvent);
+                          const remainingBudget = Math.max(15_000, REPAIR_BUDGET_MS - (Date.now() - repairStartedAt));
+                          const batchRepair = await batchCompileFix(deltaForSyntax, repairConfig, emitEvent, remainingBudget);
                           if (batchRepair.success) {
                             deltaForSyntax = batchRepair.fileMap;
                           }
                         }
+                      } else if (!allFixed) {
+                        console.warn(`[Job ${jobId}] GATE 4: skipping batch repair — wall-clock budget exhausted`);
                       }
                       
                       // Final check
