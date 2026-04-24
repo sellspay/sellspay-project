@@ -585,11 +585,12 @@ function autoCloseTruncatedFile(content: string, filePath: string): string | nul
       const tagName = fullMatch === '<>' || fullMatch === '</>' ? JSX_FRAGMENT : match[1];
       const matchIndex = match.index;
       if (!tagName) continue;
-      if (matchIndex > 0 && /\w/.test(stripped[matchIndex - 1])) continue;
-      if (tagName !== JSX_FRAGMENT && SERVER_TS_TYPE_NAMES.has(tagName)) continue;
-      if (/(?:Props|State|Type|Config|Options|Params|Args|Result|Data|Item|Entry|Key|Value|Ref|Context|Handler|Callback|Fn|Interface)$/.test(tagName)) continue;
       const isFragment = tagName === JSX_FRAGMENT;
       const isClosing = fullMatch.startsWith('</') || fullMatch === '</>';
+      // Only skip TS-generic-looking opens. Closing JSX tags legitimately follow text (e.g. "Home</div>").
+      if (!isClosing && matchIndex > 0 && /\w/.test(stripped[matchIndex - 1])) continue;
+      if (tagName !== JSX_FRAGMENT && SERVER_TS_TYPE_NAMES.has(tagName)) continue;
+      if (/(?:Props|State|Type|Config|Options|Params|Args|Result|Data|Item|Entry|Key|Value|Ref|Context|Handler|Callback|Fn|Interface)$/.test(tagName)) continue;
       const isSelfClosing = !isFragment && fullMatch.endsWith('/>');
       if (isSelfClosing || (!isFragment && SERVER_VOID_ELEMENTS.has(tagName.toLowerCase()))) continue;
 
