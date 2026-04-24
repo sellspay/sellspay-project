@@ -506,6 +506,14 @@ function autoCloseUnterminatedStrings(content: string, filePath: string): string
     else if (inDouble) { lines[li] = line + '"'; changed = true; }
   }
 
+  // ─── Final pass: append a closing backtick if a template literal
+  // remained open at end-of-file (the most common AI typo that triggers
+  // "Unterminated template literal" rejections).
+  if (inTemplate) {
+    lines[lines.length - 1] = (lines[lines.length - 1] ?? '') + '`';
+    changed = true;
+  }
+
   if (!changed) return null;
   const fixed = lines.join('\n');
   const recheck = validateFileSyntaxServer(fixed, filePath);
