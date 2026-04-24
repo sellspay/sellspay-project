@@ -50,7 +50,11 @@ export const LiveThought = forwardRef<HTMLDivElement, LiveThoughtProps>(
 
     if (!isThinking && logs.length === 0) return null;
 
-    const hasRealLogs = logs.length > 0;
+    const normalizedLogs = logs.map((log) =>
+      log.replace(/^\[LOG:\s*/, '').replace(/\]$/, '').replace(/^>\s*/, '').trim()
+    );
+    const latestLog = normalizedLogs[normalizedLogs.length - 1] ?? '';
+    const hasRealLogs = normalizedLogs.length > 0;
     const isThinkingPhase = isThinking && !hasRealLogs;
     const isBuildingPhase = isThinking && hasRealLogs;
 
@@ -82,27 +86,41 @@ export const LiveThought = forwardRef<HTMLDivElement, LiveThoughtProps>(
           className
         )}
       >
-        {/* HEADER */}
-        <button 
-          onClick={() => setIsExpanded(!isExpanded)}
-          className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors text-xs mb-2 select-none group"
-        >
-          {isExpanded ? (
-            <ChevronDown size={12} className="opacity-50 group-hover:opacity-100 transition-opacity" />
-          ) : (
-            <ChevronRight size={12} className="opacity-50 group-hover:opacity-100 transition-opacity" />
+        <div className="mb-2 flex items-start justify-between gap-3">
+          <div className="min-w-0 space-y-1">
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <span className={cn("opacity-70", !isBuildingPhase && "opacity-50")}>
+                {isBuildingPhase ? `Working · ${seconds}s` : `Completed · ${seconds}s`}
+              </span>
+            </div>
+
+            {latestLog && (
+              <div className="text-sm leading-relaxed text-foreground/75 break-words">
+                {latestLog}
+                {isBuildingPhase && <span className="text-muted-foreground">{dots}</span>}
+              </div>
+            )}
+          </div>
+
+          {normalizedLogs.length > 1 && (
+            <button
+              type="button"
+              onClick={() => setIsExpanded(!isExpanded)}
+              className="mt-0.5 shrink-0 text-muted-foreground hover:text-foreground transition-colors group"
+              aria-label={isExpanded ? "Hide pipeline history" : "Show pipeline history"}
+            >
+              {isExpanded ? (
+                <ChevronDown size={14} className="opacity-50 group-hover:opacity-100 transition-opacity" />
+              ) : (
+                <ChevronRight size={14} className="opacity-50 group-hover:opacity-100 transition-opacity" />
+              )}
+            </button>
           )}
-          
-          {isBuildingPhase ? (
-            <span className="opacity-70">Working · {seconds}s</span>
-          ) : (
-            <span className="opacity-50">Completed · {seconds}s</span>
-          )}
-        </button>
+        </div>
 
         {/* EXPANDABLE LOG CONTAINER */}
         <AnimatePresence>
-          {isExpanded && (
+          {isExpanded && normalizedLogs.length > 1 && (
             <motion.div
               initial={{ height: 0, opacity: 0 }}
               animate={{ height: 'auto', opacity: 1 }}
@@ -115,9 +133,9 @@ export const LiveThought = forwardRef<HTMLDivElement, LiveThoughtProps>(
                   ref={scrollRef}
                   className="p-3 max-h-[180px] overflow-y-auto text-[11px] space-y-1 text-muted-foreground custom-scrollbar"
                 >
-                  {logs.map((log, i) => {
-                    const cleanLog = log.replace(/^\[LOG:\s*/, '').replace(/\]$/, '').replace(/^>\s*/, '').trim();
-                    const isError = log.toLowerCase().includes('error');
+                  {normalizedLogs.map((cleanLog, i) => {
+                    const rawLog = logs[i] ?? cleanLog;
+                    const isError = rawLog.toLowerCase().includes('error');
                     
                     return (
                       <div key={i} className="flex gap-2 animate-in fade-in duration-200">
@@ -143,14 +161,6 @@ export const LiveThought = forwardRef<HTMLDivElement, LiveThoughtProps>(
             </motion.div>
           )}
         </AnimatePresence>
-
-        {/* PREVIEW LINE (When Collapsed) */}
-        {!isExpanded && logs.length > 0 && (
-          <div className="ml-4 text-[11px] text-muted-foreground/50 truncate">
-            {logs[logs.length - 1].replace(/^\[LOG:\s*/, '').replace(/\]$/, '').replace(/^>\s*/, '').trim()}
-            {isBuildingPhase && '...'}
-          </div>
-        )}
       </div>
     );
   }
