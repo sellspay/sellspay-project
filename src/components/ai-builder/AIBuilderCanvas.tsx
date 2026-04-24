@@ -1339,9 +1339,9 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false, isGuest =
         />
       </div>
 
-      {/* ═══ CENTER: Header + Canvas ═══ */}
+      {/* ═══ RIGHT OF PROJECT SIDEBAR: Header (full width) + Body (canvas | chat) ═══ */}
       <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
-        {/* Header Toolbar — sits on background */}
+        {/* Header Toolbar — spans full width above canvas AND chat */}
         <div className="shrink-0">
           <VibecoderHeader
             projectName={activeProject?.name}
@@ -1368,6 +1368,11 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false, isGuest =
             onToggleChatCollapse={() => setChatCollapsed(!chatCollapsed)}
           />
         </div>
+
+        {/* Body: canvas + drag handle + chat sidebar (header sits above all of these) */}
+        <div className="flex-1 flex min-h-0 overflow-hidden">
+          {/* Canvas column */}
+          <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
 
         {/* Canvas / Preview Area — elevated rounded card */}
         <div className="flex-1 min-h-0 relative overflow-hidden rounded-xl m-2 mt-0 bg-[#1a1a1a] flex flex-col">
