@@ -1,8 +1,8 @@
 import { assert, assertEquals } from "https://deno.land/std@0.224.0/assert/mod.ts";
 
 const source = await Deno.readTextFile(new URL("./index.ts", import.meta.url));
-const start = source.indexOf("function autoCloseUnterminatedStrings");
-const end = source.indexOf("function sanitizeJsonEscapes");
+const start = source.indexOf("function shouldTreatQuoteAsStringDelimiterServer");
+const end = source.indexOf("function normalizeFileMapServer");
 
 if (start === -1 || end === -1) {
   throw new Error("Could not locate vibecoder validation helpers in index.ts");
