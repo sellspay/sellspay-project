@@ -958,7 +958,7 @@ function validateAndAutoRepairFileMapServer(files: Record<string, string>): {
     const current = repaired[err.file] || '';
     let next = current;
 
-    if (err.error.includes('Unterminated string')) {
+    if (err.error.includes('Unterminated string') || err.error.includes('Unterminated template')) {
       const stringFixed = autoCloseUnterminatedStrings(next, err.file);
       if (stringFixed) next = stringFixed;
     }
