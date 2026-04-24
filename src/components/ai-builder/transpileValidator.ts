@@ -286,7 +286,8 @@ function checkJsxTagBalance(code: string): string | null {
         }
       }
     } else {
-      if (voidElements.has(tagName.toLowerCase())) continue;
+      // Case-sensitive: HTML void elements are lowercase. PascalCase tags are React components (e.g. <Link>).
+      if (voidElements.has(tagName)) continue;
       tagStack.push(tagName);
     }
   }
