@@ -5461,6 +5461,12 @@ serve(async (req) => {
             }
 
             // Finalize Job Status
+            const finalProgressLogs = validationError
+              ? [...progressLogs, `⚠️ ${validationError.errorType}`]
+              : jobStatus === "needs_user_action"
+              ? [...progressLogs, "⚠️ Intent check failed — user action needed"]
+              : [...progressLogs, "✅ All validation gates passed"];
+
             const updatePayload: Record<string, unknown> = {
               status: jobStatus,
               completed_at: new Date().toISOString(),
@@ -5471,11 +5477,7 @@ serve(async (req) => {
               validation_report: validationReport,
               terminal_reason: terminalReason,
               files_changed_count: filesChangedCount,
-              progress_logs: validationError
-                ? ["Starting AI generation...", "Processing response...", `⚠️ ${validationError.errorType}`]
-                : jobStatus === "needs_user_action"
-                ? ["Starting AI generation...", "Processing response...", "⚠️ Intent check failed — user action needed"]
-                : ["Starting AI generation...", "Processing response...", "✅ All validation gates passed"],
+              progress_logs: finalProgressLogs,
             };
 
             if (validationError) {
