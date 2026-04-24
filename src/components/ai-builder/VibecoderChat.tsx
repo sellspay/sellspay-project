@@ -195,12 +195,12 @@ export function VibecoderChat({
     return () => clearInterval(interval);
   }, []);
 
-  // Scroll to bottom on new messages
+  // Scroll to bottom on new messages or retry/question cards appearing
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [messages, isStreaming]);
+  }, [messages, isStreaming, lastFailedPrompt, pendingQuestions.length]);
 
   const handleSubmit = async (options: { 
     isPlanMode: boolean; 
