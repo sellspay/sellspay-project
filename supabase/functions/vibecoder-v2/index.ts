@@ -122,7 +122,7 @@ function detectDataIntent(prompt: string): {
  * Check the database for the user's actual subscription plans and products
  */
 async function checkDataAvailability(
-  supabase: ReturnType<typeof createClient>,
+  supabase: any,
   userId: string,
   prompt: string,
 ): Promise<DataAvailabilityResult | null> {
@@ -3107,7 +3107,7 @@ async function analyzeIntent(
 }
 
 async function updateIntentProfile(
-  supabase: ReturnType<typeof createClient>,
+  supabase: any,
   projectId: string,
   analysis: AnalyzerResult,
 ): Promise<void> {
@@ -3647,7 +3647,7 @@ If the full scope is too large, implement the highest-value core storefront firs
 
 serve(async (req) => {
   let requestJobId: string | null = null;
-  let supabaseAdmin: ReturnType<typeof createClient> | null = null;
+  let supabaseAdmin: any = null;
   let endedAsSuccess = false;
   let chargedUserId: string | null = null;
   let chargedCredits = 0;
