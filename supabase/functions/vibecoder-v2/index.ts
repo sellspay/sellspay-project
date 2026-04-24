@@ -440,7 +440,7 @@ function getUnclosedJsxTags(code: string): string[] | null {
       // If it doesn't match top, it's a nesting error — leave stack as-is
       continue;
     }
-    if (SERVER_VOID_ELEMENTS.has(tagName.toLowerCase())) continue;
+    if (SERVER_VOID_ELEMENTS.has(tagName)) continue;
     tagStack.push(tagName);
   }
 
