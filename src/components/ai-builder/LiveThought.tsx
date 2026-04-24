@@ -60,21 +60,7 @@ export const LiveThought = forwardRef<HTMLDivElement, LiveThoughtProps>(
 
     // THINKING PHASE: Clean minimal text
     if (isThinkingPhase || mode === 'thinking') {
-      if (!isThinking) return null;
-      
-      return (
-        <div
-          ref={ref}
-          className={cn(
-            "w-full max-w-[90%] mb-6 animate-in fade-in slide-in-from-bottom-2 duration-300",
-            className
-          )}
-        >
-          <div className="flex items-center gap-1.5 text-muted-foreground text-xs">
-            <span className="opacity-70">Thinking{dots}</span>
-          </div>
-        </div>
-      );
+      return null;
     }
 
     // BUILDING PHASE: Clean log view
@@ -90,7 +76,7 @@ export const LiveThought = forwardRef<HTMLDivElement, LiveThoughtProps>(
           <div className="min-w-0 space-y-1">
             <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
               <span className={cn("opacity-70", !isBuildingPhase && "opacity-50")}>
-                {isBuildingPhase ? `Building · ${seconds}s` : `Completed · ${seconds}s`}
+                {isBuildingPhase ? `${seconds}s` : `Completed · ${seconds}s`}
               </span>
             </div>
 
