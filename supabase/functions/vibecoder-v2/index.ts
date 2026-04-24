@@ -5567,6 +5567,11 @@ serve(async (req) => {
           // If job-backed, mark as failed
           if (jobId) {
             await refundCreditsIfNeeded(errorType.toLowerCase());
+            const failureProgressLogs = [
+              ...progressLogs,
+              "Error occurred",
+              `${errorType}: ${errorMessage}`,
+            ];
             await supabase
               .from("ai_generation_jobs")
               .update({
@@ -5577,7 +5582,7 @@ serve(async (req) => {
                 failure_stage: "generation",
                 error_message: JSON.stringify({ type: errorType, message: errorMessage }),
                 files_changed_count: null,
-                progress_logs: ["Starting AI generation...", "Error occurred", `${errorType}: ${errorMessage}`],
+                progress_logs: failureProgressLogs,
               })
               .eq("id", jobId);
           }
@@ -5642,6 +5647,16 @@ serve(async (req) => {
     await refundCreditsIfNeeded(isTimeout ? "edge_timeout" : "edge_crash");
 
     if (requestJobId && supabaseAdmin) {
+      const { data: existingJob } = await supabaseAdmin
+        .from("ai_generation_jobs")
+        .select("progress_logs")
+        .eq("id", requestJobId)
+        .single();
+
+      const existingLogs = Array.isArray(existingJob?.progress_logs)
+        ? existingJob.progress_logs
+        : ["Starting AI generation..."];
+
       await supabaseAdmin
         .from("ai_generation_jobs")
         .update({
@@ -5654,7 +5669,7 @@ serve(async (req) => {
             message: error instanceof Error ? error.message : "Unknown error",
           }),
           progress_logs: [
-            "Starting AI generation...",
+            ...existingLogs,
             "Error occurred",
             isTimeout ? "EDGE_TIMEOUT: Execution exceeded safe time limit." : (error instanceof Error ? error.message : "Unknown error"),
           ],
