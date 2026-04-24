@@ -385,10 +385,9 @@ export function VibecoderChat({
               />
             )}
             
-            {/* 🔴 LIVE THOUGHT: Always show real log feed when logs exist, even while
-                the phase card is visible. The previous logic hid the log stream behind
-                the phase card, which made users only see "Thinking" → "Building". */}
-            {(isStreaming || isAgentMode) && (agentLogs.length > 0 || liveSteps.length > 0) && (
+            {/* 🔴 LIVE THOUGHT: Show logs only after we move beyond the plain analyzing phase,
+                which avoids the redundant “Thinking...” + “Building...” stack. */}
+            {(isStreaming || isAgentMode) && (agentLogs.length > 0 || liveSteps.length > 0) && streamPhaseData?.phase !== 'analyzing' && (
               <LiveThought 
                 logs={agentLogs.length > 0 ? agentLogs : liveSteps}
                 isThinking={isStreaming}
@@ -396,8 +395,8 @@ export function VibecoderChat({
               />
             )}
 
-            {/* 🔴 FALLBACK THOUGHT: If we are streaming but have no structured phase data
-                and no live logs yet, still show a minimal thinking indicator. */}
+            {/* 🔴 FALLBACK THOUGHT: Only show a minimal thinking indicator when we have no
+                structured phase card and no live logs yet. */}
             {(isStreaming || isAgentMode) && (!streamPhaseData || streamPhaseData.phase === 'idle') && agentLogs.length === 0 && liveSteps.length === 0 && (
               <LiveThought 
                 logs={[]}
