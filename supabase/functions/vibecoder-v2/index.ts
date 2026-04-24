@@ -5924,6 +5924,59 @@ serve(async (req) => {
               }
             }
 
+            // ═══════════════════════════════════════════════════════
+            // GATE 5: DESIGN QUALITY CRITIC + REVISE LOOP
+            // Runs only on multi-file builds that have already passed
+            // structural + syntax validation. Up to 2 revision rounds.
+            // ═══════════════════════════════════════════════════════
+            try {
+              if (
+                !validationError &&
+                jobStatus === "completed" &&
+                isMultiFileJson &&
+                lastMergedFiles &&
+                Object.keys(lastMergedFiles).length >= 2 &&
+                intentResult.intent === "BUILD"
+              ) {
+                let currentFiles = lastMergedFiles;
+                let critiquePassed = false;
+                let lastCritique: DesignCritique | null = null;
+                const MAX_REVISIONS = 2;
+
+                for (let attempt = 0; attempt <= MAX_REVISIONS; attempt++) {
+                  await pushProgress(
+                    attempt === 0 ? "Reviewing design quality…" : `Revising design (pass ${attempt}/${MAX_REVISIONS})…`,
+                    { force: true },
+                  );
+                  const critique = await critiqueDesignQuality(prompt, "", currentFiles, GOOGLE_GEMINI_API_KEY);
+                  lastCritique = critique;
+                  if (!critique) { console.log(`[Job ${jobId}] GATE 5: critic unavailable, allowing pass`); break; }
+                  console.log(`[Job ${jobId}] GATE 5 attempt ${attempt}: overall=${critique.overall} passed=${critique.passed} signals=${critique.bad_signals.length}`);
+                  if (critique.passed) { critiquePassed = true; break; }
+                  if (attempt === MAX_REVISIONS) break;
+
+                  const revised = await reviseForDesignQuality(prompt, critique, currentFiles, GOOGLE_GEMINI_API_KEY);
+                  if (!revised) { console.warn(`[Job ${jobId}] GATE 5: reviser produced nothing, stopping loop`); break; }
+
+                  const syntaxCheck = validateAllFilesServer(revised);
+                  if (!syntaxCheck.valid) {
+                    console.warn(`[Job ${jobId}] GATE 5: revised files failed syntax (${syntaxCheck.errors.length}), discarding revision`);
+                    break;
+                  }
+                  currentFiles = { ...currentFiles, ...revised };
+                  lastMergedFiles = currentFiles;
+                  codeResult = JSON.stringify({ files: currentFiles });
+                  emitEvent('files', { projectFiles: currentFiles });
+                }
+                validationReport.design_critique = lastCritique
+                  ? { overall: lastCritique.overall, passed: critiquePassed, bad_signals: lastCritique.bad_signals.slice(0, 5) }
+                  : { skipped: true };
+                if (critiquePassed) await pushProgress("Design quality check passed ✨", { force: true });
+              }
+            } catch (gate5Err) {
+              console.warn(`[Job ${jobId}] GATE 5 error (non-fatal):`, gate5Err);
+            }
+
             validationReport.terminal_reason = terminalReason;
 
             if (codeResult && summary && !validationError && jobStatus === "completed") {
