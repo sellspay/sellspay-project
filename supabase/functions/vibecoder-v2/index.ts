@@ -934,8 +934,10 @@ async function batchCompileFix(
   fileMap: Record<string, string>,
   generatorConfig: ModelConfig,
   emitEvent: (eventType: string, data: any) => void,
+  budgetMs: number = 45_000,
 ): Promise<BatchRepairResult> {
-  const MAX_ATTEMPTS = 3;
+  const MAX_ATTEMPTS = 2; // Lowered from 3: each attempt can take 30-40s; 3 attempts blew the 140s edge budget
+  const startedAt = Date.now();
   let currentMap = { ...fileMap };
 
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
@@ -943,6 +945,13 @@ async function batchCompileFix(
     if (syntaxResult.valid) {
       if (attempt > 1) console.log(`[COMPILE_FIX] success`);
       return { success: true, fileMap: currentMap, attempts: attempt - 1, remainingErrors: [] };
+    }
+
+    // 🛑 BUDGET GUARD: Bail out before we eat the edge function's wall clock
+    const elapsed = Date.now() - startedAt;
+    if (elapsed > budgetMs) {
+      console.warn(`[COMPILE_FIX] budget_exhausted attempt=${attempt} elapsed=${elapsed}ms budget=${budgetMs}ms`);
+      return { success: false, fileMap: currentMap, attempts: attempt - 1, remainingErrors: syntaxResult.errors };
     }
 
     console.log(`[COMPILE_FIX] attempt=${attempt} files=${syntaxResult.errors.length}`);
