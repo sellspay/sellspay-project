@@ -395,7 +395,7 @@ export function VibecoderChat({
             )}
 
             {/* 🔄 RETRY BUTTON: Show when last generation failed with retryable error */}
-            {lastFailedPrompt && !isStreaming && (
+            {lastFailedPrompt && (
               <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -413,7 +413,8 @@ export function VibecoderChat({
                     size="sm"
                     variant="outline"
                     onClick={onRetryLastFailed}
-                    className="h-8 px-4 text-xs border-amber-500/40 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300"
+                    disabled={!onRetryLastFailed}
+                    className="h-8 px-4 text-xs border-amber-500/40 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 disabled:opacity-60"
                   >
                     <RefreshCw size={12} className="mr-1.5" />
                     Retry Build
