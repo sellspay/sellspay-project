@@ -4696,8 +4696,11 @@ serve(async (req) => {
                 emitEvent('phase', { phase: 'retrying' });
 
                 try {
-                  // Retry system prompt: original + explicit recovery instruction
-                  const retrySystemPrompt = messages[0].content + `\n\nThe previous output was invalid or truncated.\nYou MUST return complete, valid JSON.\nDo not shorten files.\nDo not include commentary.\nOutput JSON only.`;
+                  // Retry: derive scope-local config since outer executeIntent's vars are not accessible here.
+                  const retryConfig = MODEL_CONFIG[model] || MODEL_CONFIG["vibecoder-gpt4"] || MODEL_CONFIG["vibecoder-pro"];
+                  const RETRY_PROVIDER_CAPS: Record<string, number> = { anthropic: 60000, openai: 16000, gemini: 65000 };
+                  const retryProviderCap = RETRY_PROVIDER_CAPS[retryConfig.provider] || 16000;
+                  const retrySystemPrompt = `You are a code generation engine.\nThe previous output was invalid or truncated.\nYou MUST return complete, valid JSON.\nDo not shorten files.\nDo not include commentary.\nOutput JSON only.`;
 
                   const retryMessages = [
                     { role: "system", content: retrySystemPrompt },
@@ -4707,9 +4710,8 @@ serve(async (req) => {
                     },
                   ];
 
-                  const retryConfig = MODEL_CONFIG[resolvedModel] || MODEL_CONFIG["vibecoder-gpt4"];
                   const retryResponse = await callModelAPI(retryConfig, retryMessages, {
-                    maxTokens: Math.min(30000, providerCap),
+                    maxTokens: Math.min(30000, retryProviderCap),
                     temperature: 0.0,
                     stream: false,
                   });
