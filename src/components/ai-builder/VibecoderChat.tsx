@@ -385,9 +385,11 @@ export function VibecoderChat({
               />
             )}
             
-            {/* 🔴 LIVE THOUGHT: Show logs only after we move beyond the plain analyzing phase,
-                which avoids the redundant “Thinking...” + “Building...” stack. */}
-            {(isStreaming || isAgentMode) && (agentLogs.length > 0 || liveSteps.length > 0) && streamPhaseData?.phase !== 'analyzing' && (
+            {/* 🔴 LIVE THOUGHT: Keep hidden during the primary structured phases so we don't
+                stack duplicate status labels above the main generation card. */}
+            {(isStreaming || isAgentMode) &&
+              (agentLogs.length > 0 || liveSteps.length > 0) &&
+              (!streamPhaseData || (streamPhaseData.phase !== 'analyzing' && streamPhaseData.phase !== 'building' && streamPhaseData.phase !== 'retrying' && streamPhaseData.phase !== 'rebuilding')) && (
               <LiveThought 
                 logs={agentLogs.length > 0 ? agentLogs : liveSteps}
                 isThinking={isStreaming}
@@ -406,7 +408,7 @@ export function VibecoderChat({
             )}
 
             {/* 🔄 RETRY BUTTON: Show when last generation failed with retryable error */}
-            {lastFailedPrompt && (
+            {lastFailedPrompt && !isStreaming && !isAgentMode && (
               <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
