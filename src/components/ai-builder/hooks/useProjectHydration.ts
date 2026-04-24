@@ -158,10 +158,11 @@ export function useProjectHydration({
     hasRestoredCodeRef.current = null;
     loadingProjectRef.current = activeProjectId;
 
-    // 🛑 ANTI-BLEED: On a real project switch, wipe stale code/files IMMEDIATELY
-    // so the previous project's content can never render under the new project's id.
-    // (Without this, a fresh project with no snapshot would inherit the old project's files.)
-    if (previousProjectIdRef.current !== activeProjectId) {
+    // 🛑 ANTI-BLEED: On a real project switch (or first mount with a project),
+    // wipe stale code/files IMMEDIATELY so the previous project's content can
+    // never render under the new project's id. (Without this, a fresh project
+    // with no snapshot would inherit the old project's files in memory.)
+    if (previousId !== activeProjectId) {
       try { setFiles({}); } catch {}
       try { resetCode(); } catch {}
       onIncrementResetKey();
