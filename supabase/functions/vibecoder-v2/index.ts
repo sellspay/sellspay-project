@@ -756,6 +756,12 @@ function validateFileSyntaxServer(content: string, filePath: string): string | n
 
   // 4. JSX tag balance (prevents frontend-only failures)
   if (filePath.endsWith('.tsx') || filePath.endsWith('.jsx')) {
+    // 4a. Stray double-bracket close like "</Routes>>" or "<div>>"
+    const strippedForJsx = stripStringsAndCommentsServer(content);
+    const doubleCloseMatch = /<\/?[A-Za-z][A-Za-z0-9.]*[^<>]*>>/.exec(strippedForJsx);
+    if (doubleCloseMatch) {
+      return `Stray ">" after JSX tag: "${doubleCloseMatch[0]}"`;
+    }
     const jsxError = checkJsxTagBalanceServer(content);
     if (jsxError) return jsxError;
   }
