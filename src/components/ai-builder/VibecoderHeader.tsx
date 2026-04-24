@@ -78,10 +78,10 @@ export function VibecoderHeader({
   const navigate = useNavigate();
 
   return (
-    <header className="h-12 bg-transparent flex items-center justify-between px-4 shrink-0 relative">
+    <header className="h-12 bg-transparent flex items-center justify-between gap-2 px-3 shrink-0 relative">
 
       {/* LEFT: Exit Button */}
-      <div className="flex items-center">
+      <div className="flex items-center shrink-0">
         <Button 
           variant="ghost" 
           size="sm" 
@@ -94,7 +94,7 @@ export function VibecoderHeader({
       </div>
 
       {/* CENTER: Icon Pill Switcher */}
-      <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-3">
+      <div className="flex items-center gap-2 min-w-0">
         <div className="flex items-center gap-0.5 p-1 rounded-xl bg-white/[0.04] border border-white/[0.06]">
           {TAB_CONFIG.map((tab, idx) => {
             const isActive = viewMode === tab.mode;
@@ -164,7 +164,7 @@ export function VibecoderHeader({
       </div>
 
       {/* RIGHT: Page Navigator & Actions */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2 shrink-0">
         {/* Page Navigator */}
         <div className="hidden lg:block">
           <PageNavigator 
