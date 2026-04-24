@@ -5384,6 +5384,13 @@ serve(async (req) => {
                 const parsed = JSON.parse(codeResult);
                 if (parsed?.files && typeof parsed.files === "object") {
                   filesChangedCount = Object.keys(parsed.files).length;
+                } else if (parsed && typeof parsed === "object") {
+                  // Root-level path map shape: { "/App.tsx": "..." }
+                  const rootKeys = Object.keys(parsed);
+                  const looksLikeFileMap =
+                    rootKeys.length > 0 &&
+                    rootKeys.every((k) => typeof k === "string" && /\.(tsx?|jsx?|css|json|md|html)$/i.test(k));
+                  if (looksLikeFileMap) filesChangedCount = rootKeys.length;
                 }
               } catch { /* code_result not JSON — leave null */ }
             }
