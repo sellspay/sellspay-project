@@ -5359,7 +5359,7 @@ serve(async (req) => {
                       }));
                       const { error: pfErr } = await supabase
                         .from("project_files")
-                        .upsert(rows, { onConflict: "profile_id,file_path" });
+                        .upsert(rows, { onConflict: "project_id,file_path" });
                       if (pfErr) {
                         console.error(`[Job ${jobId}] project_files upsert failed:`, pfErr);
                       } else {
