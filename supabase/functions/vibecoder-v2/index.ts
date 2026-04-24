@@ -5206,7 +5206,8 @@ serve(async (req) => {
                     console.warn(`[Job ${jobId}] GATE 4: ${syntaxCheck.errors.length} syntax error(s) in delta: ${syntaxCheck.errors.map(e => `${e.file}: ${e.error}`).join(' | ')}`);
                     
                     // Phase 0: DETERMINISTIC auto-fix (instant, no AI call needed)
-                    // Handles the most common failures: unterminated strings + truncated JSX
+                    // Handles the most common failures: unterminated strings + truncated/misaligned JSX
+                    await pushProgress(`Found ${syntaxCheck.errors.length} syntax issue(s) — attempting automatic repair…`, { force: true });
                     for (const err of syntaxCheck.errors) {
                       // 0a: Unterminated string literals (apostrophe in '...', newline in "...")
                       if (err.error.includes('Unterminated string')) {
@@ -5217,8 +5218,13 @@ serve(async (req) => {
                           continue;
                         }
                       }
-                      // 0b: Unclosed JSX / truncation
-                      if (err.error.includes('Unclosed JSX') || err.error.includes('Unbalanced') || err.error.includes('truncated')) {
+                      // 0b: Unclosed / mismatched / truncated JSX
+                      if (
+                        err.error.includes('Unclosed JSX') ||
+                        err.error.includes('Unexpected closing JSX tag') ||
+                        err.error.includes('Unbalanced') ||
+                        err.error.includes('truncated')
+                      ) {
                         const autoClosed = autoCloseTruncatedFile(deltaForSyntax[err.file] || "", err.file);
                         if (autoClosed) {
                           deltaForSyntax[err.file] = autoClosed;
@@ -5230,6 +5236,7 @@ serve(async (req) => {
                     // Check if deterministic fix resolved everything
                     const afterAutoClose = validateAllFilesServer(deltaForSyntax);
                     if (afterAutoClose.valid) {
+                      await pushProgress("Automatic syntax repair succeeded.", { force: true });
                       console.log(`[Job ${jobId}] GATE 4 PASS: Deterministic auto-close fixed all errors`);
                       codeResult = JSON.stringify({ files: deltaForSyntax });
                       const existingFiles: Record<string, string> = projectFiles && typeof projectFiles === 'object'
@@ -5239,10 +5246,12 @@ serve(async (req) => {
                       emitEvent('files', { projectFiles: lastMergedFiles });
                     } else {
                       // Phase 1: Individual AI file repair (fallback)
+                      await pushProgress(`Automatic repair incomplete — retrying ${afterAutoClose.errors.length} file(s)…`, { force: true });
                       const repairConfig = MODEL_CONFIG[model] || MODEL_CONFIG["vibecoder-flash"] || MODEL_CONFIG["vibecoder-pro"];
                       let allFixed = true;
                       for (const err of afterAutoClose.errors) {
                         try {
+                          await pushProgress(`Repairing ${err.file}…`);
                           const fixed = await repairBrokenFile(err.file, deltaForSyntax[err.file] || "", err.error, repairConfig);
                           if (fixed && fixed.trim().length > 20) {
                             const recheck = validateFileSyntaxServer(fixed, err.file);
@@ -5265,6 +5274,7 @@ serve(async (req) => {
                       if (!allFixed) {
                         const recheckMid = validateAllFilesServer(deltaForSyntax);
                         if (!recheckMid.valid) {
+                          await pushProgress(`Still failing validation — running final repair pass on ${recheckMid.errors.length} file(s)…`, { force: true });
                           console.log(`[Job ${jobId}] GATE 4: Individual repair incomplete, trying batch...`);
                           const batchRepair = await batchCompileFix(deltaForSyntax, repairConfig, emitEvent);
                           if (batchRepair.success) {
@@ -5277,12 +5287,14 @@ serve(async (req) => {
                       const recheckAll = validateAllFilesServer(deltaForSyntax);
                       if (!recheckAll.valid) {
                         const errSummary = recheckAll.errors.map(e => `${e.file}: ${e.error}`).join(' | ');
+                        await pushProgress(`Validation failed: ${errSummary}`, { force: true });
                         console.error(`[Job ${jobId}] GATE 4 FAIL: Syntax errors persist after all repair attempts: ${errSummary}`);
                         validationError = { errorType: 'COMPILE_FAILURE', errorMessage: `Code has syntax errors: ${errSummary}` };
                         jobStatus = "failed";
                         terminalReason = "compile_failure";
                         emitEvent('error', { code: 'COMPILE_FAILURE', message: `Syntax errors in generated code: ${errSummary}` });
                       } else {
+                        await pushProgress("Syntax validation passed.", { force: true });
                         codeResult = JSON.stringify({ files: deltaForSyntax });
                         console.log(`[Job ${jobId}] GATE 4 PASS: All syntax errors repaired`);
                         const existingFiles: Record<string, string> = projectFiles && typeof projectFiles === 'object'
@@ -5449,6 +5461,12 @@ serve(async (req) => {
             }
 
             // Finalize Job Status
+            const finalProgressLogs = validationError
+              ? [...progressLogs, `⚠️ ${validationError.errorType}`]
+              : jobStatus === "needs_user_action"
+              ? [...progressLogs, "⚠️ Intent check failed — user action needed"]
+              : [...progressLogs, "✅ All validation gates passed"];
+
             const updatePayload: Record<string, unknown> = {
               status: jobStatus,
               completed_at: new Date().toISOString(),
@@ -5459,11 +5477,7 @@ serve(async (req) => {
               validation_report: validationReport,
               terminal_reason: terminalReason,
               files_changed_count: filesChangedCount,
-              progress_logs: validationError
-                ? ["Starting AI generation...", "Processing response...", `⚠️ ${validationError.errorType}`]
-                : jobStatus === "needs_user_action"
-                ? ["Starting AI generation...", "Processing response...", "⚠️ Intent check failed — user action needed"]
-                : ["Starting AI generation...", "Processing response...", "✅ All validation gates passed"],
+              progress_logs: finalProgressLogs,
             };
 
             if (validationError) {
