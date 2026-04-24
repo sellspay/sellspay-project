@@ -90,7 +90,7 @@ export const LiveThought = forwardRef<HTMLDivElement, LiveThoughtProps>(
           <div className="min-w-0 space-y-1">
             <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
               <span className={cn("opacity-70", !isBuildingPhase && "opacity-50")}>
-                {isBuildingPhase ? `Working · ${seconds}s` : `Completed · ${seconds}s`}
+                {isBuildingPhase ? `Building · ${seconds}s` : `Completed · ${seconds}s`}
               </span>
             </div>
 
