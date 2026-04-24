@@ -3541,7 +3541,7 @@ If the full scope is too large, implement the highest-value core storefront firs
       const promptLen = prompt.length;
       const existingCodeLen = currentCode?.length || 0;
       const fileCount = projectFiles ? Object.keys(projectFiles).length : 0;
-      const isFirstBuild = intent.intent === "BUILD" || intent.intent === "REPLACE";
+      const isFirstBuild = intent.intent === "BUILD";
       // Micro-edit detection: short prompts about color/text/spacing/visibility tweaks
       const microEditPatterns = /\b(color|colour|text|font|size|padding|margin|spacing|hide|show|remove|delete|add|change|update|swap|rename|bigger|smaller|larger|wider|taller|shorter|bold|italic)\b/i;
       const isMicroEdit = prompt.length < 120 && microEditPatterns.test(prompt) && intent.intent === "MODIFY";
