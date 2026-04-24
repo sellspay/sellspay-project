@@ -5297,7 +5297,7 @@ serve(async (req) => {
                     console.warn(`[Job ${jobId}] GATE 4: ${syntaxCheck.errors.length} syntax error(s) in delta: ${syntaxCheck.errors.map(e => `${e.file}: ${e.error}`).join(' | ')}`);
                     
                     // Phase 0: DETERMINISTIC auto-fix (instant, no AI call needed)
-                    // Handles the most common failures: unterminated strings + truncated/misaligned JSX
+                    // Handles the most common failures: unterminated strings, truncated TS/JS, and misaligned JSX
                     await pushProgress(`Found ${syntaxCheck.errors.length} syntax issue(s) — attempting automatic repair…`, { force: true });
                     for (const err of syntaxCheck.errors) {
                       // 0a: Unterminated string literals (apostrophe in '...', newline in "...")
@@ -5309,7 +5309,18 @@ serve(async (req) => {
                           continue;
                         }
                       }
-                      // 0b: Unclosed / mismatched / truncated JSX
+
+                      // 0b: Truncated TS/JS/TSX/JSX endings like a dangling '.' or missing final closers
+                      if (err.error.includes('truncated') || err.error.includes('Unbalanced')) {
+                        const repairedCode = autoRepairTruncatedCodeFile(deltaForSyntax[err.file] || "", err.file);
+                        if (repairedCode) {
+                          deltaForSyntax[err.file] = repairedCode;
+                          console.log(`[Job ${jobId}] GATE 4 CODE-FIX: ✅ Deterministically repaired ${err.file}`);
+                          continue;
+                        }
+                      }
+
+                      // 0c: Unclosed / mismatched / truncated JSX
                       if (
                         err.error.includes('Unclosed JSX') ||
                         err.error.includes('Unexpected closing JSX tag') ||
