@@ -3596,7 +3596,9 @@ If the full scope is too large, implement the highest-value core storefront firs
   let maxTokens = intent.intent === "QUESTION" || intent.intent === "REFUSE" ? 500 : providerCap;
   
   // Token Guardrail: estimate output budget and cap if needed
-  if (scopeResult && (intent.intent === "MODIFY" || intent.intent === "FIX")) {
+  // Apply this to full BUILDs too — large first-pass storefront generations were the
+  // main source of malformed / truncated model output.
+  if (scopeResult && (intent.intent === "MODIFY" || intent.intent === "FIX" || intent.intent === "BUILD")) {
     const systemPromptLen = messages[0]?.content?.length || 0;
     const userMsgLen = messages[messages.length - 1]?.content?.length || 0;
     const fileCount = scopeResult.affectedFiles.length;
@@ -3606,7 +3608,7 @@ If the full scope is too large, implement the highest-value core storefront firs
     
     const budget = estimateTokenBudget(systemPromptLen, userMsgLen, scopeResult, fileCount, avgFileSize, config.provider);
     
-    if (budget.reducedScope) {
+    if (budget.reducedScope || !budget.safeToGenerate) {
       console.warn(`[TokenGuardrail] Reducing maxTokens from ${maxTokens} to ${budget.maxOutputTokens}`);
       maxTokens = Math.min(maxTokens, budget.maxOutputTokens);
     }
