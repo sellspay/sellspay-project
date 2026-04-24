@@ -1607,13 +1607,13 @@ A design critic just rejected the previous output. Your only job: rewrite the li
 ABSOLUTE RULES:
 1. Output ONLY a JSON object: {"files":{"/path":"contents", ...}}. No prose, no markdown, no backticks.
 2. Return EVERY file you were given, fully rewritten — never partials.
-3. Apply EVERY item in "required_changes" verbatim. Do not soften them.
-4. Do not introduce new files unless required.
-5. Keep all existing imports/exports/component names so other files still resolve.
-6. For cinematic/streaming/editorial/poster aesthetics: cards MUST use full-image backgrounds with overlay text, hover scale + glow, gradient overlays. Never image-on-top + text-below.
+3. Apply EVERY item in "required_changes" verbatim. Do not soften them, do not add unrelated style choices.
+4. STAY FAITHFUL TO THE USER'S ORIGINAL PROMPT. Do not impose Netflix/cinematic/neon/glassmorphism or any aesthetic the user did not ask for. If they asked for minimal, stay minimal. If they asked for editorial, stay editorial.
+5. Do not introduce new files unless required.
+6. Keep all existing imports/exports/component names so other files still resolve.
 7. Never leave broken images: every <img> needs a real src or a Tailwind gradient/pattern fallback wrapper.
-8. Use the requested accent color on CTAs, focus rings, borders, and hover glows — not just declared in theme.
-9. Every interactive element gets a transition (duration-300 ease-out) and a visible hover state.`,
+8. Apply the user's requested accent color to CTAs, focus rings, borders — not just declared in theme.
+9. Every interactive element gets a transition (duration-200/300 ease-out) and a visible hover/focus state appropriate to the requested style.`,
           },
           {
             role: "user",
