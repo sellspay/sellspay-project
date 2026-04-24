@@ -526,6 +526,17 @@ export function useBackgroundGenerationController({
     acknowledgeJob,
   } = useBackgroundGeneration({
     projectId: activeProjectId,
+    onJobUpdate: (job) => {
+      // 🔴 LIVE MILESTONES: Mirror the worker's progress_logs into the chat
+      // thought stream so the user sees real-time stage updates ("Analyzing…",
+      // "Generating code…", "Validating…", "Repairing syntax…", etc.) instead
+      // of a frozen "Working..." indicator while the edge function runs.
+      if (job.status === 'running' || job.status === 'pending' || job.status === 'validating' || job.status === 'repairing') {
+        if (Array.isArray(job.progress_logs) && job.progress_logs.length > 0) {
+          setLiveSteps(job.progress_logs);
+        }
+      }
+    },
     onJobComplete: handleJobComplete,
     onJobError: handleJobError,
   });
