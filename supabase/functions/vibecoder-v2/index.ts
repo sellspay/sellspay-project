@@ -3849,6 +3849,36 @@ serve(async (req) => {
     // ════════════════════════════════════════════════════════════
     // UNIFIED STREAMING: Always SSE stream + optional DB write
     // ════════════════════════════════════════════════════════════
+    // Live progress log buffer - shared between milestone pushes and heartbeat ticks.
+    // The client subscribes to realtime UPDATEs of progress_logs and renders each entry
+    // in the chat thought stream, so the user can see exactly what stage we're in.
+    const progressLogs: string[] = ["Starting AI generation..."];
+    const jobStartMs = Date.now();
+    let lastProgressPush = 0;
+
+    const pushProgress = async (entry: string, opts?: { force?: boolean }) => {
+      if (!jobId) return;
+      // Throttle non-forced pushes to avoid hammering the DB
+      const now = Date.now();
+      if (!opts?.force && now - lastProgressPush < 800) {
+        progressLogs.push(entry);
+        return;
+      }
+      lastProgressPush = now;
+      progressLogs.push(entry);
+      try {
+        await supabase
+          .from("ai_generation_jobs")
+          .update({
+            progress_logs: progressLogs,
+            last_heartbeat_at: new Date().toISOString(),
+          })
+          .eq("id", jobId);
+      } catch (e) {
+        console.warn(`[Job ${jobId}] progress push failed:`, e);
+      }
+    };
+
     if (jobId) {
       console.log(`[Job ${jobId}] Starting streaming + job processing...`);
       await supabase
@@ -3857,23 +3887,35 @@ serve(async (req) => {
           status: "running",
           started_at: new Date().toISOString(),
           last_heartbeat_at: new Date().toISOString(),
-          progress_logs: ["Starting AI generation..."],
+          progress_logs: progressLogs,
         })
         .eq("id", jobId);
+      // Immediate first milestone so the user sees something within seconds
+      await pushProgress("Connecting to AI model…", { force: true });
     }
 
-    // 💓 DB HEARTBEAT: every 15s, write last_heartbeat_at so the client knows the worker is alive.
-    // Lets the client distinguish "model is taking a while" (heartbeat fresh) from "worker crashed" (heartbeat stale).
+    // 💓 DB HEARTBEAT: every 12s, refresh heartbeat AND append a "still working" tick
+    // (with elapsed time) so the user sees ongoing motion instead of a frozen log.
+    let heartbeatTick = 0;
     const dbHeartbeatInterval = jobId ? setInterval(async () => {
       try {
+        heartbeatTick++;
+        const elapsedSec = Math.floor((Date.now() - jobStartMs) / 1000);
+        // Every 2nd tick (~24s), append a visible progress entry so the chat thread updates
+        if (heartbeatTick % 2 === 0) {
+          progressLogs.push(`Still working… (${elapsedSec}s elapsed)`);
+        }
         await supabase
           .from("ai_generation_jobs")
-          .update({ last_heartbeat_at: new Date().toISOString() })
+          .update({
+            last_heartbeat_at: new Date().toISOString(),
+            progress_logs: progressLogs,
+          })
           .eq("id", jobId);
       } catch (e) {
         console.warn(`[Job ${jobId}] DB heartbeat failed:`, e);
       }
-    }, 15_000) : null;
+    }, 12_000) : null;
 
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
