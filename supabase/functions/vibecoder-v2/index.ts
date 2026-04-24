@@ -506,6 +506,14 @@ function autoCloseUnterminatedStrings(content: string, filePath: string): string
     else if (inDouble) { lines[li] = line + '"'; changed = true; }
   }
 
+  // ─── Final pass: append a closing backtick if a template literal
+  // remained open at end-of-file (the most common AI typo that triggers
+  // "Unterminated template literal" rejections).
+  if (inTemplate) {
+    lines[lines.length - 1] = (lines[lines.length - 1] ?? '') + '`';
+    changed = true;
+  }
+
   if (!changed) return null;
   const fixed = lines.join('\n');
   const recheck = validateFileSyntaxServer(fixed, filePath);
@@ -950,7 +958,7 @@ function validateAndAutoRepairFileMapServer(files: Record<string, string>): {
     const current = repaired[err.file] || '';
     let next = current;
 
-    if (err.error.includes('Unterminated string')) {
+    if (err.error.includes('Unterminated string') || err.error.includes('Unterminated template')) {
       const stringFixed = autoCloseUnterminatedStrings(next, err.file);
       if (stringFixed) next = stringFixed;
     }
@@ -5579,8 +5587,8 @@ serve(async (req) => {
                     // Handles the most common failures: unterminated strings, truncated TS/JS, and misaligned JSX
                     await pushProgress(`Found ${syntaxCheck.errors.length} syntax issue(s) — attempting automatic repair…`, { force: true });
                     for (const err of syntaxCheck.errors) {
-                      // 0a: Unterminated string literals (apostrophe in '...', newline in "...")
-                      if (err.error.includes('Unterminated string')) {
+                      // 0a: Unterminated string literals & template literals (backticks)
+                      if (err.error.includes('Unterminated string') || err.error.includes('Unterminated template')) {
                         const stringFixed = autoCloseUnterminatedStrings(deltaForSyntax[err.file] || "", err.file);
                         if (stringFixed) {
                           deltaForSyntax[err.file] = stringFixed;
