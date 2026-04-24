@@ -593,7 +593,7 @@ function autoCloseTruncatedFile(content: string, filePath: string): string | nul
       if (tagName !== JSX_FRAGMENT && SERVER_TS_TYPE_NAMES.has(tagName)) continue;
       if (/(?:Props|State|Type|Config|Options|Params|Args|Result|Data|Item|Entry|Key|Value|Ref|Context|Handler|Callback|Fn|Interface)$/.test(tagName)) continue;
       const isSelfClosing = !isFragment && fullMatch.endsWith('/>');
-      if (isSelfClosing || (!isFragment && SERVER_VOID_ELEMENTS.has(tagName.toLowerCase()))) continue;
+      if (isSelfClosing || (!isFragment && SERVER_VOID_ELEMENTS.has(tagName))) continue;
 
       if (!isClosing) {
         stack.push(tagName);
