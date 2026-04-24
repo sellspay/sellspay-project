@@ -3987,8 +3987,31 @@ serve(async (req) => {
         // We must keep doing background work (DB writes, validation) so the job completes.
         let streamClosed = false;
         
-        // Helper to emit structured SSE events — safe against client disconnects
+        // Map of internal phase names → human-readable milestone messages
+        // These get pushed into progress_logs so the user sees real-time stage updates
+        // in the chat thought stream, not just a frozen "Working..." indicator.
+        const PHASE_MILESTONES: Record<string, string> = {
+          analyzing: "Analyzing your request…",
+          planning: "Planning the build…",
+          building: "Generating code…",
+          rebuilding: "Regenerating code (retry)…",
+          retrying: "Retrying with adjusted parameters…",
+          validating: "Validating generated code…",
+          repairing: "Repairing syntax errors…",
+          complete: "Build complete ✓",
+        };
+
+        // Helper to emit structured SSE events — safe against client disconnects.
+        // Also mirrors phase changes into progress_logs (DB) so users away from the
+        // page or on a stalled stream still see live milestones via realtime.
         const emitEvent = (eventType: string, data: any) => {
+          // Mirror phase changes into progress_logs (fire-and-forget)
+          if (eventType === 'phase' && data?.phase) {
+            const friendly = PHASE_MILESTONES[data.phase] || `Phase: ${data.phase}`;
+            const detail = data.attempt ? ` (attempt ${data.attempt})` : '';
+            // Don't await — keep streaming responsive
+            pushProgress(`${friendly}${detail}`, { force: true }).catch(() => {});
+          }
           if (streamClosed) return;
           try {
             const payload = `event: ${eventType}\ndata: ${JSON.stringify(data)}\n\n`;
