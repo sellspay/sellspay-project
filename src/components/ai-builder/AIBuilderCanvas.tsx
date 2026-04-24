@@ -1643,8 +1643,11 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false, isGuest =
           )}
         </div>
       </div>
+        </div>{/* /Body row */}
+      </div>{/* /Right of project sidebar (header + body) */}
 
       {/* Chat expand toggle removed — now lives in header */}
+
       
 
       <PlacementPromptModal
