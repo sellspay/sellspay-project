@@ -5933,7 +5933,6 @@ serve(async (req) => {
               if (
                 !validationError &&
                 jobStatus === "completed" &&
-                isMultiFileJson &&
                 lastMergedFiles &&
                 Object.keys(lastMergedFiles).length >= 2 &&
                 intentResult.intent === "BUILD"
