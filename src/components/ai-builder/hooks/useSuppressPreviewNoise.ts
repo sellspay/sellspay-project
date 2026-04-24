@@ -73,12 +73,20 @@ const DEFAULT_PATTERNS: RegExp[] = [
   /gpteng\.co/i,
   /processMutation/i,
   /processMutations/i,
-  
+
   // Generic crash patterns to suppress
   /Uncaught TypeError/i,
   /Uncaught ReferenceError/i,
   /Uncaught Error/i,
   /Script error/i,
+
+  // Sandpack / CodeSandbox CDN failures (col.csbops.io, codesandbox.io, etc.)
+  /csbops\.io/i,
+  /codesandbox\.io/i,
+  /ERR_CONNECTION_TIMED_OUT/i,
+  /ERR_NETWORK_CHANGED/i,
+  /Failed to fetch.*sandpack/i,
+  /Failed to load resource.*csbops/i,
 
   // Sandpack preview noise: forwardRef warnings, unrecognized features, CDN warnings
   /Function components cannot be given refs/i,
