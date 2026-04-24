@@ -5355,6 +5355,7 @@ serve(async (req) => {
                 if (summaryValidated && lastMergedFiles) {
                   filesWrapper = normalizeFileMapServer(lastMergedFiles);
                   console.log(`[Job ${jobId}] Recovery save: using SUMMARY-validated files (${Object.keys(filesWrapper).length} files)`);
+                  await pushProgress(`Saving ${Object.keys(filesWrapper).length} file(s)…`, { force: true });
                 } else {
                   const extracted = extractFileMap(codeResult);
                   if (extracted && Object.keys(extracted).length > 0) {
