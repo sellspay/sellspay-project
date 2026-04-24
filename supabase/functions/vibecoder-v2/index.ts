@@ -1494,39 +1494,42 @@ async function critiqueDesignQuality(
           {
             role: "system",
             content: `You are a senior product designer reviewing AI-generated storefront code.
-Your job: detect generic, template-like, or aesthetically weak UI BEFORE it ships.
+Your job: detect generic, template-like, or low-effort UI BEFORE it ships — judged AGAINST THE USER'S OWN PROMPT.
+
+CRITICAL RULE: You are STYLE-AGNOSTIC. Do NOT impose any specific aesthetic (Netflix, brutalist, glassmorphism, etc).
+First, INFER the aesthetic the user asked for from their prompt (minimal, playful, editorial, brutalist, corporate, cyberpunk, organic, whatever — or none specified at all).
+Then judge whether the code DELIVERS THAT aesthetic with conviction. A clean minimal design can score 10/10. A maximalist neon design can score 10/10. What fails is GENERIC + LOW-EFFORT relative to what was requested.
 
 Score each category 1-10. Pass = overall >= 8 AND every category >= 7.
+If the prompt is vague/short ("build me a store"), be LENIENT — pass anything competent. Only be strict when the user gave a clear directional brief.
 
-BAD SIGNALS to call out:
-- Empty/black hero with only centered text (no imagery, gradient, depth, or eyebrow)
-- Product/media cards as image-on-top + text-below boxes when prompt asks for cinematic / streaming / editorial / poster → those MUST be full-image backgrounds with text OVERLAY
-- Default blue links / focus rings when an accent color was specified
-- Flat solid backgrounds with zero depth (no gradient, no noise, no layered shadows)
-- Broken/missing images (empty <img>, no src, placeholder-only)
-- Three identical icon-cards in a row used as the "Why" section
-- Banned generic copy ("Welcome to", "Transform your business", "Unleash", "Elevate", "Next level")
-- No hover state when prompt asked for "alive" / "cinematic" / "interactive"
-- Accent color declared in theme.ts but never applied to CTAs / borders / focus rings
-- Layout that screams default Shopify when prompt asked for editorial / gallery / streaming / gaming / magazine
+UNIVERSAL bad signals (apply to ANY style):
+- Broken/missing images: empty <img>, no src, placeholder-only boxes
+- Accent/brand color declared in theme but never applied to CTAs, borders, or focus rings
+- Default blue links/focus rings when a custom accent was specified
+- Generic filler copy ("Welcome to", "Transform your business", "Unleash", "Elevate your X")
+- Components that don't match the explicit instructions in the user's prompt (e.g. user said "overlay cards" but got text-below cards; user said "no shadows" but got shadows everywhere)
+- Zero interaction polish: no hover states, no transitions, no focus styles ANYWHERE
+- Three identical icon-cards used as filler when the prompt asked for something specific
 
-For cinematic/streaming/editorial aesthetics specifically:
-- Cards MUST be image-first with overlay text (Netflix-style)
-- Hero MUST have a real visual (gradient mesh, blurred image, layered shapes — not just text)
-- Hover MUST scale + glow
+DO NOT flag as bad:
+- Minimal/flat design IF the user asked for minimal/flat
+- Text-below cards IF the user did not ask for overlay/cinematic
+- Plain hero IF the user asked for clean/simple/minimal
+- Absence of gradients/glow/neon IF the user did not request them
 
 Return ONLY valid JSON, no prose, no markdown:
 {
   "passed": boolean,
   "overall": number,
   "scores": { "visual_impact": number, "layout_quality": number, "brand_alignment": number, "component_polish": number, "interaction_quality": number, "imagery_use": number },
+  "inferred_aesthetic": string,
   "bad_signals": string[],
   "required_changes": string[],
   "weakest_files": string[]
 }
 
-"required_changes" must be DIRECTIVE and CONCRETE — instructions the next coder will follow verbatim.
-Example: "Rewrite ProductCard.tsx so the cover image is the card background (object-cover, absolute inset-0) with a dark bottom-to-top gradient overlay; move title + price to absolute bottom-left over the gradient; add hover:scale-[1.04] hover:brightness-110 transition-all duration-300."`,
+"required_changes" must be DIRECTIVE, CONCRETE, and grounded ONLY in what the user actually asked for or universal bad signals above. Never invent style requirements the user didn't request.`,
           },
           {
             role: "user",
@@ -1604,13 +1607,13 @@ A design critic just rejected the previous output. Your only job: rewrite the li
 ABSOLUTE RULES:
 1. Output ONLY a JSON object: {"files":{"/path":"contents", ...}}. No prose, no markdown, no backticks.
 2. Return EVERY file you were given, fully rewritten — never partials.
-3. Apply EVERY item in "required_changes" verbatim. Do not soften them.
-4. Do not introduce new files unless required.
-5. Keep all existing imports/exports/component names so other files still resolve.
-6. For cinematic/streaming/editorial/poster aesthetics: cards MUST use full-image backgrounds with overlay text, hover scale + glow, gradient overlays. Never image-on-top + text-below.
+3. Apply EVERY item in "required_changes" verbatim. Do not soften them, do not add unrelated style choices.
+4. STAY FAITHFUL TO THE USER'S ORIGINAL PROMPT. Do not impose Netflix/cinematic/neon/glassmorphism or any aesthetic the user did not ask for. If they asked for minimal, stay minimal. If they asked for editorial, stay editorial.
+5. Do not introduce new files unless required.
+6. Keep all existing imports/exports/component names so other files still resolve.
 7. Never leave broken images: every <img> needs a real src or a Tailwind gradient/pattern fallback wrapper.
-8. Use the requested accent color on CTAs, focus rings, borders, and hover glows — not just declared in theme.
-9. Every interactive element gets a transition (duration-300 ease-out) and a visible hover state.`,
+8. Apply the user's requested accent color to CTAs, focus rings, borders — not just declared in theme.
+9. Every interactive element gets a transition (duration-200/300 ease-out) and a visible hover/focus state appropriate to the requested style.`,
           },
           {
             role: "user",
