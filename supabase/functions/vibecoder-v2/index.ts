@@ -134,7 +134,7 @@ async function checkDataAvailability(
   }
 
   // Get the user's profile ID first
-  const { data: profile } = await supabase.from("profiles").select("id").eq("user_id", userId).single();
+  const { data: profile } = await (supabase as any).from("profiles").select("id").eq("user_id", userId).single() as { data: { id: string } | null };
 
   if (!profile) return null;
 
