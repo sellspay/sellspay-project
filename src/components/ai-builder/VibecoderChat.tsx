@@ -377,7 +377,7 @@ export function VibecoderChat({
               />
             )}
             
-            {/* 🔴 STREAMING PHASE CARD: New phase-based UI (primary experience) */}
+            {/* 🔴 STREAMING PHASE CARD: Primary phase/status indicator */}
             {(isStreaming || isAgentMode) && streamPhaseData && streamPhaseData.phase !== 'idle' && (
               <StreamingPhaseCard 
                 data={streamPhaseData}
@@ -385,10 +385,22 @@ export function VibecoderChat({
               />
             )}
             
-            {/* 🔴 LIVE THOUGHT: Fallback when no structured phase data available */}
-            {(isStreaming || isAgentMode) && (!streamPhaseData || streamPhaseData.phase === 'idle') && (
+            {/* 🔴 LIVE THOUGHT: Always show real log feed when logs exist, even while
+                the phase card is visible. The previous logic hid the log stream behind
+                the phase card, which made users only see "Thinking" → "Building". */}
+            {(isStreaming || isAgentMode) && (agentLogs.length > 0 || liveSteps.length > 0) && (
               <LiveThought 
                 logs={agentLogs.length > 0 ? agentLogs : liveSteps}
+                isThinking={isStreaming}
+                className="mt-3"
+              />
+            )}
+
+            {/* 🔴 FALLBACK THOUGHT: If we are streaming but have no structured phase data
+                and no live logs yet, still show a minimal thinking indicator. */}
+            {(isStreaming || isAgentMode) && (!streamPhaseData || streamPhaseData.phase === 'idle') && agentLogs.length === 0 && liveSteps.length === 0 && (
+              <LiveThought 
+                logs={[]}
                 isThinking={isStreaming}
                 className="mt-4"
               />
