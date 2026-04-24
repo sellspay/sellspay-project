@@ -1336,14 +1336,16 @@ export function VibecoderPreview({
   // Track the initial mount key — only remount on TRUE identity changes (not code updates)
   const mountKeyRef = useRef(0);
 
-  // 🔗 NAVIGATION BRIDGE: Listen for postMessage navigation from Sandpack iframe
+  // 🔗 NAVIGATION BRIDGE: Inside the AI Builder, NEVER navigate the parent window
+  // away from the editor. Product/link clicks inside the Sandpack preview should
+  // open in a new tab so the user keeps their builder session intact.
   useEffect(() => {
     const onNavMessage = (event: MessageEvent) => {
       const msg = event.data;
       if (!msg || msg.type !== 'VIBECODER_NAVIGATE') return;
       if (typeof msg.url !== 'string') return;
-      const target = msg.target === '_blank' ? '_blank' : '_self';
-      window.open(msg.url, target, target === '_blank' ? 'noopener,noreferrer' : '');
+      // Force new-tab inside the builder regardless of requested target.
+      window.open(msg.url, '_blank', 'noopener,noreferrer');
     };
     window.addEventListener('message', onNavMessage);
     return () => window.removeEventListener('message', onNavMessage);
