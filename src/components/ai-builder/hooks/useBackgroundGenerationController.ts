@@ -440,8 +440,9 @@ export function useBackgroundGenerationController({
 
     const failureDetail = extractFailureDetail(userMessage);
 
-    // 🔄 RETRY: Capture the failed prompt so users can retry
-    // Check both the extracted errorType and the userMessage for retryable patterns
+    // 🔄 RETRY: Preserve the failed prompt for any failed generation that can safely be retried.
+    // We do this unconditionally for failed/continuation errors because some malformed-output
+    // paths lose the explicit classifier even though retrying the same prompt is valid.
     const combinedCheck = `${errorType} ${userMessage}`;
     const isRetryableError = combinedCheck.includes('NO_CODE_PRODUCED') ||
       combinedCheck.includes('CORRUPT_JSON_OUTPUT') ||
@@ -452,8 +453,11 @@ export function useBackgroundGenerationController({
       combinedCheck.includes('CODE_TOO_SHORT') ||
       combinedCheck.includes('MODEL_EMPTY_RESPONSE') ||
       combinedCheck.includes('MODEL_TRUNCATED') ||
-      combinedCheck.includes('MISSING_EXPORT_DEFAULT');
-    if (isRetryableError && job.prompt) {
+      combinedCheck.includes('MISSING_EXPORT_DEFAULT') ||
+      job.status === 'failed' ||
+      job.status === 'needs_continuation';
+
+    if (job.prompt && job.status !== 'needs_user_action') {
       setLastFailedPrompt(job.prompt);
     }
 
