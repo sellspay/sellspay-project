@@ -4561,6 +4561,10 @@ serve(async (req) => {
                   content = parsed.delta?.text;
                 }
                 if (content) {
+                  if (fullContent.length === 0) {
+                    // First token received — let the user know the model is responding
+                    pushProgress("Model is responding…").catch(() => {});
+                  }
                   fullContent += content;
                   
                   // Emit raw token for backward compatibility
