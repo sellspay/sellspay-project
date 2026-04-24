@@ -78,10 +78,10 @@ export function VibecoderHeader({
   const navigate = useNavigate();
 
   return (
-    <header className="h-12 bg-transparent flex items-center justify-between gap-2 px-3 shrink-0 relative">
+    <header className="min-h-12 bg-transparent flex flex-wrap items-center justify-between gap-2 px-3 py-2 shrink-0 relative">
 
       {/* LEFT: Exit Button */}
-      <div className="flex items-center shrink-0">
+      <div className="order-1 flex items-center shrink-0">
         <Button 
           variant="ghost" 
           size="sm" 
@@ -93,80 +93,10 @@ export function VibecoderHeader({
         </Button>
       </div>
 
-      {/* CENTER: Icon Pill Switcher */}
-      <div className="flex items-center gap-2 min-w-0">
-        <div className="flex items-center gap-0.5 p-1 rounded-xl bg-white/[0.04] border border-white/[0.06]">
-          {TAB_CONFIG.map((tab, idx) => {
-            const isActive = viewMode === tab.mode;
-            const Icon = tab.icon;
-            // Add dividers between groups: after Code (idx 1) and after Video (idx 3)
-            const showDivider = idx === 2 || idx === 4 || idx === 6;
-
-            return (
-              <div key={tab.mode} className="flex items-center">
-                {showDivider && <div className="w-px h-4 bg-zinc-700 mx-0.5" />}
-                <motion.button
-                  onClick={() => setViewMode(tab.mode)}
-                  className={cn(
-                    "flex items-center gap-1.5 rounded-lg transition-colors",
-                    isActive
-                      ? cn(tab.activeColor, "px-3 py-1.5")
-                      : "text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800 p-1.5"
-                  )}
-                  layout
-                  transition={{ type: 'spring', stiffness: 500, damping: 35, mass: 0.8 }}
-                  title={tab.label}
-                >
-                  <Icon className="w-3.5 h-3.5 shrink-0" />
-                  {isActive && (
-                    <motion.span
-                      initial={{ opacity: 0, width: 0 }}
-                      animate={{ opacity: 1, width: 'auto' }}
-                      exit={{ opacity: 0, width: 0 }}
-                      className="text-xs font-bold whitespace-nowrap overflow-hidden"
-                    >
-                      {tab.label}
-                    </motion.span>
-                  )}
-                </motion.button>
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Device Toggles (only show for preview mode) */}
-        {viewMode === 'preview' && (
-          <div className="flex items-center gap-0.5 p-1 rounded-lg bg-white/[0.04] border border-white/[0.06]">
-            <button 
-              onClick={() => setDeviceMode('desktop')}
-              className={`p-1.5 rounded-md transition-colors ${
-                deviceMode === 'desktop' 
-                  ? 'text-zinc-200 bg-zinc-700' 
-                  : 'text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800'
-              }`}
-              title="Desktop view"
-            >
-              <Monitor className="w-4 h-4" />
-            </button>
-            <button 
-              onClick={() => setDeviceMode('mobile')}
-              className={`p-1.5 rounded-md transition-colors ${
-                deviceMode === 'mobile' 
-                  ? 'text-zinc-200 bg-zinc-700' 
-                  : 'text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800'
-              }`}
-              title="Mobile view"
-            >
-              <Smartphone className="w-4 h-4" />
-            </button>
-          </div>
-        )}
-      </div>
-
       {/* RIGHT: Page Navigator & Actions */}
-      <div className="flex items-center gap-2 shrink-0">
+      <div className="order-2 ml-auto flex items-center gap-2 shrink-0 2xl:ml-0">
         {/* Page Navigator */}
-        <div className="hidden lg:block">
+        <div className="hidden 2xl:block">
           <PageNavigator 
             activePage={currentPath} 
             pages={pages}
@@ -182,9 +112,10 @@ export function VibecoderHeader({
             size="sm"
             onClick={() => window.open(`/@${username}`, '_blank')}
             className="gap-1.5 border-zinc-700 bg-zinc-900 hover:bg-zinc-800 text-zinc-300"
+            title="View Live"
           >
             <ExternalLink className="w-3.5 h-3.5" />
-            View Live
+            <span className="hidden 2xl:inline">View Live</span>
           </Button>
         )}
 
@@ -192,6 +123,7 @@ export function VibecoderHeader({
         <Button
           size="sm"
           onClick={onPublish}
+          title={isPublished && !hasUnpublishedChanges ? 'Published' : 'Publish'}
           disabled={isEmpty || isPublishing || (isPublished && !hasUnpublishedChanges)}
           className={`gap-2 text-white ${
             isPublished && !hasUnpublishedChanges
@@ -204,12 +136,12 @@ export function VibecoderHeader({
           ) : isPublished && !hasUnpublishedChanges ? (
             <>
               <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
-              Published
+              <span className="hidden 2xl:inline">Published</span>
             </>
           ) : (
             <Eye className="w-4 h-4" />
           )}
-          {(!isPublished || hasUnpublishedChanges) && !isPublishing && 'Publish'}
+          {(!isPublished || hasUnpublishedChanges) && !isPublishing && <span className="hidden 2xl:inline">Publish</span>}
         </Button>
 
         {/* Visual Divider */}
@@ -242,6 +174,77 @@ export function VibecoderHeader({
             </svg>
           </button>
         )}
+      </div>
+
+      {/* CENTER: Icon Pill Switcher */}
+      <div className="order-3 flex basis-full items-center justify-center gap-2 min-w-0 overflow-x-auto scrollbar-hide 2xl:order-2 2xl:basis-auto 2xl:flex-1">
+        <div className="flex w-max items-center gap-2">
+          <div className="flex items-center gap-0.5 p-1 rounded-xl bg-white/[0.04] border border-white/[0.06]">
+            {TAB_CONFIG.map((tab, idx) => {
+              const isActive = viewMode === tab.mode;
+              const Icon = tab.icon;
+              const showDivider = idx === 2 || idx === 4 || idx === 6;
+
+              return (
+                <div key={tab.mode} className="flex items-center">
+                  {showDivider && <div className="w-px h-4 bg-zinc-700 mx-0.5" />}
+                  <motion.button
+                    onClick={() => setViewMode(tab.mode)}
+                    className={cn(
+                      "flex items-center gap-1.5 rounded-lg transition-colors",
+                      isActive
+                        ? cn(tab.activeColor, "px-3 py-1.5")
+                        : "text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800 p-1.5"
+                    )}
+                    layout
+                    transition={{ type: 'spring', stiffness: 500, damping: 35, mass: 0.8 }}
+                    title={tab.label}
+                  >
+                    <Icon className="w-3.5 h-3.5 shrink-0" />
+                    {isActive && (
+                      <motion.span
+                        initial={{ opacity: 0, width: 0 }}
+                        animate={{ opacity: 1, width: 'auto' }}
+                        exit={{ opacity: 0, width: 0 }}
+                        className="text-xs font-bold whitespace-nowrap overflow-hidden"
+                      >
+                        {tab.label}
+                      </motion.span>
+                    )}
+                  </motion.button>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Device Toggles (only show for preview mode) */}
+          {viewMode === 'preview' && (
+            <div className="flex items-center gap-0.5 p-1 rounded-lg bg-white/[0.04] border border-white/[0.06]">
+              <button 
+                onClick={() => setDeviceMode('desktop')}
+                className={`p-1.5 rounded-md transition-colors ${
+                  deviceMode === 'desktop' 
+                    ? 'text-zinc-200 bg-zinc-700' 
+                    : 'text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800'
+                }`}
+                title="Desktop view"
+              >
+                <Monitor className="w-4 h-4" />
+              </button>
+              <button 
+                onClick={() => setDeviceMode('mobile')}
+                className={`p-1.5 rounded-md transition-colors ${
+                  deviceMode === 'mobile' 
+                    ? 'text-zinc-200 bg-zinc-700' 
+                    : 'text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800'
+                }`}
+                title="Mobile view"
+              >
+                <Smartphone className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     </header>
   );
