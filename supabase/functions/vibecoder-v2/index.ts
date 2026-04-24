@@ -4030,6 +4030,9 @@ serve(async (req) => {
             const analysisText = fullContent.substring(analysisStart, analysisEnd).trim();
             // Progressively emit analysis text as it grows (every 20+ new chars)
             if (analysisText.length > 5 && (analysisText.length - lastAnalysisText.length >= 20 || isFinal)) {
+              if (lastAnalysisText.length === 0) {
+                await pushProgress("Analyzing your request…", { force: true });
+              }
               emitEvent('text', { content: analysisText });
               lastAnalysisText = analysisText;
               if (isFinal) analysisEmitted = true;
@@ -4040,6 +4043,7 @@ serve(async (req) => {
           if (fullContent.includes('=== PLAN ===')) {
             if (!planEmitted) {
               emitEvent('phase', { phase: 'planning' });
+              await pushProgress("Planning component structure…", { force: true });
             }
             
             const planStart = fullContent.indexOf('=== PLAN ===') + '=== PLAN ==='.length;
@@ -4065,6 +4069,7 @@ serve(async (req) => {
           if (!codePhaseEmitted && fullContent.includes('=== CODE ===')) {
             emitEvent('phase', { phase: 'building' });
             codePhaseEmitted = true;
+            await pushProgress("Writing component code…", { force: true });
           }
           
           // During code accumulation, emit progress (byte count) instead of raw code
