@@ -134,7 +134,7 @@ async function checkDataAvailability(
   }
 
   // Get the user's profile ID first
-  const { data: profile } = await supabase.from("profiles").select("id").eq("user_id", userId).single();
+  const { data: profile } = await (supabase as any).from("profiles").select("id").eq("user_id", userId).single() as { data: { id: string } | null };
 
   if (!profile) return null;
 
@@ -3541,7 +3541,7 @@ If the full scope is too large, implement the highest-value core storefront firs
       const promptLen = prompt.length;
       const existingCodeLen = currentCode?.length || 0;
       const fileCount = projectFiles ? Object.keys(projectFiles).length : 0;
-      const isFirstBuild = intent.intent === "BUILD" || intent.intent === "REPLACE";
+      const isFirstBuild = intent.intent === "BUILD";
       // Micro-edit detection: short prompts about color/text/spacing/visibility tweaks
       const microEditPatterns = /\b(color|colour|text|font|size|padding|margin|spacing|hide|show|remove|delete|add|change|update|swap|rename|bigger|smaller|larger|wider|taller|shorter|bold|italic)\b/i;
       const isMicroEdit = prompt.length < 120 && microEditPatterns.test(prompt) && intent.intent === "MODIFY";
@@ -4696,8 +4696,11 @@ serve(async (req) => {
                 emitEvent('phase', { phase: 'retrying' });
 
                 try {
-                  // Retry system prompt: original + explicit recovery instruction
-                  const retrySystemPrompt = messages[0].content + `\n\nThe previous output was invalid or truncated.\nYou MUST return complete, valid JSON.\nDo not shorten files.\nDo not include commentary.\nOutput JSON only.`;
+                  // Retry: derive scope-local config since outer executeIntent's vars are not accessible here.
+                  const retryConfig = MODEL_CONFIG[model] || MODEL_CONFIG["vibecoder-gpt4"] || MODEL_CONFIG["vibecoder-pro"];
+                  const RETRY_PROVIDER_CAPS: Record<string, number> = { anthropic: 60000, openai: 16000, gemini: 65000 };
+                  const retryProviderCap = RETRY_PROVIDER_CAPS[retryConfig.provider] || 16000;
+                  const retrySystemPrompt = `You are a code generation engine.\nThe previous output was invalid or truncated.\nYou MUST return complete, valid JSON.\nDo not shorten files.\nDo not include commentary.\nOutput JSON only.`;
 
                   const retryMessages = [
                     { role: "system", content: retrySystemPrompt },
@@ -4707,9 +4710,8 @@ serve(async (req) => {
                     },
                   ];
 
-                  const retryConfig = MODEL_CONFIG[resolvedModel] || MODEL_CONFIG["vibecoder-gpt4"];
                   const retryResponse = await callModelAPI(retryConfig, retryMessages, {
-                    maxTokens: Math.min(30000, providerCap),
+                    maxTokens: Math.min(30000, retryProviderCap),
                     temperature: 0.0,
                     stream: false,
                   });
@@ -4763,17 +4765,20 @@ serve(async (req) => {
                     emitEvent('phase', { phase: 'rebuilding' });
                     
                     try {
+                      const replaceSystemPrompt = `You are a code generation engine. Generate a complete, valid storefront. Output ONLY valid JSON. No commentary, no markdown, no backticks.`;
                       const replaceMessages = [
-                        { role: "system", content: messages[0].content },
+                        { role: "system", content: replaceSystemPrompt },
                         {
                           role: "user",
                           content: `Generate a complete storefront based on this request. Output ONLY valid JSON: {"files": {"/App.tsx": "...", ...}}\n\nNo markdown. No commentary. JSON only.\n\nRequest: ${prompt}`,
                         },
                       ];
                       
-                      const replaceConfig = MODEL_CONFIG["vibecoder-gpt4"];
+                      const replaceConfig = MODEL_CONFIG["vibecoder-gpt4"] || MODEL_CONFIG["vibecoder-pro"];
+                      const REPLACE_PROVIDER_CAPS: Record<string, number> = { anthropic: 60000, openai: 16000, gemini: 65000 };
+                      const replaceProviderCap = REPLACE_PROVIDER_CAPS[replaceConfig.provider] || 16000;
                       const replaceResponse = await callModelAPI(replaceConfig, replaceMessages, {
-                        maxTokens: Math.min(50000, providerCap),
+                        maxTokens: Math.min(50000, replaceProviderCap),
                         temperature: 0.2,
                         stream: false,
                       });
