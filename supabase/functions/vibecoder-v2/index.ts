@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 import ts from "npm:typescript@5.8.3";
+import { runAgent, type FileMap as AgentFileMap } from "../_shared/agent-loop.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -4080,6 +4081,99 @@ serve(async (req) => {
       }
     } catch (e) {
       console.warn("Failed to fetch creator identity:", e);
+    }
+
+    // ════════════════════════════════════════════════════════════
+    // AGENT LOOP SHORT-CIRCUIT (opt-in via body.useAgentLoop)
+    // Bypasses the legacy intent → executeIntent pipeline and runs the
+    // shared plan → tool-driven inspect/edit → validate loop instead.
+    // ════════════════════════════════════════════════════════════
+    if (body.useAgentLoop === true || body.agent === true) {
+      console.log("[EDGE] 🧠 Routing through Agent Loop (vibecoder-v2 → runAgent)");
+
+      let initialFiles: AgentFileMap = {};
+      if (projectFiles && typeof projectFiles === "object") {
+        initialFiles = { ...(projectFiles as Record<string, string>) };
+      } else if (typeof currentCode === "string" && currentCode.length > 0) {
+        initialFiles = { "/App.tsx": currentCode };
+      }
+
+      const validateAgentSyntax = (files: AgentFileMap) => {
+        const result = validateAllFilesServer(files);
+        if (result.valid) return { ok: true as const };
+        return {
+          ok: false as const,
+          errors: result.errors.slice(0, 8).map((e) => `${e.file}: ${e.error}`),
+        };
+      };
+
+      const systemPrompt = [
+        "PROJECT CONSTRAINTS (SellsPay storefront):",
+        "- React + Vite + Tailwind. Never use Next.js imports (next/link, next/router).",
+        "- Static UI only — no event handlers, no React hooks beyond view-only useState/useEffect.",
+        "- All commerce flows through useSellsPayCheckout(); never invent payment gateways.",
+        "- Theme is pure black (#000000); use semantic Tailwind tokens.",
+        "- File paths look like /App.tsx, /components/Hero.tsx, etc.",
+        creatorIdentity ? `- Creator: ${creatorIdentity.username} (${creatorIdentity.email})` : "",
+        brandIdentity ? `- Brand identity locked=${brandIdentityLocked}: ${JSON.stringify(brandIdentity).slice(0, 600)}` : "",
+      ].filter(Boolean).join("\n");
+
+      const encoder = new TextEncoder();
+      const stream = new ReadableStream({
+        async start(controller) {
+          let closed = false;
+          const send = (event: string, data: unknown) => {
+            if (closed) return;
+            try {
+              controller.enqueue(encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`));
+            } catch { closed = true; }
+          };
+          const heartbeat = setInterval(() => send("heartbeat", { t: Date.now() }), 10_000);
+
+          try {
+            send("phase", { phase: "analyzing" });
+            const result = await runAgent({
+              prompt,
+              initialFiles,
+              apiKey: GOOGLE_GEMINI_API_KEY,
+              emit: (type, data) => send(type, data),
+              systemPrompt,
+              validate: validateAgentSyntax,
+              maxRevisions: 2,
+              budgetMs: 110_000,
+            });
+
+            send("files", { files: result.files, partial: false });
+            send("complete", {
+              summary: result.summary,
+              steps: result.steps,
+              toolCalls: result.toolCalls,
+              changedFiles: result.changedFiles,
+              validatedOk: result.validatedOk,
+              validationErrors: result.validationErrors,
+            });
+            endedAsSuccess = true;
+          } catch (err) {
+            const msg = err instanceof Error ? err.message : String(err);
+            console.error("[EDGE] Agent loop failed:", msg);
+            await refundCreditsIfNeeded(`agent_loop_${msg.slice(0, 40)}`);
+            send("error", { code: "AGENT_FAILED", message: msg });
+          } finally {
+            clearInterval(heartbeat);
+            closed = true;
+            try { controller.close(); } catch { /* already closed */ }
+          }
+        },
+      });
+
+      return new Response(stream, {
+        headers: {
+          ...corsHeaders,
+          "Content-Type": "text/event-stream",
+          "Cache-Control": "no-cache",
+          Connection: "keep-alive",
+        },
+      });
     }
 
     // ════════════════════════════════════════════════════════════
