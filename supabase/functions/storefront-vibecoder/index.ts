@@ -1022,7 +1022,7 @@ Generate the patch operations. BUILD THE COMPLETE STOREFRONT NOW.`;
  
    try {
      const startTime = Date.now();
-     const { message, context, profileId, userId } = await req.json();
+     const { message, context, profileId, userId, useAgentLoop, agent } = await req.json();
  
     const GOOGLE_GEMINI_API_KEY = Deno.env.get("GOOGLE_GEMINI_API_KEY");
     if (!GOOGLE_GEMINI_API_KEY) {
