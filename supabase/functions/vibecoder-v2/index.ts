@@ -4099,11 +4099,16 @@ serve(async (req) => {
       }
 
       const validateAgentSyntax = (files: AgentFileMap) => {
-        const result = validateAllFilesServer(files);
-        if (result.valid) return { ok: true as const };
+        // Run deterministic auto-repair (auto-close strings/JSX/templates) before
+        // surfacing errors to the model. Mutates `files` in place when repairs help.
+        const repaired = validateAndAutoRepairFileMapServer(files as Record<string, string>);
+        for (const [p, c] of Object.entries(repaired.fileMap)) {
+          if (files[p] !== c) files[p] = c;
+        }
+        if (repaired.valid) return { ok: true as const };
         return {
           ok: false as const,
-          errors: result.errors.slice(0, 8).map((e) => `${e.file}: ${e.error}`),
+          errors: repaired.errors.slice(0, 8).map((e) => `${e.file}: ${e.error}`),
         };
       };
 
