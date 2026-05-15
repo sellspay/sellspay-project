@@ -1,5 +1,6 @@
- import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
- import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+import { runSectionAgent, type Section } from "../_shared/section-agent.ts";
  
  const corsHeaders = {
    "Access-Control-Allow-Origin": "*",
@@ -1021,7 +1022,7 @@ Generate the patch operations. BUILD THE COMPLETE STOREFRONT NOW.`;
  
    try {
      const startTime = Date.now();
-     const { message, context, profileId, userId } = await req.json();
+     const { message, context, profileId, userId, useAgentLoop, agent } = await req.json();
  
     const GOOGLE_GEMINI_API_KEY = Deno.env.get("GOOGLE_GEMINI_API_KEY");
     if (!GOOGLE_GEMINI_API_KEY) {
@@ -1048,6 +1049,104 @@ Generate the patch operations. BUILD THE COMPLETE STOREFRONT NOW.`;
       : '';
     
     const fullProductContext = `Products:\n${productsSummary}${collectionsSummary ? `\n\nCollections:\n${collectionsSummary}` : ''}`;
+
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // AGENT LOOP SHORT-CIRCUIT (opt-in via useAgentLoop / agent flag)
+    // Bypasses the legacy 3-step pipeline and runs the section-tree agent.
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    if (useAgentLoop === true || agent === true) {
+      const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+      if (!LOVABLE_API_KEY) {
+        return new Response(
+          JSON.stringify({ error: "Agent loop unavailable (LOVABLE_API_KEY not configured)" }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
+
+      const ALLOWED = [
+        "headline", "text", "image_with_text", "about_me",
+        "testimonials", "faq", "basic_list", "featured_product", "collection",
+      ];
+
+      const brandText = brandProfile && Object.keys(brandProfile).length
+        ? `Palette: ${JSON.stringify(brandProfile?.palette ?? {})}\nFonts: ${JSON.stringify(brandProfile?.fonts ?? {})}\nVibe: ${(brandProfile?.vibe || []).join(", ")}`
+        : "";
+
+      try {
+        const result = await runSectionAgent({
+          prompt: message,
+          initialSections: sections as Section[],
+          apiKey: LOVABLE_API_KEY,
+          systemPrompt:
+            "You are SellsPay's storefront builder. Build complete, on-brand storefronts for digital creators. " +
+            "Use real, compelling copy. No lorem ipsum. No placeholders. Every section must look production-ready. " +
+            "For fresh builds (empty tree), produce 5-7 sections covering: hero (headline or image_with_text), " +
+            "products/features (basic_list or featured_product/collection), social proof (testimonials), about_me, and faq.",
+          brandContext: brandText,
+          productContext: fullProductContext,
+          allowedSectionTypes: ALLOWED,
+          validate: (secs) => {
+            if (!secs.length) return { ok: false, errors: ["Empty storefront — add at least 5 sections."] };
+            if (secs.length < 4) return { ok: false, errors: [`Only ${secs.length} sections — need at least 5.`] };
+            const types = new Set(secs.map((s) => s.section_type));
+            const missing: string[] = [];
+            if (!types.has("headline") && !types.has("image_with_text")) missing.push("hero (headline/image_with_text)");
+            return missing.length ? { ok: false, errors: missing.map((m) => `Missing ${m}`) } : { ok: true };
+          },
+        });
+
+        // Convert final tree into the existing op format the storefront apply pipeline expects
+        const ops: any[] = [
+          { op: "clearAllSections" },
+          ...result.sections.map((section) => ({ op: "addSection", section })),
+        ];
+
+        // Persist the conversation snapshot if we can
+        if (SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY && userId && profileId) {
+          try {
+            const supa = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+            await supa.from("storefront_ai_history").insert({
+              storefront_id: profileId,
+              user_id: userId,
+              user_message: message,
+              ops_json: { ops, asset_requests: result.assetRequests, agent: true },
+            });
+          } catch (_e) { /* non-fatal */ }
+        }
+
+        return new Response(
+          JSON.stringify({
+            message: result.summary || "Storefront updated.",
+            ops,
+            asset_requests: result.assetRequests,
+            agent: {
+              steps: result.steps,
+              toolCalls: result.toolCalls,
+              validatedOk: result.validatedOk,
+              validationErrors: result.validationErrors,
+            },
+          }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      } catch (e: any) {
+        if (e?.message === "RATE_LIMITED") {
+          return new Response(JSON.stringify({ error: "Rate limit exceeded. Please try again in a moment." }), {
+            status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+        if (e?.message === "CREDITS_EXHAUSTED") {
+          return new Response(JSON.stringify({ error: "Credits exhausted. Please add more credits." }), {
+            status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+        console.error("[storefront-vibecoder] Agent loop failed:", e);
+        return new Response(
+          JSON.stringify({ error: `Agent loop failed: ${e?.message || String(e)}` }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
+    }
+
  
      const layoutSummary = sections.length > 0
        ? sections.map((s: any) => s.section_type).join(", ")
