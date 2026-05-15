@@ -578,11 +578,20 @@ export async function runAgent(opts: RunAgentOptions): Promise<RunAgentResult> {
         if (attempt >= maxRevisions) break;
         if (Date.now() - startedAt > budgetMs) break;
 
-        // Feed errors back and let the model fix them
+        // Feed errors back and let the model fix them. Include short file snippets
+        // so the model can locate the offending lines without an extra read_file roundtrip.
         emit("phase", { phase: "repairing" });
+        const errLines = (validationErrors ?? []).map((e) => {
+          const m = /^(.+?):\s/.exec(e);
+          const path = m?.[1];
+          const src = path ? files[path] : undefined;
+          if (!src) return `- ${e}`;
+          const head = src.split("\n").slice(0, 80).join("\n");
+          return `- ${e}\n  --- ${path} (first 80 lines) ---\n${head}\n  --- end ---`;
+        }).join("\n");
         messages.push({
           role: "user",
-          content: `Validation failed:\n${validationErrors.join("\n")}\n\nFix using the same tools, then call done.`,
+          content: `Validation failed. Fix using read_file + replace_in_file (or write_file as a last resort), then call done.\n${errLines}`,
         });
 
         // Run a short repair sub-loop
