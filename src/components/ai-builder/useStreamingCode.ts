@@ -664,8 +664,15 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
 
       const conversationHistory = options.getConversationHistory?.() || [];
 
+      // Opt-in agent loop: set localStorage 'lovable.useAgentLoop' = '1' to route
+      // through the new tool-driven agent (vibecoder-agent edge function).
+      const useAgentLoop =
+        typeof window !== 'undefined' &&
+        window.localStorage?.getItem('lovable.useAgentLoop') === '1';
+      const endpoint = useAgentLoop ? 'vibecoder-agent' : 'vibecoder-v2';
+
       const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/vibecoder-v2`,
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/${endpoint}`,
         {
           method: 'POST',
           headers: {
