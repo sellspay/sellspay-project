@@ -408,7 +408,7 @@ export function VibecoderChat({
             )}
 
             {/* 🔄 RETRY BUTTON: Show when last generation failed with retryable error */}
-            {lastFailedPrompt && !isStreaming && !isAgentMode && (
+            {lastFailedPrompt && (
               <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
