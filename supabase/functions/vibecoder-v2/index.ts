@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 import ts from "npm:typescript@5.8.3";
+import { runAgent, type FileMap as AgentFileMap } from "../_shared/agent-loop.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
