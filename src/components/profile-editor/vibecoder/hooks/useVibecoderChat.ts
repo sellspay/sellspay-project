@@ -173,6 +173,9 @@ import { useState, useCallback, useEffect } from 'react';
               context,
               profileId,
               userId: sessionData.session?.user?.id,
+              useAgentLoop:
+                typeof window !== 'undefined' &&
+                window.localStorage?.getItem('lovable.useAgentLoop') === '1',
             }),
           });
 
